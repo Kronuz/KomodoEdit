@@ -10,8 +10,9 @@ import test_python
 
 log = logging.getLogger("test.codeintel.python3")
 
+
 class DefnTestCase(test_python.DefnTestCase):
-    lang="Python3"
+    lang = "Python3"
 
     @tag("bug101868", "pep3107")
     def test_def_decl_trailing_comma(self):
@@ -29,11 +30,14 @@ class DefnTestCase(test_python.DefnTestCase):
         self.assertDefnMatches2(buf, pos[2], line=lines[1],
                                 ilk="argument", name="arg", path=path)
 
+
 class PythonDocTestCase(test_python.PythonDocTestCase):
     lang = "Python3"
 
+
 class TrgTestCase(test_python.TrgTestCase):
     lang = "Python3"
+
 
 class CplnTestCase(test_python.CplnTestCase):
     lang = "Python3"

@@ -80,8 +80,9 @@ __all__ = [
 from decoder import JSONDecoder
 from encoder import JSONEncoder
 
+
 def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
-        allow_nan=True, cls=None, **kw):
+         allow_nan=True, cls=None, **kw):
     """
     Serialize ``obj`` as a JSON formatted stream to ``fp`` (a
     ``.write()``-supporting file-like object).
@@ -112,15 +113,16 @@ def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
     if cls is None:
         cls = JSONEncoder
     iterable = cls(skipkeys=skipkeys, ensure_ascii=ensure_ascii,
-        check_circular=check_circular, allow_nan=allow_nan,
-        **kw).iterencode(obj)
+                   check_circular=check_circular, allow_nan=allow_nan,
+                   **kw).iterencode(obj)
     # could accelerate with writelines in some versions of Python, at
     # a debuggability cost
     for chunk in iterable:
         fp.write(chunk)
 
+
 def dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True,
-        allow_nan=True, cls=None, **kw):
+          allow_nan=True, cls=None, **kw):
     """
     Serialize ``obj`` to a JSON formatted ``str``.
 
@@ -148,7 +150,8 @@ def dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True,
     if cls is None:
         cls = JSONEncoder
     return cls(skipkeys=skipkeys, ensure_ascii=ensure_ascii,
-        check_circular=check_circular, allow_nan=allow_nan, **kw).encode(obj)
+               check_circular=check_circular, allow_nan=allow_nan, **kw).encode(obj)
+
 
 def load(fp, encoding=None, cls=None, object_hook=None, **kw):
     """
@@ -166,7 +169,7 @@ def load(fp, encoding=None, cls=None, object_hook=None, **kw):
     result of any object literal decode (a ``dict``).  The return value of
     ``object_hook`` will be used instead of the ``dict``.  This feature
     can be used to implement custom decoders (e.g. JSON-RPC class hinting).
-    
+
     To use a custom ``JSONDecoder`` subclass, specify it with the ``cls``
     kwarg.
     """
@@ -175,6 +178,7 @@ def load(fp, encoding=None, cls=None, object_hook=None, **kw):
     if object_hook is not None:
         kw['object_hook'] = object_hook
     return cls(encoding=encoding, **kw).decode(fp.read())
+
 
 def loads(s, encoding=None, cls=None, object_hook=None, **kw):
     """
@@ -200,14 +204,16 @@ def loads(s, encoding=None, cls=None, object_hook=None, **kw):
         kw['object_hook'] = object_hook
     return cls(encoding=encoding, **kw).decode(s)
 
+
 def read(s):
     """
     json-py API compatibility hook.  Use loads(s) instead.
     """
     import warnings
     warnings.warn("simplejson.loads(s) should be used instead of read(s)",
-        DeprecationWarning)
+                  DeprecationWarning)
     return loads(s)
+
 
 def write(obj):
     """
@@ -215,7 +221,5 @@ def write(obj):
     """
     import warnings
     warnings.warn("simplejson.dumps(s) should be used instead of write(s)",
-        DeprecationWarning)
+                  DeprecationWarning)
     return dumps(obj)
-
-

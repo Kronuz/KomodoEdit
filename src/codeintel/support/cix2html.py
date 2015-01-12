@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 # Author:
 #   Todd Whiteman (ToddW@ActiveState.com)
@@ -61,8 +61,9 @@ import cmdln
 # HTML API generating code
 #
 
+
 def _elemCompare(elem1, elem2):
-    #return cmp(elem1.get("name"), elem2.get("name"))
+    # return cmp(elem1.get("name"), elem2.get("name"))
     name1, name2 = elem1.get("name"), elem2.get("name")
     if name1:
         name1 = name1.lower()
@@ -70,11 +71,13 @@ def _elemCompare(elem1, elem2):
         name2 = name2.lower()
     return cmp(name1, name2)
 
+
 def _convertDocToHtml(html, elem, cls="doc"):
     doc = elem.get('doc')
     if doc:
-        p = SubElement(html, "p", {"class":cls})
+        p = SubElement(html, "p", {"class": cls})
         p.text = doc
+
 
 def _convertArgumentToHtml(html, elem):
     elem_name = elem.get("name")
@@ -88,6 +91,7 @@ def _convertArgumentToHtml(html, elem):
         citdl_span.text = " - %s" % (citdl, )
         _convertDocToHtml(html, elem, "doc_for_argument")
 
+
 def _convertFunctionToHtml(html, elem):
     elem_name = elem.get("name")
     elem_type = elem.get('ilk') or elem.tag
@@ -98,10 +102,10 @@ def _convertFunctionToHtml(html, elem):
     if "__ctor__" in codeElements:
         isCtor = True
         codeElements.remove("__ctor__")
-    #else:
+    # else:
     #    codeElements.push("void")
     if not isCtor:
-        #span.text = "%s %s %s" % (elem_type, " ".join(codeElements),
+        # span.text = "%s %s %s" % (elem_type, " ".join(codeElements),
         #                          elem.get('signature') or elem_name + "()")
         span.text = "%s %s" % (" ".join(codeElements),
                                elem.get('signature') or elem_name + "()")
@@ -109,7 +113,8 @@ def _convertFunctionToHtml(html, elem):
     else:
         span.text = "%s" % (elem.get('signature') or elem_name + "()")
 
-    function_arguments = [ x for x in elem if x.get("ilk") == "argument" and (x.get("citdl") or x.get("doc")) ]
+    function_arguments = [x for x in elem if x.get(
+        "ilk") == "argument" and (x.get("citdl") or x.get("doc"))]
     if function_arguments:
         arg_div = SubElement(div, "div", {"class": "function_arguments"})
         arg_div.text = "Arguments"
@@ -123,6 +128,7 @@ def _convertFunctionToHtml(html, elem):
         ret_p.text = "Returns - "
         span = SubElement(ret_p, "span", {"class": "function_returns"})
         span.text = returns
+
 
 def _convertVariableToHtml(html, elem):
     """Convert cix elements into html documentation elements
@@ -141,14 +147,17 @@ def _convertVariableToHtml(html, elem):
         citdl_span.text = " - %s" % (citdl, )
     _convertDocToHtml(div, elem)
 
+
 def _convertClassToHtml(html, elem):
     html = SubElement(html, "div", {"class": "class"})
     span = SubElement(html, "span", {"class": "class"})
     span.text = "class %s" % (elem.get("name"))
     _convertDocToHtml(html, elem)
-    variables = sorted([ x for x in elem if x.tag == "variable" ], _elemCompare)
-    functions = sorted([ x for x in elem if x.get("ilk") == "function" ], _elemCompare)
-    constructors = [ x for x in functions if "__ctor__" in x.get("attributes", "").split(" ") ]
+    variables = sorted([x for x in elem if x.tag == "variable"], _elemCompare)
+    functions = sorted(
+        [x for x in elem if x.get("ilk") == "function"], _elemCompare)
+    constructors = [
+        x for x in functions if "__ctor__" in x.get("attributes", "").split(" ")]
     if constructors:
         h3 = SubElement(html, "h3", {"class": "class"})
         h3.text = "Constructor"
@@ -172,6 +181,7 @@ def _convertClassToHtml(html, elem):
             _convertFunctionToHtml(div, var_elem)
             SubElement(div, "hr", {"class": "function_separator"})
 
+
 def _convertScopeToHtml(html, scope, namespace, namespace_elements):
     name = scope.get('name')
     if namespace:
@@ -190,10 +200,10 @@ def _convertScopeToHtml(html, scope, namespace, namespace_elements):
     h2.text = namespace
     _convertDocToHtml(div, scope, "doc_for_namespace")
 
-    variables = set([ x for x in scope if x.tag == "variable" ])
-    functions = set([ x for x in scope if x.get("ilk") == "function" ])
-    classes = set([ x for x in scope if x.get("ilk") == "class" ])
-    subscopes = set([ x for x in variables if x.get("citdl") == "Object" ])
+    variables = set([x for x in scope if x.tag == "variable"])
+    functions = set([x for x in scope if x.get("ilk") == "function"])
+    classes = set([x for x in scope if x.get("ilk") == "class"])
+    subscopes = set([x for x in variables if x.get("citdl") == "Object"])
     variables.difference_update(subscopes)
 
     if variables:
@@ -217,6 +227,7 @@ def _convertScopeToHtml(html, scope, namespace, namespace_elements):
     for elem in sorted(subscopes, _elemCompare):
         _convertScopeToHtml(div, elem, namespace, namespace_elements)
 
+
 def _html_ci_elem(opts, elem, lang=None):
     # Taken from codeintel2.tree, modified to ensure it keeps all
     # existing text and tail data. Since this is used on generated
@@ -225,21 +236,23 @@ def _html_ci_elem(opts, elem, lang=None):
     def pretty_tree_from_tree(tree, indent_width=2):
         """Add appropriate .tail and .text values to the given tree so that
         it will have a pretty serialization.
-    
+
         Presumption: This is a CIX 2.0 tree.
         """
-        INDENT = ' '*indent_width
-    
+        INDENT = ' ' * indent_width
+
         def _prettify(elem, indent_level=0):
-            if elem: # i.e. elem has child elements
-                elem.text = '\n' + INDENT*(indent_level+1) + (elem.text or "")
+            if elem:  # i.e. elem has child elements
+                elem.text = '\n' + INDENT * \
+                    (indent_level + 1) + (elem.text or "")
                 for child in elem:
-                    _prettify(child, indent_level+1)
-                elem[-1].tail = (elem[-1].tail or "") + '\n' + INDENT*indent_level
-                elem.tail = (elem.tail or "") + '\n' + INDENT*indent_level
+                    _prettify(child, indent_level + 1)
+                elem[-1].tail = (elem[-1].tail or "") + \
+                    '\n' + INDENT * indent_level
+                elem.tail = (elem.tail or "") + '\n' + INDENT * indent_level
             else:
                 #elem.text = None
-                elem.tail = (elem.tail or "") + '\n' + INDENT*indent_level
+                elem.tail = (elem.tail or "") + '\n' + INDENT * indent_level
 
         _prettify(tree)
         return tree
@@ -284,7 +297,7 @@ def _html_ci_elem(opts, elem, lang=None):
     # Try to build an index, placed in same html file
     #nav_div = SubElement(body, "div", {"id": "nav"})
     #ul = SubElement(nav_div, "ul")
-    #for ns, elem in namespace_elements:
+    # for ns, elem in namespace_elements:
     #    li = SubElement(ul, "li")
     #    a_href = SubElement(li, "a", href="#%s" % (ns))
     #    a_href.text = ns
@@ -309,7 +322,7 @@ def _html_ci_elem(opts, elem, lang=None):
                            link=file_href)
         for ns, elem in namespace_elements:
             sub_node = SubElement(toc_node, "node", name=ns, link="%s#%s" % (
-                          file_href, ns, ))
+                file_href, ns, ))
 
         pretty_tree_from_tree(toc_node)
         toc_file = open(opts.toc_file, "w")
@@ -369,9 +382,9 @@ def cix2html(opts, path):
                         elem = elem.names[name]
                     except KeyError:
                         elem = None
-                        break # try next lang blob
+                        break  # try next lang blob
                 if elem is not None:
-                    break # found one
+                    break  # found one
             else:
                 log.error("could not find `%s' definition (or blob) in `%s'",
                           anchor, path)
@@ -380,7 +393,7 @@ def cix2html(opts, path):
             elem = tree
 
         try:
-            if elem.tag  == "codeintel":
+            if elem.tag == "codeintel":
                 _html_ci_elem(opts, elem.getchildren()[0])
             else:
                 _html_ci_elem(opts, elem)
@@ -397,7 +410,6 @@ def cix2html(opts, path):
             traceback.print_exc()
     finally:
         mgr.finalize()
-
 
 
 #---- mainline
@@ -419,6 +431,7 @@ def _prepare_xpcom():
         koTestSvc = components.classes["@activestate.com/koTestService;1"] \
             .getService(components.interfaces.koITestService)
         koTestSvc.init()
+
 
 def main(argv):
     usage = """usage: %prog [options] path_to_cix

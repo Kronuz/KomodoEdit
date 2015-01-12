@@ -16,7 +16,9 @@ import unittest
 
 log = logging.getLogger("test.codeintel.oop")
 
+
 class OOPTestSuite(unittest.TestSuite):
+
     """
     TestSuite wrapper to use one codeintel database for all tests
     """
@@ -35,6 +37,7 @@ class OOPTestSuite(unittest.TestSuite):
 
 test_suite_class = OOPTestSuite
 
+
 class OOPTestCase(unittest.TestCase):
     maxDiff = 4096
     _db_dir = None
@@ -52,7 +55,7 @@ class OOPTestCase(unittest.TestCase):
         (so we can debug things with Komodo).
         """
         if not "DBGP_COOKIE" in os.environ:
-            return [] # not running under DBGP
+            return []  # not running under DBGP
         import dbgp.client
         client = dbgp.client.getClientForThread()
         dbgpbin = os.path.join(sys.modules["dbgp"].__path__[0],
@@ -65,13 +68,13 @@ class OOPTestCase(unittest.TestCase):
         komodo_dir = os.path.join(os.path.dirname(__file__),
                                   "../../../..")
         pythonpath = [os.path.normpath(os.path.join(komodo_dir, s))
-                        for s in ("src/codeintel/lib",
-                                  "src/codeintel/support",
-                                  "src/python-sitelib",
-                                  "src/find",
-                                  "util",
-                                  "contrib/smallstuff",
-                                  "src/dbgp/PyDBGP")]
+                      for s in ("src/codeintel/lib",
+                                "src/codeintel/support",
+                                "src/python-sitelib",
+                                "src/find",
+                                "util",
+                                "contrib/smallstuff",
+                                "src/dbgp/PyDBGP")]
         pythonpath[0:0] = filter(None,
                                  env.get("PYTHONPATH", "").split(os.pathsep))
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
@@ -82,14 +85,15 @@ class OOPTestCase(unittest.TestCase):
         self.conn.listen(1)
 
         bin = os.path.join(os.path.dirname(__file__),
-                            "../bin/oop-driver.py")
+                           "../bin/oop-driver.py")
         log.debug("bin: %s", bin)
         argv = [os.path.abspath(os.path.normpath(bin)),
                 "--connect", "%s:%s" % self.conn.getsockname()]
         for log_name in logging.Logger.manager.loggerDict.keys():
             if logging.getLogger(log_name).level is logging.NOTSET:
                 continue
-            argv.extend(["--log-level", "%s:%s" % (log_name, logging.getLogger(log_name).getEffectiveLevel())])
+            argv.extend(["--log-level", "%s:%s" %
+                         (log_name, logging.getLogger(log_name).getEffectiveLevel())])
 
         if self._db_dir is not None:
             argv.extend(["--database-dir", self._db_dir])
@@ -144,7 +148,7 @@ class OOPTestCase(unittest.TestCase):
                 self.proc.wait()
             self.assertEqual(self.proc.returncode, 0,
                              "Child process returned an error: %s" %
-                                (self.proc.returncode,))
+                             (self.proc.returncode,))
 
     def send(self, **kwargs):
         data = json.dumps(kwargs, separators=(",", ":"))
@@ -197,7 +201,9 @@ class OOPTestCase(unittest.TestCase):
                     expected[u"success"] = True
                 self.assertEqual(expected, result)
 
+
 class BasicTestCase(OOPTestCase):
+
     def test_object_members(self):
         text = u"import array\narray."
         self._test_with_commands([
@@ -221,7 +227,7 @@ class BasicTestCase(OOPTestCase):
                        u"extentLength": 0,
                        u"retriggerOnCompletion": False,
                        u"path": u"<Unsaved>/1",
-                      }}),
+                       }}),
             ({u"command": u"eval",
               u"text": text,
               u"trg": {u"form": 0,
@@ -233,7 +239,7 @@ class BasicTestCase(OOPTestCase):
                        u"extentLength": 0,
                        u"retriggerOnCompletion": False,
                        u"path": u"<Unsaved>/1",
-                      }},
+                       }},
              {u"cplns": [[u"class", u"array"],
                          [u"class", u"ArrayType"],
                          [u"variable", u"__doc__"]],
@@ -241,24 +247,31 @@ class BasicTestCase(OOPTestCase):
             {u"command": u"quit"},
         ])
 
+
 class CommandExtensionTestCase(OOPTestCase):
+
     """Registering command extensions"""
+
     def test_commandExtensionRegistation(self):
         self._test_with_commands([
             ({"command": "load-extension",
               "module-path": os.path.dirname(os.path.abspath(__file__)),
               "module-name": __name__},
-             {}), # must succeed
+             {}),  # must succeed
             ({"command": "extension-command"},
              {"extension-result": True}),
-            ])
+        ])
+
 
 def registerExtension():
     from codeintel2.oop.driver import CommandHandler, Driver
+
     class DummyHandler(CommandHandler):
         supportedCommands = ["extension-command"]
+
         def __init__(self):
             self._askedRequest = None
+
         def canHandleRequest(self, request):
             if self._askedRequest is not None:
                 raise AssertionError("Duplicate canHandleRequest call")
@@ -266,11 +279,12 @@ def registerExtension():
                 self._askedRequest = request
                 return True
             raise AssertionError("Invalid command %s" % request.command)
+
         def handleRequest(self, request, driver):
             if self._askedRequest is not request:
                 raise AssertionError("Unexpected request %r (expected %r)" %
                                      (request, self._askedRequest))
-            self._askedRequest = {} # unique thing to fail future comparisons
+            self._askedRequest = {}  # unique thing to fail future comparisons
             log.debug("Extension handling request!!!")
             driver.send(request=request, **{"extension-result": True})
     Driver.registerCommandHandler(DummyHandler())

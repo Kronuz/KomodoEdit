@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 # Reflow code -- used by koLanguageCommandHandler, but in
@@ -99,7 +99,9 @@ import sys
 
 TABWIDTH = 8
 
+
 class Line(unicode):
+
     r"""Line objects are "smart" wrappers around lines.  They know about
     all of the indentation-related semantics of the line, such as:
       - whether the line is all whitespace or not
@@ -107,7 +109,7 @@ class Line(unicode):
       - whether the line starts w/ a bullet
       - if the line starts with a bullet, what the indent corresponding
         to the space "after" the bullet is.
-        
+
     >>> t = Line("   * and so on")
     >>> t.iswhitespace
     False
@@ -140,6 +142,7 @@ class Line(unicode):
     >>> line1.indentWidths
     [2, 4]
     """
+
     def __init__(self, line):
         unicode.__init__(line)
         self._line = line
@@ -151,24 +154,28 @@ class Line(unicode):
             self.bulleted = False
         self.iscomment, self.commentIndent = findcomment(line)
         if self.iscomment:
-            self.bulleted, self.bullet = findbullet(line[len(self.commentIndent):])
+            self.bulleted, self.bullet = findbullet(
+                line[len(self.commentIndent):])
             self.leadingIndent = self.commentIndent
         else:
             self.bulleted, self.bullet = findbullet(line)
-            self.leadingIndent = line[:len(line)-len(line.lstrip())]
+            self.leadingIndent = line[:len(line) - len(line.lstrip())]
         self.leadingIndentWidth = len(self.leadingIndent)
         if self.bulleted:
             if self.iscomment:
-                self.indentWidths = [self.leadingIndentWidth, len(self.commentIndent) + len(self.bullet)]
+                self.indentWidths = [
+                    self.leadingIndentWidth, len(self.commentIndent) + len(self.bullet)]
             else:
                 self.indentWidths = [self.leadingIndentWidth, len(self.bullet)]
         else:
             self.indentWidths = [self.leadingIndentWidth]
+
     def uncomment(self):
         line = Line(self._line[len(self.commentIndent):])
         line.iscomment = self.iscomment
         line.leadingIndent = self.leadingIndent
         return line
+
     def _strip(self):
         if self.iscode:
             return unicode(self)
@@ -176,16 +183,18 @@ class Line(unicode):
             return self[len(self.bullet):].rstrip()
         else:
             return self[len(self.leadingIndent):].rstrip()
+
     def __str__(self):
         return unicode(self._line)
 
 bulletRe = re.compile("(\s*?[\*%-]\s+)(.*)")
 
+
 def findbullet(line):
     r"""Return a tuple of (bulleted, bullet) where bulleted is true or false.
     If 'bullet' is true, then the second argument is the bullet part of the
     'line' string, including any whitespace between the bullet and the beginning of the text
-    
+
     >>> findbullet("foo asd as")
     (False, 'foo asd as')
     >>> findbullet("   * so")
@@ -204,15 +213,18 @@ def findbullet(line):
 # Match email lines that start with ">", ">>" or "> >" but not python prefixes
 # like ">>>"
 
-commentRe = re.compile("(\s*?(?:\/\*|(?:#+)|(?:>)|(?:>>)|(?:> >)|(?://+)|(?:--))(?!>)\s*)(.*)")
+commentRe = re.compile(
+    "(\s*?(?:\/\*|(?:#+)|(?:>)|(?:>>)|(?:> >)|(?://+)|(?:--))(?!>)\s*)(.*)")
+
+
 def findcomment(line):
     r"""Return a tuple of (iscomment, commentIndent) where 'iscomment' is true
     or false depending on whether the current line is prefixed by a comment
     marker (typically '#', '//', '/*' or '*').
-    
+
     If 'iscomment' is true, then the second argument is the indent up to and
     including the whitespace after the comment marker
-    
+
     >>> findcomment("foo asd as")
     (False, 'foo asd as')
     >>> findcomment("   /* so")
@@ -235,16 +247,18 @@ def findcomment(line):
         return False, line
 
 codeRe = re.compile("(\s*?)(?:>>>\s)|(?:\.\.\.\s)")
+
+
 def findcode(line):
     r"""Return a tuple of (iscode, codeIndent) where 'iscode' is true
     or false depending on whether the current line is recognized as likely
     to be inline code.
-    
+
     If 'iscode' is true, then 'codeIndent' is the indent up to and
     including the first non-whitespace character.
-    
+
     If iscode is false, then 'codeIndent' is the whole line.
-    
+
     >>> findcode("foo asd as")
     (False, 'foo asd as')
     >>> findcode("   >>> x = 3")
@@ -256,7 +270,9 @@ def findcode(line):
     else:
         return False, line
 
+
 class Para(list):
+
     r"""
     >>> x = Para(Line('  * '))
     >>> x[0]
@@ -265,7 +281,7 @@ class Para(list):
     <class 'reflow.Line'>
     >>> x[0].indentWidths
     [2, 4]
-    
+
     # Paragraphs accept only lines congruent with their contents
     >>> p = Para(Line("No indentation"))
     >>> p.accept(Line("   Indentation"))
@@ -284,7 +300,7 @@ class Para(list):
     >>> b.reflow(30, '\n')
     >>> [str(x) for x in b]
     ['  * this is a bullleted line\n', '    which accepts a line which\n', '    is indented accordingly\n', '    and so on and so on and so\n', '    on']
-    
+
     # now test the handling of comments
     >>> tst = " # - this is\n #   a test"
     >>> x = Paragraphize(tst)
@@ -296,10 +312,12 @@ class Para(list):
     >>> x
     [[u' # - this\n', u' #   is a\n', u' #   test']]
     """
+
     def __init__(self, line):
         list.__init__(self)
         list.append(self, line)
         self.iswhitespace = not line.strip()
+
     def accept(self, line):
         # code paragraphs always accept code lines.
         if line.iscode and self[0].iscode:
@@ -318,6 +336,7 @@ class Para(list):
         if line.indentWidths[0] in self[0].indentWidths:
             return True
         return False
+
     def reflow(self, width, eol):
         if self[-1].endswith(' ') or self[-1].endswith('\t'):
             trail = self[-1][-1]
@@ -332,7 +351,8 @@ class Para(list):
         if self[0].iscomment:
             if self[0].bulleted:
                 first_indent = self[0].leadingIndent + self[0].bullet
-                other_indents = self[0].leadingIndent + ' ' * len(self[0].bullet)
+                other_indents = self[0].leadingIndent + \
+                    ' ' * len(self[0].bullet)
             else:
                 first_indent = other_indents = self[0].leadingIndent
         else:
@@ -353,14 +373,15 @@ class Para(list):
         breakable_parts = logical_line[len(first_indent):].split(u"\xa0")
         words = []
         for bp in breakable_parts:
-          new_words = bp.split()
-          if words:
-            words[-1] += u"\xa0"
-            if new_words:
-              words[-1] += new_words[0]
-              del new_words[0]
-          words += new_words
-        if not words: return
+            new_words = bp.split()
+            if words:
+                words[-1] += u"\xa0"
+                if new_words:
+                    words[-1] += new_words[0]
+                    del new_words[0]
+            words += new_words
+        if not words:
+            return
         curLine = first_indent + words[0]
         for word in words[1:]:
             if len(word) + len(curLine) + 1 <= width:  # 1 for space
@@ -371,12 +392,13 @@ class Para(list):
             curLine = other_indents + word
         if NEWLINE:
             curLine += NEWLINE
-        lines.append(curLine+trail)
+        lines.append(curLine + trail)
         self[:] = [Line(line) for line in lines]
+
     def _strip(self):
         """Remove string markup or comment markup"""
         return ''.join([line._strip() for line in self])
-    
+
     def htmlify(self, htmlbuffer, htmlcontext):
         stripped = self._strip()
         if not stripped:
@@ -420,7 +442,9 @@ class Para(list):
         if htmlcontext.inUL:
             htmlbuffer.write('</li>')
 
+
 class Paragraphize(list):
+
     def __init__(self, text):
         r"""Given a text, return 1 or more paragraph objects, where
         a paragraph is defined for 'reflow' purposes, thus:
@@ -493,7 +517,7 @@ class Paragraphize(list):
           - a line starting with a
             'bullet' is a paragraph
             beginning.
-            
+
         >>> tst = "tomato\ncucumber\n\nbar\n\nasdas\n"
         >>> f = Paragraphize(tst)
         >>> print f
@@ -518,10 +542,12 @@ class Paragraphize(list):
         5
         """
         list.__init__(self)
-        # convert to Line objects (they know all we need to know about themselves
+        # convert to Line objects (they know all we need to know about
+        # themselves
         lines = text.expandtabs(TABWIDTH).splitlines(1)
         lines = [Line(line) for line in lines]
-        if not lines: return # no text
+        if not lines:
+            return  # no text
         currentPara = Para(lines[0])
         self.append(currentPara)
         for line in lines[1:]:
@@ -533,6 +559,7 @@ class Paragraphize(list):
                 currentPara = Para(line)
                 self.append(currentPara)
 
+
 def reflow(text, width, eol):
     paragraphs = Paragraphize(text)
     [para.reflow(width, eol) for para in paragraphs]
@@ -540,26 +567,30 @@ def reflow(text, width, eol):
     return reflowed
 
 # For doctests only
+
+
 def sreflow(*args):
     return str(reflow(*args))
-    
+
+
 class HTMLContext:
     inDL = False
     inUL = False
     inPRE = False
     currentIndentWidth = 0
 
+
 def htmlify(text):
     r""" Given a chunk of text (a python docstring or a comment), return
     an HTML fragment that corresponds to it, converting 'implied' paragraphs
     to <p>...</p> blocks, bullets to bulleted lists, bold and italic
     markup to corresponding code.  A very lightweight rst2html, in other words.
-    
+
     >>> htmlify('''foo''')
     '<p>foo</p>\n'
     >>> htmlify('''This is a first line\n\nThis is a second line.''')
     '<p>This is a first line</p>\n<p>This is a second line.</p>\n'
-    
+
     >>> txt = '''First paragraph\n\nSecond paragraph.\n\n    Indented paragraph\n\n    >>> x = 3\n    >>> and so on\n\nBack to first indent.\n\n    * First bullet\n\n    * Second bullet\n\nBack to first indent.'''
     >>> htmlify(txt)
     '<p>First paragraph</p>\n<p>Second paragraph.</p>\n<dl><dt/><dd><p>Indented paragraph</p>\n</dd><pre>\n    >>> x = 3\n    >>> and so on\n</pre>\n</dl><p>Back to first indent.</p>\n<ul><li><p>First bullet</p>\n</li><li><p>Second bullet</p>\n</li></ul></dl><p>Back to first indent.</p>\n'
@@ -568,12 +599,14 @@ def htmlify(text):
     htmlcontext = HTMLContext()
     import cStringIO
     buffer = cStringIO.StringIO()
-    
+
     [paragraph.htmlify(buffer, htmlcontext) for paragraph in paragraphs]
     return buffer.getvalue()
 
+
 def _test():
-    import doctest, reflow
+    import doctest
+    import reflow
     print "...testing doctests..."
     return doctest.testmod(reflow)
 
@@ -584,10 +617,10 @@ if 0:
     import sys
     if len(sys.argv) == 2:
         fname = sys.argv[1]
-        text  = open(fname).read()
+        text = open(fname).read()
         html = htmlify(text)
-        open(fname +'.html', 'w').write(html)
-        
+        open(fname + '.html', 'w').write(html)
+
     elif len(sys.argv) >= 3:
         fname, lineNo = sys.argv[1:3]
         lineNo = int(lineNo)
@@ -597,7 +630,7 @@ if 0:
         for line in lines[lineNo:]:
             if line.find('"""') != -1:  # found it
                 if not inDocString:
-                    docstringlines.append(line[line.find('"""')+3:])
+                    docstringlines.append(line[line.find('"""') + 3:])
                     inDocString = True
                     continue
                 else:

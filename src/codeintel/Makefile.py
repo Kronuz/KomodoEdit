@@ -2,26 +2,26 @@
 
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -33,7 +33,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 # Makefile for codeintel.
@@ -41,7 +41,7 @@
 
 import os
 from os.path import join, dirname, basename, isdir, isfile, abspath,\
-                    splitext, exists
+    splitext, exists
 import sys
 from glob import glob
 import logging
@@ -67,35 +67,37 @@ finally:
 
 #---- globals
 
-#XXX fallback for not passing log arg through to _run et al
+# XXX fallback for not passing log arg through to _run et al
 log = logging.getLogger("make")
 
 EXE = (sys.platform == "win32" and ".exe" or "")
 LIB = (sys.platform == "win32" and ".lib" or ".a")
+
+
 def STATIC_LIB_NAME(name, lib_prefix_on_win=False):
     if sys.platform == "win32":
         if lib_prefix_on_win:
-            return "lib"+name+LIB
+            return "lib" + name + LIB
         else:
-            return name+LIB
+            return name + LIB
     else:
-        return "lib"+name+LIB
+        return "lib" + name + LIB
 PYD = (sys.platform == "win32" and ".pyd" or ".so")
-
 
 
 #---- primary make targets
 
 @default
-@dep("silvercity", "udl_lexers", "elementtree", "inflector") 
+@dep("silvercity", "udl_lexers", "elementtree", "inflector")
 def make_all(maker, log):
     pass
+
 
 @dep("distclean_scintilla",
      "distclean_udl_lexers",
      "distclean_pcre",
      "distclean_silvercity",
-     #XXX Currently can only handle syck on non-Windows.
+     # XXX Currently can only handle syck on non-Windows.
      #"distclean_syck",
      "distclean_elementtree",
      "distclean_inflector")
@@ -149,13 +151,13 @@ def make_src_scintilla(maker, log):
         _rm(cxx_path, log.info)
 
     # Run the source generators post- changes to the sources.
-    _run_in_dir(cfg.python+" LexGen.py", scintilla_src_dir,
+    _run_in_dir(cfg.python + " LexGen.py", scintilla_src_dir,
                 logstream=log.info)
 
     if METHOD == "komodo":
         # Generate the *_gen.h files that have been added to the
         # Scintilla build process by Komodo.
-        _run_in_dir(cfg.python+" HFacer.py", "src/scintilla/scripts",
+        _run_in_dir(cfg.python + " HFacer.py", "src/scintilla/scripts",
                     logstream=log.info)
 
 
@@ -165,7 +167,7 @@ def make_distclean_scintilla(maker, log):
 
 @makes("src/SilverCity")
 def make_src_silvercity(maker, log):
-    METHOD = "komodo" # one of "komodo" or "tarball"
+    METHOD = "komodo"  # one of "komodo" or "tarball"
     if METHOD == "komodo":
         ko_silvercity_dir = join(cfg.komodo_src, "src", "silvercity")
         if not isdir(ko_silvercity_dir):
@@ -195,7 +197,8 @@ def make_src_silvercity(maker, log):
         pkg_path = abspath(candidates[-1])
         pkg_name = basename(pkg_path)[:-len(".tar.gz")]
         _run_in_dir("tar xzf %s" % pkg_path, "src", logstream=log.info)
-        _mv(xpath("src", pkg_name), xpath("src/SilverCity"), logstream=log.info)
+        _mv(xpath("src", pkg_name), xpath(
+            "src/SilverCity"), logstream=log.info)
 
         for dirname, dirs, files in os.walk("src/SilverCity"):
             for file in files:
@@ -203,7 +206,7 @@ def make_src_silvercity(maker, log):
                                      log=log)
 
         # Patch it.
-        #XXX Use my patchtool thing.
+        # XXX Use my patchtool thing.
         for patchfile in glob("src/patches/silvercity-*.patch"):
             _run_in_dir("patch -p0 < %s" % abspath(patchfile), "src",
                         logstream=log.info)
@@ -212,6 +215,7 @@ def make_src_silvercity(maker, log):
 def make_distclean_udl_lexers(maker, log):
     _rm("lib/codeintel2/lexers", log.info)
     _rm("build")
+
 
 @makes("lib/codeintel2/lexers")
 def make_udl_lexers(maker, log):
@@ -230,16 +234,18 @@ def make_udl_lexers(maker, log):
 
 def make_distclean_pcre(maker, log):
     paths = [
-        "src/SilverCity/"+STATIC_LIB_NAME("pcre", lib_prefix_on_win=True),
+        "src/SilverCity/" + STATIC_LIB_NAME("pcre", lib_prefix_on_win=True),
         "src/scintilla/include/pcre.h",
-        "src/scintilla/win32/"+STATIC_LIB_NAME("pcre", lib_prefix_on_win=True)
+        "src/scintilla/win32/" +
+        STATIC_LIB_NAME("pcre", lib_prefix_on_win=True)
     ]
     for path in paths:
         _rm(path, log.info)
-    
-@makes("src/SilverCity/"+STATIC_LIB_NAME("pcre", lib_prefix_on_win=True),
+
+
+@makes("src/SilverCity/" + STATIC_LIB_NAME("pcre", lib_prefix_on_win=True),
        "src/scintilla/include/pcre.h",
-       "src/scintilla/win32/"+STATIC_LIB_NAME("pcre", lib_prefix_on_win=True))
+       "src/scintilla/win32/" + STATIC_LIB_NAME("pcre", lib_prefix_on_win=True))
 def make_pcre(maker, log):
     """Make the PCRE lib (used by LexUDL)
 
@@ -249,8 +255,8 @@ def make_pcre(maker, log):
     src = join(cfg.komodo_src, "build", "release", "silvercity", libpcre)
     if not exists(src):
         raise MakeError("couldn't find `%s' in your Komodo build: you need to "
-                    "have a local build of Komodo (yes this is a lazy, "
-                    "cheating hack): %s" % (libpcre, src))
+                        "have a local build of Komodo (yes this is a lazy, "
+                        "cheating hack): %s" % (libpcre, src))
     for dest_dir in ("src/SilverCity", "src/scintilla/win32"):
         _cp(src, dest_dir, log.info)
         if cfg.platinfo.os == "macosx":
@@ -264,9 +270,11 @@ def make_distclean_silvercity(maker, log):
     _rm("lib/SilverCity", logstream=log.info)
     _rm("src/SilverCity", logstream=log.info)
 
+
 def make_clean_silvercity(maker, log):
     _rm("lib/SilverCity", logstream=log.info)
     _rm("src/SilverCity/build", logstream=log.info)
+
 
 @dep("src_scintilla", "src_silvercity", "pcre")
 @makes("lib/SilverCity")
@@ -274,14 +282,14 @@ def make_silvercity(maker, log):
     src_dir = xpath("src/SilverCity")
 
     # Regenerate ScintillaConstants.py for new scintilla sources.
-    _run_in_dir(cfg.python+" PySilverCity/Src/write_scintilla.py ../scintilla/include ../scintilla/include/Scintilla.iface PySilverCity/SilverCity/ScintillaConstants.py",
+    _run_in_dir(cfg.python + " PySilverCity/Src/write_scintilla.py ../scintilla/include ../scintilla/include/Scintilla.iface PySilverCity/SilverCity/ScintillaConstants.py",
                 src_dir, logstream=log.info)
 
     # Distutils' --install-data doesn't seem to NOT install default.css
     # to the lib dir without this hack.
-    _run_in_dir(cfg.python+" setup.py install --prefix=bitbucket "
-                    "--install-data=bitbucket --install-scripts=bitbucket "
-                    "--install-lib=%s" % abspath("lib"),
+    _run_in_dir(cfg.python + " setup.py install --prefix=bitbucket "
+                "--install-data=bitbucket --install-scripts=bitbucket "
+                "--install-lib=%s" % abspath("lib"),
                 src_dir, logstream=log.info)
 
 
@@ -291,10 +299,13 @@ def make_distclean_elementtree(maker, log):
     _rm("src/cElementTree", logstream=log.info)
     _rm("src/ciElementTree", logstream=log.info)
 
+
 def make_clean_elementtree(maker, log):
     _rm("lib/elementtree", logstream=log.info)
-    _rm("lib/cElementTree"+PYD, logstream=log.info) # clean for transitional period
-    _rm("lib/ciElementTree"+PYD, logstream=log.info)
+    # clean for transitional period
+    _rm("lib/cElementTree" + PYD, logstream=log.info)
+    _rm("lib/ciElementTree" + PYD, logstream=log.info)
+
 
 @makes("src/cElementTree")
 def make_src_elementtree(maker, log):
@@ -318,12 +329,12 @@ def make_src_elementtree(maker, log):
         _rm("src/%s/build" % basename(dst_dir), logstream=log.info)
 
     # Patch it.
-    #XXX Use my patchtool thing.
+    # XXX Use my patchtool thing.
     for dirpath, dirnames, filenames in os.walk("src/ciElementTree"):
         for filename in filenames:
             path = join(dirpath, filename)
             curr_mode = stat.S_IMODE(os.stat(path).st_mode)
-            writeable_mode = curr_mode | 0200 # make writeable
+            writeable_mode = curr_mode | 0200  # make writeable
             if curr_mode != writeable_mode:
                 os.chmod(path, writeable_mode)
     found_some_patches = False
@@ -344,8 +355,9 @@ def make_src_elementtree(maker, log):
                     logstream=log.info)
     assert found_some_patches, "something wrong with finding ciElementTree patches"
 
+
 @dep("src_elementtree")
-@makes("lib/ciElementTree"+PYD)
+@makes("lib/ciElementTree" + PYD)
 def make_elementtree(maker, log):
     elementtree_dirs = [xpath("src/elementtree"),
                         xpath("src/cElementTree"),
@@ -358,19 +370,21 @@ def make_elementtree(maker, log):
         else:
             debug_flags = ""
         if sys.platform == "darwin":
-            os.environ["CFLAGS"] = os.environ.get("CFLAGS", "").replace("-fvisibility=hidden", "") + " -arch x86_64"
-            os.environ["CXXFLAGS"] = os.environ.get("CXXFLAGS", "").replace("-fvisibility=hidden", "") + " -arch x86_64"
+            os.environ["CFLAGS"] = os.environ.get("CFLAGS", "").replace(
+                "-fvisibility=hidden", "") + " -arch x86_64"
+            os.environ["CXXFLAGS"] = os.environ.get("CXXFLAGS", "").replace(
+                "-fvisibility=hidden", "") + " -arch x86_64"
         _run_in_dir(" ".join([cfg.python, "setup.py", "build", debug_flags]),
                     src_dir, logstream=log.info)
-        _run_in_dir(cfg.python+" setup.py install --skip-build --prefix=bitbucket "
-                        "--install-data=bitbucket --install-scripts=bitbucket "
-                        "--install-lib=%s" % abspath("lib"),
+        _run_in_dir(cfg.python + " setup.py install --skip-build --prefix=bitbucket "
+                    "--install-data=bitbucket --install-scripts=bitbucket "
+                    "--install-lib=%s" % abspath("lib"),
                     src_dir, logstream=log.info)
-
 
 
 def make_distclean_inflector(maker, log):
     _rm("lib/inflector", logstream=log.info)
+
 
 @makes("lib/inflector")
 def make_inflector(maker, log):
@@ -393,7 +407,6 @@ def make_inflector(maker, log):
             _run("chmod -R ug+w %s" % dest, logstream=log.info)
 
 
-
 @makes("src/syck")
 def make_src_syck(maker, log):
     pattern = "syck-*.tar.gz"
@@ -410,33 +423,35 @@ def make_src_syck(maker, log):
     _run_in_dir("tar xzf %s" % pkg_path, "src", logstream=log.info)
     _mv(xpath("src", pkg_name), xpath("src/syck"), logstream=log.info)
 
+
 @dep("distclean_scintilla")
 def make_distclean_syck(maker, log):
-    for base in ("syck"+PYD, "yaml2xml.py*", "ydump.py*", "ypath.py*"):
-        _rm("lib/"+base, logstream=log.info)
+    for base in ("syck" + PYD, "yaml2xml.py*", "ydump.py*", "ypath.py*"):
+        _rm("lib/" + base, logstream=log.info)
     _rm("src/syck", logstream=log.info)
 
 if sys.platform != "win32":
-    ##def make_clean_syck(maker, log):
-    ##    XXX
+    # def make_clean_syck(maker, log):
+    # XXX
 
     @dep("src_syck")
-    @makes("lib/syck"+PYD)
+    @makes("lib/syck" + PYD)
     def make_syck(maker, log):
         src_dir = xpath("src/syck")
 
         _run_in_dir("./configure", src_dir, logstream=log.info)
         _run_in_dir("make", src_dir, logstream=log.info)
-        _run_in_dir(cfg.python+" setup.py install --install-lib=%s"
-                        % abspath("lib"),
-                    src_dir/"ext/python", logstream=log.info)
-
+        _run_in_dir(cfg.python + " setup.py install --install-lib=%s"
+                    % abspath("lib"),
+                    src_dir / "ext/python", logstream=log.info)
 
 
 #---- internal support stuff
 
 # Recipe: run (0.5.3) in /home/trentm/tm/recipes/cookbook
 _RUN_DEFAULT_LOGSTREAM = ("RUN", "DEFAULT", "LOGSTREAM")
+
+
 def __run_log(logstream, msg, *args, **kwargs):
     if not logstream:
         pass
@@ -450,6 +465,7 @@ def __run_log(logstream, msg, *args, **kwargs):
                 log.debug(msg, *args, **kwargs)
     else:
         logstream(msg, *args, **kwargs)
+
 
 def _run(cmd, logstream=_RUN_DEFAULT_LOGSTREAM):
     """Run the given command.
@@ -469,8 +485,10 @@ def _run(cmd, logstream=_RUN_DEFAULT_LOGSTREAM):
     else:
         status = retval
     if status:
-        #TODO: add std OSError attributes or pick more approp. exception
-        raise OSError("error running '%s' from %s: %r" % (cmd, os.getcwd(), status))
+        # TODO: add std OSError attributes or pick more approp. exception
+        raise OSError("error running '%s' from %s: %r" %
+                      (cmd, os.getcwd(), status))
+
 
 def _run_in_dir(cmd, cwd, logstream=_RUN_DEFAULT_LOGSTREAM):
     """Run the given command in the given working directory.
@@ -492,6 +510,7 @@ def _run_in_dir(cmd, cwd, logstream=_RUN_DEFAULT_LOGSTREAM):
     finally:
         os.chdir(old_dir)
 
+
 def _rm(path, logstream=None):
     """My little lame cross-platform 'rm -rf'"""
     assert ' ' not in path,\
@@ -511,6 +530,7 @@ def _rm(path, logstream=None):
     else:
         _run("rm -rf %s" % path, logstream=logstream)
 
+
 def _mv(src, dest, logstream=None):
     """My little lame cross-platform 'mv'"""
     assert ' ' not in src and ' ' not in dest,\
@@ -519,6 +539,7 @@ def _mv(src, dest, logstream=None):
         _run("move %s %s" % (src, dest), logstream=logstream)
     else:
         _run("mv %s %s" % (src, dest), logstream=logstream)
+
 
 def _cp(src, dest, logstream=None):
     """My little lame cross-platform 'cp'"""
@@ -538,9 +559,7 @@ def _cp(src, dest, logstream=None):
             _run("cp %s %s" % (src, dest), logstream=logstream)
 
 
-
 #---- mainline
 
 if __name__ == "__main__":
     make.main()
-

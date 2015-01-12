@@ -3,16 +3,18 @@
 import logging
 
 log = logging.getLogger("codeintel.oop.driver")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 try:
     # codeintel will attempt to import xpcom; make sure that's working by
-    # explicitly importing xpcom._xpcom, otherwise xpcom.xpt will fail to import
+    # explicitly importing xpcom._xpcom, otherwise xpcom.xpt will fail to
+    # import
     import xpcom
     import xpcom._xpcom
-    log.error("driver successfully imported 'xpcom' - this import should have failed")
+    log.error(
+        "driver successfully imported 'xpcom' - this import should have failed")
 except ImportError:
-    pass # all good - we don't want xpcom
+    pass  # all good - we don't want xpcom
 
 import codeintel2.accessor
 import codeintel2.buffer
@@ -37,17 +39,22 @@ import uuid
 from . import controller
 from os.path import abspath, normcase, normpath
 
+
 class RequestFailure(Exception):
+
     """ An exception to indicate a request failure
     Raising this exception is equivalent of aborting the current (synchronous)
     request processing and calling Driver.fail().  All arguments are the same as
     when using Driver.fail().
     """
+
     def __init__(self, **kwargs):
         Exception.__init__(self)
         self.kwargs = kwargs
 
+
 class CommandHandler(object):
+
     """Interface for a class that handles commands from the driver; this may
     choose to be stateless"""
 
@@ -79,7 +86,9 @@ class CommandHandler(object):
         """
         raise NotImplementedError
 
+
 class LoggingHandler(logging.Handler):
+
     """Log handler class to forward messages to the main process"""
 
     def __init__(self, driver):
@@ -105,7 +114,9 @@ class LoggingHandler(logging.Handler):
         except:
             self.handleError(record)
 
+
 class Driver(threading.Thread):
+
     """
     Out-of-process codeintel2 driver
     This class implements the main loop of the codeintel worker process
@@ -134,7 +145,7 @@ class Driver(threading.Thread):
         self.fd_out = fd_out
         self.abort = None
         self.quit = False
-        self.buffers = {} # path to Buffer objects
+        self.buffers = {}  # path to Buffer objects
         self.next_buffer = 0
         self.active_request = None
 
@@ -176,6 +187,7 @@ class Driver(threading.Thread):
                       command="scan-complete")
 
     class _DBEventReporter(object):
+
         def __init__(self, driver):
             self.driver = driver
             self.log = log.getChild("DBEventReporter")
@@ -195,7 +207,7 @@ class Driver(threading.Thread):
             @param msg {str or None} The message to display
             """
             if len(self._dirs):
-                return # ignore old-style db events if we're doing a scan
+                return  # ignore old-style db events if we're doing a scan
             self.debug("db event: %s", message)
             self.send(message=message)
 
@@ -208,7 +220,8 @@ class Driver(threading.Thread):
             self.debug("scan started: %s (%s dirs)", description, len(dirs))
 
             assert dirs, "onScanStarted expects non-empty directories"
-            if not dirs: # empty set - we shouldn't have gotten here, but be nice
+            # empty set - we shouldn't have gotten here, but be nice
+            if not dirs:
                 return
             for dir_path in dirs:
                 self._dirs[dir_path] += 1
@@ -226,7 +239,7 @@ class Driver(threading.Thread):
                     request
             """
             self.debug("scan directory: %s (%s %s/%s)",
-                      description, dir_path, current, total)
+                       description, dir_path, current, total)
 
             assert dir_path, "onScanDirectory got no directory"
             if dir_path:
@@ -244,7 +257,7 @@ class Driver(threading.Thread):
                    aborted.
             """
             self.debug("scan complete: scanned %r/%r dirs",
-                      len(scanned), len(dirs))
+                       len(scanned), len(dirs))
 
             for dir_path in dirs:
                 self._dirs[dir_path] -= 1
@@ -269,7 +282,7 @@ class Driver(threading.Thread):
             data["success"] = True
         elif data["success"] is None:
             del data["success"]
-        buf = json.dumps(data, separators=(',',':'))
+        buf = json.dumps(data, separators=(',', ':'))
         buf_len = str(len(buf))
         log.debug("sending: %s:[%s]", buf_len, buf)
         self.send_queue.put(buf)
@@ -308,7 +321,7 @@ class Driver(threading.Thread):
         @note See also koCodeIntel.py::KoCodeIntelBuffer.normpath
         """
         if path.startswith("<Unsaved>"):
-            return path # Don't munge unsaved file paths
+            return path  # Don't munge unsaved file paths
 
         scheme = path.split(":", 1)[0]
 
@@ -330,7 +343,7 @@ class Driver(threading.Thread):
             # assume this is a local file path
             return os.path.normcase(path)
         if scheme != "file":
-            return path # non-file scheme
+            return path  # non-file scheme
         path = path[len(scheme) + 1:]
         return os.path.normcase(path)
 
@@ -348,7 +361,7 @@ class Driver(threading.Thread):
             buf = None
         else:
             if "language" in request and buf.lang != request.language:
-                buf = None # language changed, re-scan
+                buf = None  # language changed, re-scan
 
         if not buf:
             # Need to construct a new buffer
@@ -364,7 +377,8 @@ class Driver(threading.Thread):
                                                  encoding=request.get("encoding"))
                 except OSError:
                     # Can't read the file
-                    buf = self.mgr.buf_from_content("", lang, path=path, env=env)
+                    buf = self.mgr.buf_from_content(
+                        "", lang, path=path, env=env)
                 assert not request.path.startswith("<"), \
                     "Can't create an unsaved buffer with no text"
 
@@ -376,7 +390,7 @@ class Driver(threading.Thread):
         try:
             env = request["env"]
         except KeyError:
-            pass # no environment, use current
+            pass  # no environment, use current
         else:
             buf._env.update(env)
 
@@ -453,7 +467,7 @@ class Driver(threading.Thread):
                                      "have a 'registerExtension' method "
                                      "taking no arguments" % (name,))
         callback()
-        self.send() # success, finally
+        self.send()  # success, finally
 
     def do_quit(self, request):
         self.quit = True
@@ -475,7 +489,8 @@ class Driver(threading.Thread):
             try:
                 ch = self.fd_in.read(1)
             except IOError:
-                log.debug("Failed to read frame length, assuming connection died")
+                log.debug(
+                    "Failed to read frame length, assuming connection died")
                 self.quit = True
                 break
             if len(ch) == 0:
@@ -485,9 +500,11 @@ class Driver(threading.Thread):
             if ch == "{":
                 size = int(buf, 10)
                 try:
-                    buf = ch + self.fd_in.read(size - 1) # exclude already-read {
+                    # exclude already-read {
+                    buf = ch + self.fd_in.read(size - 1)
                 except IOError:
-                    log.debug("Failed to read frame data, assuming connection died")
+                    log.debug(
+                        "Failed to read frame data, assuming connection died")
                     self.quit = True
                     break
                 try:
@@ -528,7 +545,8 @@ class Driver(threading.Thread):
             try:
                 self.active_request = request
                 command = request.command
-                # First, check abort and quit; don't allow those to be overridden
+                # First, check abort and quit; don't allow those to be
+                # overridden
                 try:
                     builtin = self._builtin_commands[command]
                 except KeyError:
@@ -545,20 +563,23 @@ class Driver(threading.Thread):
                         try:
                             real_handler = handler[0]()
                         except Exception as ex:
-                            log.exception("Failed to get lazy handler for %s", command)
+                            log.exception(
+                                "Failed to get lazy handler for %s", command)
                             real_handler = None
                         if real_handler is None:
                             # Handler failed to instantiate, drop it
                             try:
-                                self._command_handler_map[command].remove(handler)
+                                self._command_handler_map[
+                                    command].remove(handler)
                             except ValueError:
-                                pass # ... shouldn't happen, but tolerate it
+                                pass  # ... shouldn't happen, but tolerate it
                             continue
                         for handlers in self._command_handler_map.values():
                             try:
-                                handlers[handlers.index(handler)] = real_handler
+                                handlers[
+                                    handlers.index(handler)] = real_handler
                             except ValueError:
-                                pass # handler not in this list
+                                pass  # handler not in this list
                         handler = real_handler
                     if handler.canHandleRequest(request):
                         handler.handleRequest(request, self)
@@ -601,6 +622,7 @@ class Driver(threading.Thread):
 
 
 class CoreHandler(CommandHandler):
+
     """The default command handler for core commands.
     This class is a stateless singleton.  (Other command handlers don't have to
     be)."""
@@ -615,7 +637,7 @@ class CoreHandler(CommandHandler):
         self.supportedCommands = list(supportedCommands)
 
     def canHandleRequest(self, request):
-        return True # we can handle any request we are registered to handle
+        return True  # we can handle any request we are registered to handle
 
     def handleRequest(self, request, driver):
         meth = getattr(self, "do_" + request.command.replace("-", "_"))
@@ -624,7 +646,7 @@ class CoreHandler(CommandHandler):
     def do_database_info(self, request, driver):
         """Figure out what kind of state the codeintel database is in"""
         if request.get("previous_command") == "database-preload":
-            preload_needed = "broken" # don't loop in preload
+            preload_needed = "broken"  # don't loop in preload
         else:
             preload_needed = "preload-needed"
         try:
@@ -657,7 +679,8 @@ class CoreHandler(CommandHandler):
             elif state == Database.UPGRADE_NECESSARY:
                 driver.send(state="upgrade-needed")
             elif state == Database.UPGRADE_NOT_POSSIBLE:
-                driver.send(state="upgrade-blocked", **{"state-detail":details})
+                driver.send(
+                    state="upgrade-blocked", **{"state-detail": details})
         except Exception:
             log.exception("Error looking up database info")
             driver.send(state="broken",
@@ -689,8 +712,9 @@ class CoreHandler(CommandHandler):
             shutil.rmtree(driver.mgr.db.base_dir, ignore_errors=True)
             driver.mgr.db.create()
 
-        progress_base = 0 # progress base for current step
-        progress_max = 0 # progress max for current step
+        progress_base = 0  # progress base for current step
+        progress_max = 0  # progress max for current step
+
         def progress_callback(message, value):
             """Progress callback for codeintel
             @param message {str} A message to display
@@ -714,7 +738,8 @@ class CoreHandler(CommandHandler):
                 langs = dict(zip(self._get_stdlib_langs(driver),
                                  itertools.repeat(None)))
             progress_base = 5
-            progress_incr = (80 - progress_base) / len(langs) # stage 1 goes up to 80%
+            progress_incr = (80 - progress_base) / \
+                len(langs)  # stage 1 goes up to 80%
             for lang, version in sorted(langs.items()):
                 if driver.abort == request.id:
                     raise RequestFailure(msg="Aborted", abort=True)
@@ -794,10 +819,10 @@ class CoreHandler(CommandHandler):
                              "lang": catalog["lang"],
                              "description": catalog["description"],
                              "cix_path": catalog["cix_path"],
-                             "selection": catalog.get("selection") or \
-                                            catalog["name"] or \
-                                            catalog["cix_path"],
-                            })
+                             "selection": catalog.get("selection") or
+                             catalog["name"] or
+                             catalog["cix_path"],
+                             })
         driver.send(catalogs=catalogs)
 
     def do_set_environment(self, request, driver):
@@ -818,15 +843,16 @@ class CoreHandler(CommandHandler):
     def do_scan_document(self, request, driver):
         buf = driver.get_buffer(request)
         if not driver.mgr.is_citadel_lang(buf.lang):
-            driver.send() # Nothing to do here
+            driver.send()  # Nothing to do here
             return
         if not hasattr(buf, "scan"):
-            driver.send() # Can't scan this buffer (e.g. Text)
+            driver.send()  # Can't scan this buffer (e.g. Text)
             return
         priority = request.get("priority", codeintel2.common.PRIORITY_CURRENT)
         mtime = request.get("mtime")
         if mtime is not None:
             mtime = long(mtime)
+
         def on_complete():
             driver.send(request=request,
                         status=getattr(scan_request, "status", None))
@@ -871,7 +897,7 @@ class CoreHandler(CommandHandler):
             log.debug("trigger data: %s", request.trg)
             data = dict(request.trg)
             del data["retriggerOnCompletion"]
-            del data["path"] # we tacked this on in do_trg_from_pos
+            del data["path"]  # we tacked this on in do_trg_from_pos
             trg = codeintel2.common.Trigger(**data)
         except AttributeError:
             driver.fail(message="No trigger to evaluate")
@@ -919,9 +945,11 @@ Driver._default_handler = CoreHandler()
 
 
 class Request(dict):
+
     """
     A request from the consumer
     """
+
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
         if not "req_id" in self:
@@ -936,9 +964,11 @@ class Request(dict):
         raise AttributeError
 
     def __repr__(self):
-        return "Request(%s)" % (json.dumps(self, separators=(',',':')),)
+        return "Request(%s)" % (json.dumps(self, separators=(',', ':')),)
+
 
 class Environment(codeintel2.environment.Environment):
+
     def __init__(self, request={}, send_fn=None, name=None):
         codeintel2.environment.Environment.__init__(self)
         log_name = filter(None, [self.__class__.__name__, name])
@@ -946,14 +976,16 @@ class Environment(codeintel2.environment.Environment):
         env = request.get("env", {})
         self._env = dict(env.get("env", {}))
         self._prefs = [dict(level) for level in env.get("prefs", [])]
-        self._observers = {} # name -> observer
+        self._observers = {}  # name -> observer
         self._send = send_fn
         self.proj_base_dir = env.get("project_base_dir", None)
 
     def has_envvar(self, name):
         return name in self._env
+
     def get_envvar(self, name, default=None):
         return self._env.get(name, default)
+
     def get_all_envvars(self):
         return self._env.copy()
 
@@ -972,11 +1004,13 @@ class Environment(codeintel2.environment.Environment):
 
     def has_pref(self, name):
         return any(name in level for level in self._prefs)
+
     def get_pref(self, name, default=None):
         for level in self._prefs:
             if name in level:
                 return level[name]
         return default
+
     def get_all_prefs(self, name, default=None):
         return [level.get(name, default) for level in self._prefs]
 
@@ -986,13 +1020,13 @@ class Environment(codeintel2.environment.Environment):
         """
 
         # Determine the existing values of the prefs
-        old_prefs = {} # flattened
+        old_prefs = {}  # flattened
         for level in reversed(self._prefs):
             # reverse order, since shallowest pref wins
             old_prefs.update(level)
 
         # Determine the new values of the prefs
-        new_prefs = {} # flattened
+        new_prefs = {}  # flattened
         for level in reversed(prefs):
             # reverse order, since shallowest pref wins
             new_prefs.update(level)
@@ -1078,6 +1112,7 @@ class Environment(codeintel2.environment.Environment):
         environment does not represent a project.
         """
         return self.proj_base_dir
+
 
 def _get_memory_reporter():
     from .memory_reporter import MemoryCommandHandler

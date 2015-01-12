@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2011
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 from xpcom import components, nsError, COMException
@@ -41,16 +41,18 @@ import contextlib
 import functools
 
 log = logging.getLogger("TreeView")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
+
 
 class TreeView(object):
+
     """A base implementation of the nsITreeView.
-    
+
     This should be subclassed to get any useful behaviour.
     https://developer.mozilla.org/en/NsITreeView
     """
     _com_interfaces_ = [components.interfaces.nsITreeView]
-        
+
     def __init__(self, debug=None):
         if debug:
             self.log = logging.getLogger("TreeView.%s" % debug)
@@ -60,118 +62,147 @@ class TreeView(object):
             self.log = None
         self.selection = None   # nsITreeSelection
         self._tree = None       # set in .setTree()
-        self.text = "<TreeView>" # for debugging only, never shown
+        self.text = "<TreeView>"  # for debugging only, never shown
 
     def isSeparator(self, index):
         return False
+
     def get_rowCount(self):
         if self.log:
             self.log.debug("get_rowCount()")
         return False
+
     def getRowProperties(self, index, properties=None):
         if self.log:
             self.log.debug("getRowProperties(%s, %r)", index, properties)
         pass
+
     def getCellProperties(self, row, column, properties=None):
         if self.log:
             self.log.debug("getCellProperties()")
         pass
+
     def getColumnProperties(self, column, properties=None):
         if self.log:
             self.log.debug("getColumnProperties(column=%s, props=%r)",
-                column, properties)
+                           column, properties)
+
     def isContainer(self, index):
         if self.log:
             self.log.debug("isContainer()")
         return False
+
     def isContainerOpen(self, index):
         if self.log:
             self.log.debug("isContainerOpen()")
         return False
+
     def isContainerEmpty(self, index):
         if self.log:
             self.log.debug("isContainerEmpty()")
         return False
+
     def isSorted(self):
         if self.log:
             self.log.debug("isSorted()")
         return False
+
     def canDrop(self, index, orientation, dataTransfer):
         if self.log:
             self.log.debug("canDrop()")
         return False
+
     def drop(self, row, orientation, dataTransfer):
         if self.log:
             self.log.debug("drop()")
         pass
+
     def getParentIndex(self, rowIndex):
         if self.log:
             self.log.debug("getParentIndex()")
         return -1
+
     def hasNextSibling(self, rowIndex, afterIndex):
         if self.log:
             self.log.debug("hasNextSibling()")
         return 0
+
     def getLevel(self, index):
         if self.log:
             self.log.debug("getLevel()")
         return 0
+
     def getImageSrc(self, row, column):
         if self.log:
             self.log.debug("getImageSrc(row=%r, colID=%r)", row, column.id)
         return ''
+
     def getCellValue(self, row, column):
         if self.log:
             self.log.debug("getCellValue() row: %s, col: %s", row, column.id)
         return ""
+
     def getCellText(self, row, column):
         if self.log:
             self.log.debug("getCellText() row: %s, col: %s", row, column.id)
         return ""
+
     def setTree(self, tree):
         if self.log:
             self.log.debug("[%s] setTree(tree='%s')", id(self), tree)
         self._tree = tree
+
     def toggleOpenState(self, index):
         if self.log:
             self.log.debug("toggleOpenState()")
         pass
+
     def cycleHeader(self, column):
         if self.log:
             self.log.debug("cycleHeader()")
         pass
+
     def selectionChanged(self):
         if self.log:
             self.log.debug("selectionChanged()")
         pass
+
     def cycleCell(self, row, column):
         if self.log:
             self.log.debug("cycleCell()")
         pass
+
     def isEditable(self, row, column):
         if self.log:
             self.log.debug("isEditable()")
         return False
+
     def setCellText(self, row, col, value):
         if self.log:
             self.log.debug("setCellText()")
         pass
+
     def setCellValue(self, row, col, value):
         if self.log:
-            self.log.debug("setCellValue() row: %s, col: %s, value: %r", row, col.id, value)
+            self.log.debug(
+                "setCellValue() row: %s, col: %s, value: %r", row, col.id, value)
+
     def performAction(self, action):
         if self.log:
             self.log.debug("performAction(%s)" % action)
         pass
+
     def performActionOnRow(self, action, row):
         if self.log:
             self.log.debug("performActionOnRow(%s, %s)", action, row)
         pass
+
     def performActionOnCell(self, action, row, column):
         if self.log:
-            self.log.debug("performActionOnCell(%s, %s, %r)", action, row, column)
+            self.log.debug(
+                "performActionOnCell(%s, %s, %r)", action, row, column)
         pass
-    
+
     def getAllIndices(self):
         treeSelection = self.selection
         a = []
@@ -222,13 +253,15 @@ class TreeView(object):
                 self._tree.ensureRowIsVisible(idx)
             else:
                 page_len = self._tree.getPageLength()
-                if idx - parent_idx < page_len/2:
+                if idx - parent_idx < page_len / 2:
                     self._tree.ensureRowIsVisible(parent_idx)
                     self._tree.ensureRowIsVisible(idx)
                 else:
                     self._tree.ensureRowIsVisible(idx)
 
+
 class ObjectTreeViewItem(object):
+
     """An item for ObjectTreeView"""
 
     # public properties
@@ -237,7 +270,7 @@ class ObjectTreeViewItem(object):
     """The parent of this tree item; for the tree view itself, this will be None.
        (tree items of depth 0 will have the tree view as the parent)
        """
-    children = [] # this is overwritten in __init__; it's here for docs
+    children = []  # this is overwritten in __init__; it's here for docs
     """The children of this tree item"""
     text = ""
     """The text to display"""
@@ -266,7 +299,6 @@ class ObjectTreeViewItem(object):
         # in release builds, we don't bother to do any checking
         def _checkState(f):
             return f
-
 
     def __init__(self, log=None):
         """Create an item for an ObjectTreeView"""
@@ -299,6 +331,7 @@ class ObjectTreeViewItem(object):
     def hidden(self):
         """Whether this item (and all its descendants) is hidden"""
         return self._hidden
+
     @hidden.setter
     def hidden(self, val):
         if self._hidden != val:
@@ -331,6 +364,7 @@ class ObjectTreeViewItem(object):
             visible (unless it is also hidden or not open).
             """
         return self._invisible
+
     @invisible.setter
     def invisible(self, val):
         if val == self._invisible:
@@ -348,7 +382,8 @@ class ObjectTreeViewItem(object):
                 index = self.rowIndex
                 if index is not None:
                     assert index >= 0
-                    self._rowCountChanged(index, -1, "%s.invisible = %s" % (self.text, val))
+                    self._rowCountChanged(
+                        index, -1, "%s.invisible = %s" % (self.text, val))
             self._invisible = val
 
             if self.view and self.view.invalidater:
@@ -359,7 +394,8 @@ class ObjectTreeViewItem(object):
                 index = self.rowIndex
                 if index is not None:
                     assert index >= 0
-                    self._rowCountChanged(index, 1, "%s.invisible = %s" % (self.text, val))
+                    self._rowCountChanged(
+                        index, 1, "%s.invisible = %s" % (self.text, val))
 
             if self.view and self.view.invalidater:
                 self.view.invalidater.check()
@@ -372,6 +408,7 @@ class ObjectTreeViewItem(object):
     def open(self):
         """Whether this item is open (only used if it has children)"""
         return self._open
+
     @open.setter
     def open(self, val):
         if self._open == val:
@@ -397,7 +434,7 @@ class ObjectTreeViewItem(object):
                         child_count *= -1
                     if not self.invisible:
                         self._invalidate(row_index, row_index)
-                        row_index += 1 # don't consider self
+                        row_index += 1  # don't consider self
                     self._rowCountChanged(row_index, child_count,
                                           "%s.open=%s" % (self.text, val))
             self._open = val
@@ -431,6 +468,7 @@ class ObjectTreeViewItem(object):
                     index += child.rowCount
                 self.__index_to_children = cache
         return self.__index_to_children
+
     @_index_to_children.setter
     def _index_to_children(self, val):
         assert val is None, \
@@ -648,7 +686,7 @@ class ObjectTreeViewItem(object):
         for child in self.parent.children:
             if child is self:
                 break
-            index += child.rowCount # deals with hidden and invisible for us
+            index += child.rowCount  # deals with hidden and invisible for us
 
         if not self.parent.invisible:
             # we need to offset from the parent
@@ -676,7 +714,7 @@ class ObjectTreeViewItem(object):
                 view.invalidater.rowCountChanged(row, delta, debug)
             if self.log:
                 self.log.debug("rowCountChanged: item %r row %r delta %r (current %r invalidater %r)",
-                    self, row, delta, view.rowCount, view.invalidater._count)
+                               self, row, delta, view.rowCount, view.invalidater._count)
 
     @_checkState
     def _invalidate(self, start, end, debug=None):
@@ -691,12 +729,15 @@ class ObjectTreeViewItem(object):
         view = self.view
         if view is not None:
             return view.invalidater
+
         @contextlib.contextmanager
         def f():
             yield
         return f()
 
+
 class InvalidationRange(object):
+
     """Structure to hold tree invalidation / row count changes"""
     ranges = []
     """Invalid or modified ranges, as a tuple of (start, end, delta), sorted
@@ -715,10 +756,10 @@ class InvalidationRange(object):
         self.view = view
         self.log = log
         self.ranges = []
-        self.depth = 0 # the number of nested operations
+        self.depth = 0  # the number of nested operations
         self.dirty = False
         self.log_debug("starting with %r rows", view.rowCount)
-        self._count = 0 # for debugging: tracks the row count this has seen
+        self._count = 0  # for debugging: tracks the row count this has seen
         self._broken = False
 
     if __debug__:
@@ -739,15 +780,20 @@ class InvalidationRange(object):
                 def check(pos):
                     for entry in self.ranges:
                         assert isinstance(entry, list), \
-                            "%s %r: ranges %r is inconsistent" % (pos, f, self.ranges)
+                            "%s %r: ranges %r is inconsistent" % (
+                                pos, f, self.ranges)
                         assert len(entry) == 3, \
-                            "%s %r: ranges %r is inconsistent" % (pos, f, self.ranges)
+                            "%s %r: ranges %r is inconsistent" % (
+                                pos, f, self.ranges)
                         assert all(map(lambda x: isinstance(x, int), entry)), \
-                            "%s %r: ranges %r is inconsistent" % (pos, f, self.ranges)
+                            "%s %r: ranges %r is inconsistent" % (
+                                pos, f, self.ranges)
                         assert entry[0] >= 0, \
-                            "%s %r: ranges %r is inconsistent" % (pos, f, self.ranges)
+                            "%s %r: ranges %r is inconsistent" % (
+                                pos, f, self.ranges)
                         assert entry[0] <= entry[1], \
-                            "%s %r: ranges %r is inconsistent" % (pos, f, self.ranges)
+                            "%s %r: ranges %r is inconsistent" % (
+                                pos, f, self.ranges)
                     for index in range(0, len(self.ranges) - 1):
                         assert self.ranges[index][1] < self.ranges[index + 1][0], \
                             "%s %r: for ranges %r@%r, range end %r should merge with next range starting at %r" % (
@@ -811,7 +857,7 @@ class InvalidationRange(object):
         if self.ranges[index][1] - self.ranges[index][0] < dirty_count:
             # we need to invalidate more rows
             self.ranges[index][1] = self.ranges[index][0] + dirty_count
-        self.ranges[index][2] +=  self.ranges[index + 1][2]
+        self.ranges[index][2] += self.ranges[index + 1][2]
         del self.ranges[index + 1]
 
     @_checkState
@@ -823,7 +869,8 @@ class InvalidationRange(object):
                 and end to the same value. To invalidate two rows, set end to be
                 one more than start.
             """
-        self.log_debug("invalidate: %r -> %r", (start, end, debug), self.ranges)
+        self.log_debug(
+            "invalidate: %r -> %r", (start, end, debug), self.ranges)
 
         if start is None:
             if end is None:
@@ -835,8 +882,8 @@ class InvalidationRange(object):
             end = start
 
         try:
-            end += 1 # convert range to half-open [start, end)
-            index = -1 # if we have no existing ranges, insert at start
+            end += 1  # convert range to half-open [start, end)
+            index = -1  # if we have no existing ranges, insert at start
             for index, entry in enumerate(self.ranges):
                 # there are 11 possible situations; let * be start, and
                 # the entry be [ ]--> (delta > 0), [ ]<-- (delta < 0), [ ] (=0)
@@ -869,7 +916,7 @@ class InvalidationRange(object):
 
                 if entry[0] > start:
                     # (A) entry is after the invalidation range
-                    index -= 1 # adjust to the entry just before
+                    index -= 1  # adjust to the entry just before
                     break
                 if entry[1] >= start:
                     # (B) entry overlaps; insert new entry and merge
@@ -918,7 +965,7 @@ class InvalidationRange(object):
             return
         self.log_debug("rowCountChanged: %r -> %r",
                        (start, count, debug), self.ranges)
-        self._count += count # for debugging only, not used
+        self._count += count  # for debugging only, not used
         try:
             self.dirty = True
             for index, entry in enumerate(self.ranges):
@@ -957,13 +1004,16 @@ class InvalidationRange(object):
         """Commit the invalidations / row count changes"""
         if self.view.rowCount != self._count:
             # we got into a broken state without detecting it
-            self.log_warn("InvalidationRange::commit: Undetected row count mismatch")
-            self.view._tree.rowCountChanged(0, self.view.rowCount - self._count)
+            self.log_warn(
+                "InvalidationRange::commit: Undetected row count mismatch")
+            self.view._tree.rowCountChanged(
+                0, self.view.rowCount - self._count)
             self._count = self.view.rowCount
             self._broken = True
         if self._broken:
             # something's busted! invalidate the whole thing
-            # by faking a batch we force the tree to also look up the new row count
+            # by faking a batch we force the tree to also look up the new row
+            # count
             self.view._tree.beginUpdateBatch()
             self.view._tree.endUpdateBatch()
             self.ranges = []
@@ -994,16 +1044,20 @@ class InvalidationRange(object):
         """Wrapper for self.log.debug"""
         if self.log:
             self.log.debug(*args, **kwargs)
+
     def log_warn(self, *args, **kwargs):
         """Wrapper for self.log.warn"""
         if self.log:
             self.log.warn(*args, **kwargs)
+
     def log_exception(self, *args, **kwargs):
         """Wrapper for self.log.exception"""
         if self.log:
             self.log.exception(*args, **kwargs)
 
+
 class ObjectTreeView(TreeView, ObjectTreeViewItem):
+
     """A object-oriented tree view implementation, for single-column trees with
        nesting
        """
@@ -1012,7 +1066,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         TreeView.__init__(self, *args, **kwargs)
         ObjectTreeViewItem.__init__(self, log=self.log)
         self.invalidater = InvalidationRange(self, log=self.log)
-        self.data = {} # to look more like ObjectTreeViewItem
+        self.data = {}  # to look more like ObjectTreeViewItem
 
     def __repr__(self):
         return "<%s>" % (self.__class__)
@@ -1028,33 +1082,38 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         item = self.item_from_index(index)
         if item is None:
             return True
-        result = any(itertools.imap(lambda c: c.subTreeIsVisible, item.children))
+        result = any(
+            itertools.imap(lambda c: c.subTreeIsVisible, item.children))
         return not result
 
     def getParentIndex(self, index):
         if index < 0:
             raise COMException(nsError.NS_ERROR_INVALID_ARG,
-                "getParentIndex with index %r < 0" % (index,))
+                               "getParentIndex with index %r < 0" % (index,))
         if index >= self.rowCount:
             raise COMException(nsError.NS_ERROR_INVALID_ARG,
-                "getParentIndex with index %r >= %r" % (index, self.rowCount))
+                               "getParentIndex with index %r >= %r" % (index, self.rowCount))
 
-        original_index = index # the index we started with
-        parent = self # the ancestor we're examining
-        parent_index = 0 # the index of the ancestor
+        original_index = index  # the index we started with
+        parent = self  # the ancestor we're examining
+        parent_index = 0  # the index of the ancestor
         # index is now the index relative to the parent-being-examined
         if self.log:
             path = [(index, parent.text)]
 
         try:
             while not index in parent._index_to_children:
-                i = max(filter(lambda k: k < index, parent._index_to_children.keys()))
-                # i is the offset of the next parent to use (from the current parent)
+                i = max(
+                    filter(lambda k: k < index, parent._index_to_children.keys()))
+                # i is the offset of the next parent to use (from the current
+                # parent)
 
-                parent_size = 1 if not parent.invisible else 0 # how many rows the parent itself takes
+                # how many rows the parent itself takes
+                parent_size = 1 if not parent.invisible else 0
                 parent_index = parent_index + parent_size + i
                 parent = parent._index_to_children[i]
-                child_size = 1 if not parent.invisible else 0 # how many rows the new parent takes
+                # how many rows the new parent takes
+                child_size = 1 if not parent.invisible else 0
                 index = index - i - child_size
 
                 if self.log:
@@ -1084,7 +1143,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
 
             raise COMException(nsError.NS_ERROR_UNEXPECTED,
                                "getParentIndex claimed parent of %r is %r" % (
-                                    original_index, parent_index))
+                                   original_index, parent_index))
         return parent_index
 
     def hasNextSibling(self, rowIndex, afterIndex):
@@ -1128,7 +1187,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         item = self.item_from_index(index)
         item.open = not item.open
 
-    #override TreeView.get_rowCount
+    # override TreeView.get_rowCount
     def get_rowCount(self):
         # Wrapper for old-style getter - PyXPCOM prefers this version, and we
         # need to override the one in TreeView
@@ -1139,6 +1198,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
     def invisible(self):
         # the root item is always invisible
         return True
+
     @invisible.setter
     def invisible(self, val):
         pass

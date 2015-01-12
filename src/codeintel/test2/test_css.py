@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Test some CSS-specific codeintel handling."""
@@ -47,12 +47,11 @@ import logging
 
 from codeintel2.common import *
 from codeintel2.util import indent, dedent, banner, markup_text, \
-                            unmark_text, CompareNPunctLast
+    unmark_text, CompareNPunctLast
 from codeintel2.constants_css3 import CSS_ATTR_DICT
 
 from testlib import TestError, TestSkipped, TestFailed, tag
 from citestsupport import CodeIntelTestCase
-
 
 
 log = logging.getLogger("test")
@@ -65,12 +64,12 @@ log = logging.getLogger("test")
 # and provide a wrapper to translate the test into the desired language format.
 
 class _BaseCSSTestCase(CodeIntelTestCase):
-    #XXX Watch out for '@media foo {...' scope stuff, e.g.:
+    # XXX Watch out for '@media foo {...' scope stuff, e.g.:
     #    @media print {
     #      @import "print-main.css";
     #      BODY { font-size: 10pt }
     #    }
-    #XXX Add tests for: complete-at-rule, complete-units, complete-import-url
+    # XXX Add tests for: complete-at-rule, complete-units, complete-import-url
 
     def test_complete_tag_names(self):
         tag_names_trigger = "css-complete-tag-names"
@@ -84,13 +83,13 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         # Not sure about this one, fail or okay. It's a completion but nothing
         # to complete to.
         self.assertTriggerMatches("a i<|>mg")
-        tag_names = [ 's', 'samp', 'script', 'select', 'small', 'span',
-                     'strike', 'strong', 'style', 'sub', 'sup' ]
+        tag_names = ['s', 'samp', 'script', 'select', 'small', 'span',
+                     'strike', 'strong', 'style', 'sub', 'sup']
         tag_names.sort(CompareNPunctLast)
         self.assertCompletionsInclude("s<|>tr",
-            [ ("element", v) for v in tag_names ])
+                                      [("element", v) for v in tag_names])
         self.assertCompletionsInclude(" b<|>ody { } ",
-            [("element", "body")])
+                                      [("element", "body")])
 
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "../a i<|>mage.png"')
@@ -134,7 +133,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         #            def<|>...;
         self.assertTriggerMatches("h1 { a<|>bc",
                                   name="css-complete-property-names")
-        #XXX Or should this NOT trigger here. I.e. when sub-editing an
+        # XXX Or should this NOT trigger here. I.e. when sub-editing an
         #    existing property name.
         self.assertTriggerMatches("h1 { c<|>olor ",
                                   name="css-complete-property-names")
@@ -145,12 +144,12 @@ class _BaseCSSTestCase(CodeIntelTestCase):
                                   name="css-complete-property-names", pos=5)
         #self.assertTriggerMatches("h1 { color: blue; pad<|> ", name="css-complete-property-names", pos=21)
         self.assertNoTrigger("/* c<|>ol")
-        property_names = ( 'margin', 'margin-bottom', 'margin-left',
+        property_names = ('margin', 'margin-bottom', 'margin-left',
                           'margin-right', 'margin-top', 'marker-offset',
                           'marks', 'max-height', 'max-width', 'min-height',
                           'min-width', )
         self.assertCompletionsInclude("h1 { m<|>ax ",
-            [ ("property", v + ': ') for v in property_names ])
+                                      [("property", v + ': ') for v in property_names])
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "../myimage.png { m<|>ax"')
         # This one is a bit much to ask for udl
@@ -169,7 +168,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         self.assertNoTrigger("/*h1 { color:<|>")
         self.assertCalltipIs("h1 { color:<|>",
                              "\n".join(textwrap.wrap("This property describes the foreground color of an element's text content\n(CSS1, CSS2, CSS3)",
-                                           40)))
+                                                     40)))
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "../myimage.png:<|>"')
         self.assertTriggerDoesNotMatch('body { background: url(myimage.png:<|>)',
@@ -183,27 +182,27 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         trigger_cplns_pv = "css-complete-property-values"
         trigger_calltip_pv = "css-calltip-property-values"
         self.assertPrecedingTriggerMatches("h1 { background: <$><|>no-repeat; }",
-            name=trigger_cplns_pv, pos=17)
+                                           name=trigger_cplns_pv, pos=17)
         self.assertPrecedingTriggerMatches("h1 { background:<$> <|>no-repeat; }",
-            name=trigger_calltip_pv, pos=16)
+                                           name=trigger_calltip_pv, pos=16)
         self.assertPrecedingTriggerMatches("h1 { background: n<$><|>o-repeat; }",
-            name=trigger_cplns_pv, pos=17)
+                                           name=trigger_cplns_pv, pos=17)
         self.assertPrecedingTriggerMatches("h1 { background: no<$><|>-repeat; }",
-            name=trigger_cplns_pv, pos=17)
+                                           name=trigger_cplns_pv, pos=17)
         self.assertPrecedingTriggerMatches("h1 { background: no-r<$><|>epeat; }",
-            name=trigger_cplns_pv, pos=17)
+                                           name=trigger_cplns_pv, pos=17)
         self.assertPrecedingTriggerMatches("h1 { background: no-repeat<$><|>; }",
-            name=trigger_cplns_pv, pos=17)
+                                           name=trigger_cplns_pv, pos=17)
         self.assertPrecedingTriggerMatches("h1 { border:    <$><|> ",
-            name=trigger_cplns_pv, pos=16)
+                                           name=trigger_cplns_pv, pos=16)
         self.assertPrecedingTriggerMatches("h1 { border:<$>    <|> ",
-            name=trigger_calltip_pv, pos=12)
+                                           name=trigger_calltip_pv, pos=12)
         self.assertNoPrecedingTrigger("<$>h1 { border:    <|> ")
 
     @tag("bug62238")
     def test_complete_property_values(self):
         #        h1 { border: <|>1px <|>solid <|>black; }  # implicit: one space
-        #        h1 { border:   <|>...  # explicit: allow trig on multiple spaces
+        # h1 { border:   <|>...  # explicit: allow trig on multiple spaces
         name = "css-complete-property-values"
         self.assertTriggerMatches("h1 { color: <|>",
                                   name=name, pos=12, form=TRG_FORM_CPLN)
@@ -217,7 +216,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         self.assertTriggerMatches("h1 { color: <|>;", name=name)
         self.assertTriggerMatches("h1 { color:    <|>;", name=name)
         #self.assertTriggerMatches("h1 { color: rgb(255, 255, 255) <|>", name=name)
-        ## Don't trigger inside braces
+        # Don't trigger inside braces
         #self.assertNoTrigger("h1 { color: rgb(255, <|>")
         #self.assertNoTrigger("h1 { color: rgb(255, 255, <|>255) white; }")
         # Don't trigger inside comments
@@ -248,7 +247,8 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         #
         # Ensure semi-colan does not screw us up:
         #   http://bugs.activestate.com/show_bug.cgi?id=50368
-        self.assertTriggerMatches("h1 { font-variable: s<|>mall-caps; }", name="css-complete-property-values")
+        self.assertTriggerMatches(
+            "h1 { font-variable: s<|>mall-caps; }", name="css-complete-property-values")
 
         # Ensure already used property values do not get shown again:
         #   http://bugs.activestate.com/show_bug.cgi?id=48978
@@ -259,8 +259,9 @@ class _BaseCSSTestCase(CodeIntelTestCase):
                 font-variant: normal <|>; /* normal shouldn't be in CC list */
             }
         """)
-        values = CSS_ATTR_DICT['font-variant'][:] # copy, so we don't modify it
-        values.remove('normal') # Should not be in the list
+        values = CSS_ATTR_DICT[
+            'font-variant'][:]  # copy, so we don't modify it
+        values.remove('normal')  # Should not be in the list
         self.assertCompletionsAre(css_content, [("value", v) for v in values])
 
     def test_complete_property_values_complex(self):
@@ -288,7 +289,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
             else:
                 v.difference_update(set(['transparent', 'url(', 'no-repeat']))
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", x) for x in v])
+                                          [("value", x) for x in v])
 
         values = set(CSS_ATTR_DICT['font-family'])
         # Remove these values, as they are already in the property list
@@ -297,7 +298,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
             self.assertTriggerMatches(markup_text(content, pos=positions[i]),
                                       name=name)
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", v) for v in values])
+                                          [("value", v) for v in values])
 
         values = set(CSS_ATTR_DICT['float'])
         # Remove these values, as they are already in the property list
@@ -305,7 +306,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         self.assertTriggerMatches(markup_text(content, pos=positions[9]),
                                   name=name)
         self.assertCompletionsInclude(markup_text(content, pos=positions[9]),
-            [("value", v) for v in values])
+                                      [("value", v) for v in values])
 
     def test_complete_property_values_complex2(self):
         # completions for complex style of propery-values
@@ -324,11 +325,10 @@ class _BaseCSSTestCase(CodeIntelTestCase):
             if i == 7 or i == 8:
                 v.discard('url(')
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", x) for x in v])
+                                          [("value", x) for x in v])
         for i in range(2, 7):
             self.assertTriggerDoesNotMatch(markup_text(content, pos=positions[i]),
                                            name=name)
-
 
     @tag("bug62977")
     def test_complete_property_values_at_buf_end(self):
@@ -348,7 +348,8 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         #self.assertTriggerMatches("a :hov<|>er", name=trigger_name)
         self.assertTriggerDoesNotMatch("h1 { color: <|>", name=trigger_name)
         pseudo_names = ["active", "visited", "link", "hover", "first-child"]
-        self.assertCompletionsInclude(":<|>link", [ ("pseudo-class", s) for s in pseudo_names ])
+        self.assertCompletionsInclude(
+            ":<|>link", [("pseudo-class", s) for s in pseudo_names])
         # No triggers if there was a space between the ":" and the identifier
         self.assertNoTrigger('body { background: "a: <|>link"')
         # assert no trig in string or URL
@@ -359,8 +360,10 @@ class _BaseCSSTestCase(CodeIntelTestCase):
     def test_complete_at_rule(self):
         #        @<|>import:<|>hover;  # implicit: on "@"
         #        @<|>page;
-        self.assertTriggerMatches("@<|>import;", name="css-complete-at-rule", pos=1)
-        self.assertTriggerMatches("@<|>media;", name="css-complete-at-rule", pos=1)
+        self.assertTriggerMatches(
+            "@<|>import;", name="css-complete-at-rule", pos=1)
+        self.assertTriggerMatches(
+            "@<|>media;", name="css-complete-at-rule", pos=1)
         # Can trigger inside the word
         # XXX - Scopped for now
         #self.assertTriggerMatches("@med<|>ia;", name="css-complete-at-rule", pos=1)
@@ -371,18 +374,20 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         # XXX - Fails, due to lexer not highlighting correctly
         #self.assertTriggerDoesNotMatch("h1 { color: blue }\n@<|>import ", name="css-complete-at-rule")
         # Does not allow extra whitespace
-        self.assertTriggerDoesNotMatch("@ <|>import;", name="css-complete-at-rule")
-        at_rule_names = [ "import", "media", "charset", "font-face", "page" ]
-        self.assertCompletionsInclude("@<|>import", [ ("rule", s) for s in at_rule_names ] )
+        self.assertTriggerDoesNotMatch(
+            "@ <|>import;", name="css-complete-at-rule")
+        at_rule_names = ["import", "media", "charset", "font-face", "page"]
+        self.assertCompletionsInclude(
+            "@<|>import", [("rule", s) for s in at_rule_names])
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "@<|>import"')
         #self.assertNoTrigger('body { background: url(@<|>media)')
 
     # PUNTing on these two for now
-    #def test_complete_attr_names(self):
+    # def test_complete_attr_names(self):
     #    #        textbox[<|>
     #    pass
-    #def test_complete_attr_values(self):
+    # def test_complete_attr_values(self):
     #    #        checkbox[checked=<|>
     #    pass
 
@@ -391,7 +396,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         body = "a <|>"
         self.assertTriggerMatches(body, name=tag_names_trigger, pos=2)
         self.assertCompletionsInclude(body,
-            [("element", "body"), ("element", "li")])
+                                      [("element", "body"), ("element", "li")])
 
     @tag("bug58637")
     def test_complete_tag_names_multiple(self):
@@ -410,7 +415,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
                     b<|>
                 }
             """),
-            name="css-complete-property-names")
+                                  name="css-complete-property-names")
 
     @tag("bug65995")
     def test_trg_prop_value_after_url(self):
@@ -420,7 +425,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
             }
         """)
         self.assertCompletionsInclude(content,
-            [("value", "no-repeat")])
+                                      [("value", "no-repeat")])
 
     @tag("bug71073")
     def test_pseudo_retrigger(self):
@@ -430,7 +435,8 @@ class _BaseCSSTestCase(CodeIntelTestCase):
             }
             .cursor:<1>h<2>ov
         """))
-        pseudo_results = [("pseudo-class", s) for s in ("active", "visited", "link", "hover", "first-child")]
+        pseudo_results = [("pseudo-class", s)
+                          for s in ("active", "visited", "link", "hover", "first-child")]
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
                                       pseudo_results)
         self.assertNoTrigger(markup_text(content, pos=positions[2]))
@@ -444,9 +450,10 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         """)
         self.assertCompletionsAre(content, [])
 
+
 class CSS_StraightTest(_BaseCSSTestCase):
     lang = "CSS"
-    
+
     @tag("bug95929")
     def test_buffer_overrun(self):
         content, positions = unmark_text(dedent("""\
@@ -462,8 +469,7 @@ class CSS_StraightTest(_BaseCSSTestCase):
         self.assertTriggerMatches(markup_text(content, pos=positions[1]),
                                   name=name)
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-                                     (('value', 'repeat-x'),))
-
+                                      (('value', 'repeat-x'),))
 
 
 class CSS_UDL_HTMLTest(_BaseCSSTestCase):
@@ -501,7 +507,7 @@ class CSS_UDL_HTMLTest(_BaseCSSTestCase):
         body = "a <|>"
         self.assertTriggerMatches(body, name=tag_names_trigger, pos=2)
         # Unfortunately udl css scanning doesn't recognize the tag region
-        #self.assertCompletionsInclude(body,
+        # self.assertCompletionsInclude(body,
         #    [("element", "body"), ("element", "li")])
 
 
@@ -509,6 +515,8 @@ class CSS_UDL_RHTMLTest(CSS_UDL_HTMLTest):
     lang = "RHTML"
 
 #@tag("bug69537")
+
+
 class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
     lang = "HTML"
 
@@ -529,7 +537,8 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         test cases. This is useful for sharing test cases between pure-
         and multi-lang uses of a given lang.
         """
-        #print "adjust_content\n%s%s%s" % (self._prefix, content, self._suffix)
+        # print "adjust_content\n%s%s%s" % (self._prefix, content,
+        # self._suffix)
         return "%s%s%s" % (self._prefix, content, self._suffix)
 
     def adjust_pos(self, pos):
@@ -544,7 +553,7 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         #            def<|>...;
         self.assertTriggerMatches('<p style="a<|>bc" />',
                                   name="css-complete-property-names")
-        #XXX Or should this NOT trigger here. I.e. when sub-editing an
+        # XXX Or should this NOT trigger here. I.e. when sub-editing an
         #    existing property name.
         self.assertTriggerMatches('<p style="c<|>olor" />',
                                   name="css-complete-property-names")
@@ -554,12 +563,12 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         self.assertTriggerMatches('<p style="colo<|>r: blue; pad" />',
                                   name="css-complete-property-names", pos=10)
         #self.assertTriggerMatches("h1 { color: blue; pad<|> ", name="css-complete-property-names", pos=21)
-        property_names = ( 'margin', 'margin-bottom', 'margin-left',
+        property_names = ('margin', 'margin-bottom', 'margin-left',
                           'margin-right', 'margin-top', 'marker-offset',
                           'marks', 'max-height', 'max-width', 'min-height',
                           'min-width', )
         self.assertCompletionsInclude('<p style="m<|>ax" />',
-            [ ("property", v + ': ') for v in property_names ])
+                                      [("property", v + ': ') for v in property_names])
         # assert no trig in string or URL
         #self.assertNoTrigger('''<p style="background: '../myimage.png { m<|>ax'" />''')
         # This one is a bit much to ask for udl
@@ -578,7 +587,7 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         self.assertNoTrigger('''<!-- <p style="color:<|>" /> -->''')
         self.assertCalltipIs('<p style="color:<|>" />',
                              "\n".join(textwrap.wrap("This property describes the foreground color of an element's text content\n(CSS1, CSS2, CSS3)",
-                                           40)))
+                                                     40)))
         # assert no trig in string or URL
         # XXX - Talk with Eric
         #self.assertNoTrigger('''<p style="background: '../myimage.png:<|>'" />''')
@@ -593,27 +602,27 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         trigger_cplns_pv = "css-complete-property-values"
         trigger_calltip_pv = "css-calltip-property-values"
         self.assertPrecedingTriggerMatches('<p style="background: <$><|>no-repeat;" />',
-            name=trigger_cplns_pv, pos=22)
+                                           name=trigger_cplns_pv, pos=22)
         self.assertPrecedingTriggerMatches('<p style="background:<$> <|>no-repeat;" />',
-            name=trigger_calltip_pv, pos=21)
+                                           name=trigger_calltip_pv, pos=21)
         self.assertPrecedingTriggerMatches('<p style="background: n<$><|>o-repeat;" />',
-            name=trigger_cplns_pv, pos=22)
+                                           name=trigger_cplns_pv, pos=22)
         self.assertPrecedingTriggerMatches('<p style="background: no<$><|>-repeat;" />',
-            name=trigger_cplns_pv, pos=22)
+                                           name=trigger_cplns_pv, pos=22)
         self.assertPrecedingTriggerMatches('<p style="background: no-r<$><|>epeat;" />',
-            name=trigger_cplns_pv, pos=22)
+                                           name=trigger_cplns_pv, pos=22)
         self.assertPrecedingTriggerMatches('<p style="background: no-repeat<$><|>;" />',
-            name=trigger_cplns_pv, pos=22)
+                                           name=trigger_cplns_pv, pos=22)
         self.assertPrecedingTriggerMatches('<p style="border:    <$><|> " />',
-            name=trigger_cplns_pv, pos=21)
+                                           name=trigger_cplns_pv, pos=21)
         self.assertPrecedingTriggerMatches('<p style="border:<$>    <|> " />',
-            name=trigger_calltip_pv, pos=17)
+                                           name=trigger_calltip_pv, pos=17)
         self.assertNoPrecedingTrigger('<$><p style="border:    <|> " />')
 
     @tag("bug62238")
     def test_complete_property_values(self):
         #        h1 { border: <|>1px <|>solid <|>black; }  # implicit: one space
-        #        h1 { border:   <|>...  # explicit: allow trig on multiple spaces
+        # h1 { border:   <|>...  # explicit: allow trig on multiple spaces
         name = "css-complete-property-values"
         self.assertTriggerMatches('<p style="color: <|>" />',
                                   name=name, pos=17, form=TRG_FORM_CPLN)
@@ -626,10 +635,10 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         self.assertTriggerMatches('<p style="color:    <|>" />', name=name)
         self.assertTriggerMatches('<p style="color: <|>;" />', name=name)
         self.assertTriggerMatches('<p style="color:    <|>;" />', name=name)
-        #self.assertTriggerMatches('<p style="color: rgb(255, 255, 255) <|>", name=name)
-        ## Don't trigger inside braces
-        #self.assertNoTrigger('<p style="color: rgb(255, <|>")
-        #self.assertNoTrigger('<p style="color: rgb(255, 255, <|>255) white; }")
+        # self.assertTriggerMatches('<p style="color: rgb(255, 255, 255) <|>", name=name)
+        # Don't trigger inside braces
+        # self.assertNoTrigger('<p style="color: rgb(255, <|>")
+        # self.assertNoTrigger('<p style="color: rgb(255, 255, <|>255) white; }")
         # Don't trigger inside comments
         self.assertNoTrigger('<!-- <p style="color: <|>" -->')
         # assert no trig in string or URL
@@ -671,8 +680,9 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
                 font-variant: normal <|>; /* normal shouldn't be in CC list */
             " />
         """)
-        values = CSS_ATTR_DICT['font-variant'][:] # copy, so we don't modify it
-        values.remove('normal') # Should not be in the list
+        values = CSS_ATTR_DICT[
+            'font-variant'][:]  # copy, so we don't modify it
+        values.remove('normal')  # Should not be in the list
         self.assertCompletionsAre(css_content, [("value", v) for v in values])
 
     def test_complete_property_values_complex(self):
@@ -700,7 +710,7 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
             else:
                 v.difference_update(set(['transparent', 'url(', 'no-repeat']))
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", x) for x in v])
+                                          [("value", x) for x in v])
 
         values = set(CSS_ATTR_DICT['font-family'])
         # Remove these values, as they are already in the property list
@@ -709,7 +719,7 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
             self.assertTriggerMatches(markup_text(content, pos=positions[i]),
                                       name=name)
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", v) for v in values])
+                                          [("value", v) for v in values])
 
         values = set(CSS_ATTR_DICT['float'])
         # Remove these values, as they are already in the property list
@@ -717,13 +727,13 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
         self.assertTriggerMatches(markup_text(content, pos=positions[9]),
                                   name=name)
         self.assertCompletionsInclude(markup_text(content, pos=positions[9]),
-            [("value", v) for v in values])
+                                      [("value", v) for v in values])
 
     def test_complete_property_values_complex2(self):
         # completions for complex style of propery-values
         name = "css-complete-property-values"
         # XXX - Talk to Eric
-        #content, positions = unmark_text(dedent("""\
+        # content, positions = unmark_text(dedent("""\
         #    <p style="
         #        background: <1>url('../img/header <2>tab.gif') /* <3>comment: <4>'abc <5>xyz' <6>*/ <7>600px <8>no-r;
         #    " />
@@ -742,11 +752,10 @@ class CSS_UDL_HTMLStyleAttributes(CodeIntelTestCase):
             if i == 7 or i == 8:
                 v.discard('url(')
             self.assertCompletionsInclude(markup_text(content, pos=positions[i]),
-                [("value", x) for x in v])
+                                          [("value", x) for x in v])
         for i in range(3, 7):
             self.assertTriggerDoesNotMatch(markup_text(content, pos=positions[i]),
                                            name=name)
-
 
 
 #---- mainline

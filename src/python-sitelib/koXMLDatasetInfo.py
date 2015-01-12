@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """
@@ -58,8 +58,8 @@ from koCatalog import CatalogResolver
 log = logging.getLogger("koXMLDatasetInfo")
 
 
-
 class EmptyDatasetHandler:
+
     def tagnames(self, tree, node=None):
         if node is None:
             node = tree.current
@@ -82,7 +82,9 @@ class EmptyDatasetHandler:
     def values(self, attrname, tree, node=None):
         return []
 
+
 class DataSetHandler(EmptyDatasetHandler):
+
     def __init__(self, namespace, dataset):
         self.namespace = namespace
         self.dataset = dataset
@@ -105,9 +107,10 @@ class DataSetHandler(EmptyDatasetHandler):
             return self.dataset.possible_children()
         orig_node = node
         while node is not None:
-            #print "node [%s] ns [%s]" % (node.localName, tree.namespace(node))
+            # print "node [%s] ns [%s]" % (node.localName,
+            # tree.namespace(node))
             ns = tree.namespace(node)
-            if node.localName and (not ns or ns.lower()==namespace.lower()):
+            if node.localName and (not ns or ns.lower() == namespace.lower()):
                 if self.dataset.element_info(node.localName):
                     return self.dataset.possible_children(node.localName)
             node = tree.parent(node)
@@ -124,11 +127,13 @@ class DataSetHandler(EmptyDatasetHandler):
         if node is None:
             node = tree.current
         return self.dataset.\
-               possible_attribute_values(node.localName, attrname)
+            possible_attribute_values(node.localName, attrname)
+
 
 class DatasetHandlerService:
-    handlers = {} # empty dataset handlers
+    handlers = {}  # empty dataset handlers
     resolver = None
+
     def __init__(self):
         self._default_public_ids = {
             "HTML": "-//W3C//DTD HTML 5//EN",
@@ -185,17 +190,21 @@ class DatasetHandlerService:
                 if namespace:
                     self.handlers[namespace] = handler
                     if publicId or systemId:
-                        self.handlers[(publicId, systemId, namespace)] = handler
+                        self.handlers[
+                            (publicId, systemId, namespace)] = handler
                 if publicId or systemId:
                     self.handlers[(publicId, systemId)] = handler
             return handler
 
 __datasetSvc = None
+
+
 def getService():
     global __datasetSvc
     if not __datasetSvc:
         __datasetSvc = DatasetHandlerService()
     return __datasetSvc
+
 
 def get_tree_handler(tree, node=None, default=None):
     # if we have a namespace, use it,  otherwise, fallback to the doctype
@@ -204,19 +213,22 @@ def get_tree_handler(tree, node=None, default=None):
         node = tree.root
     if node is not None:
         namespace = tree.namespace(node)
-    log.info("getting handler for (%s,%s,%s)"%(tree.publicId, tree.systemId, namespace))
-    #print "getDocumentHandler (%s,%s,%s)"%(tree.publicId, tree.systemId, namespace)
+    log.info("getting handler for (%s,%s,%s)" %
+             (tree.publicId, tree.systemId, namespace))
+    # print "getDocumentHandler (%s,%s,%s)"%(tree.publicId, tree.systemId,
+    # namespace)
     publicId = tree.publicId
     systemId = tree.systemId
     if not (publicId or systemId or namespace) and default:
-        #print "using defaults %r" % (default,)
+        # print "using defaults %r" % (default,)
         publicId = default[0]
         systemId = default[1]
         namespace = default[2]
     return getService().getDocumentHandler(publicId, systemId, namespace)
-    
+
 if __name__ == "__main__":
-    import sys, os
+    import sys
+    import os
     # basic logging configuration
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -228,27 +240,29 @@ if __name__ == "__main__":
     logging.getLogger('').addHandler(console)
 
     # utility functions for testing, these are *SIMILAR* to codeintel lang_xml
-    default_completion = { 'HTML': ('-//W3C//DTD XHTML 1.0 Strict//EN',
-                              'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd',
-                              'http://www.w3.org/1999/xhtml') }
-    
+    default_completion = {'HTML': ('-//W3C//DTD XHTML 1.0 Strict//EN',
+                                   'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd',
+                                   'http://www.w3.org/1999/xhtml')}
+
     def getDefaultCompletion(tree, node, lang):
-        if lang=="XSLT":
+        if lang == "XSLT":
             if node is not None and not tree.namespace(node):
                 # do we have an output element, if so, figure out if we're html
                 # cheap way to get the output element
-                output = tree.tags.get('http://www.w3.org/1999/XSL/Transform', []).get('output')
+                output = tree.tags.get(
+                    'http://www.w3.org/1999/XSL/Transform', []).get('output')
                 if output is not None:
                     lang = output.attrib.get('method').upper()
                     publicId = output.attrib.get('doctype-public')
                     systemId = output.attrib.get('doctype-system')
                     default_dataset_info = default_completion.get(lang)
                     if publicId or systemId:
-                        default_dataset_info = (publicId, systemId, default_dataset_info[2])
+                        default_dataset_info = (
+                            publicId, systemId, default_dataset_info[2])
                 return default_dataset_info
             return None
         return default_completion.get(lang)
-      
+
     def getValidTagNames(text, uri=None, lang=None):
         """getValidTagNames
         return a list of valid element names that can be inserted at the end
@@ -256,45 +270,51 @@ if __name__ == "__main__":
         """
         tree = koXMLTreeService.getService().getTreeForURI(uri, text)
         default_dataset_info = getDefaultCompletion(tree, tree.current, lang)
-        handlerclass = get_tree_handler(tree, tree.current, default_dataset_info)
+        handlerclass = get_tree_handler(
+            tree, tree.current, default_dataset_info)
         tagnames = handlerclass.tagnames(tree)
         if not tagnames:
             return None
         tagnames.sort()
         return tagnames
-    
+
     def getOpenTagName(text, uri=None):
         """getOpenTagName
         return the current tag name
         """
         tree = koXMLTreeService.getService().getTreeForURI(uri, text)
-        if tree.current is None: return None
+        if tree.current is None:
+            return None
         return tree.tagname(tree.current)
-    
+
     def getValidAttributes(text, uri=None, lang=None):
         """getValidAttributes
         get the current tag, and return the attributes that are allowed in that
         element
         """
         tree = koXMLTreeService.getService().getTreeForURI(uri, text)
-        if tree.current is None: return None
+        if tree.current is None:
+            return None
         already_supplied = tree.current.attrib.keys()
-        handlerclass = get_tree_handler(tree, tree.current, default_completion.get(lang))
+        handlerclass = get_tree_handler(
+            tree, tree.current, default_completion.get(lang))
         attrs = handlerclass.attrs(tree)
         if not attrs:
             return None
         attrs = [name for name in attrs if name not in already_supplied]
         attrs.sort()
         return attrs
-    
+
     def getValidAttributeValues(text, attr, uri=None, lang=None):
         """getValidAttributeValues
         get the current attribute, and return the values that are allowed in that
         attribute
         """
         tree = koXMLTreeService.getService().getTreeForURI(uri, text)
-        if tree.current is None: return None
-        handlerclass = get_tree_handler(tree, tree.current, default_completion.get(lang))
+        if tree.current is None:
+            return None
+        handlerclass = get_tree_handler(
+            tree, tree.current, default_completion.get(lang))
         values = handlerclass.values(attr, tree)
         if not values:
             return None
@@ -319,7 +339,7 @@ if __name__ == "__main__":
 """
     tags = getValidTagNames(xml, lang="XSLT")
     assert tags == ['body', 'head'], \
-                "invalid output tags for stylesheet"
+        "invalid output tags for stylesheet"
 
     xml = "<"
     assert getValidTagNames(xml) == None, "invalid children for html"
@@ -327,7 +347,8 @@ if __name__ == "__main__":
     xml = """<html>
     <body>
         <scr"""
-    assert "script" in getValidTagNames(xml, lang="HTML"), "invalid children for body"
+    assert "script" in getValidTagNames(
+        xml, lang="HTML"), "invalid children for body"
 
     html = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">"""
     # XXX this should only be html, have to figure out why area is there.
@@ -345,7 +366,7 @@ if __name__ == "__main__":
     </popupset>
 
 """
-    tags = getValidTagNames(xml) 
+    tags = getValidTagNames(xml)
     assert tags == ["popup"], "invalid children for popupset %r" % tags
 
     xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -353,9 +374,10 @@ if __name__ == "__main__":
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 """
     # lets get the next valid element
-    assert getValidTagNames(xml) == ['body', 'head'], "invalid children for html tag"
+    assert getValidTagNames(
+        xml) == ['body', 'head'], "invalid children for html tag"
 
-    xml ="""<
+    xml = """<
     
 <?php
 ?>
@@ -366,7 +388,7 @@ if __name__ == "__main__":
     xml = """<html """
     attrs = getValidAttributes(xml, lang="HTML")
     assert attrs == ['dir', 'id', 'lang'], "invalid attributes for html tag"
-    
+
     xml = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html """
@@ -381,21 +403,21 @@ if __name__ == "__main__":
   <xsl:template/>
 """
     assert getValidTagNames(xml) == ['attribute-set', 'decimal-format', 'import', 'include', 'key', 'namespace-alias', 'output', 'param', 'preserve-space', 'strip-space', 'template', 'variable'], \
-                "invalid children tags for stylesheet"
+        "invalid children tags for stylesheet"
 
     xml = """<?xml version="1.0"?> 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
   <xsl:output method="xml" indent="yes"/>
   <xsl:template"""
     assert getValidAttributes(xml) == ['match', 'mode', 'name', 'priority'], \
-                "invalid attributes for template"
+        "invalid attributes for template"
 
     xml = """<?xml version="1.0"?> 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
   <xsl:output method="xml" indent="yes"/>
   <xsl:"""
     assert getValidTagNames(xml) == ['attribute-set', 'decimal-format', 'import', 'include', 'key', 'namespace-alias', 'output', 'param', 'preserve-space', 'strip-space', 'template', 'variable'], \
-                "invalid children for stylesheet"
+        "invalid children for stylesheet"
 
     # test getting custom tags from the default namespace
     xml = """<?xml version="1.0"?> 
@@ -407,7 +429,7 @@ if __name__ == "__main__":
   <xsl:template/>
 """
     assert getValidTagNames(xml) == ['mycustomtag'], \
-                "invalid children for mycustomtag"
+        "invalid children for mycustomtag"
 
     xml = """<?xml version="1.0"?> 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
@@ -416,7 +438,7 @@ if __name__ == "__main__":
 </xsl:stylesheet>
 """
     assert getValidTagNames(xml) == ['attribute-set', 'decimal-format', 'import', 'include', 'key', 'namespace-alias', 'output', 'param', 'preserve-space', 'strip-space', 'template', 'variable'], \
-                "invalid children for stylesheet"
+        "invalid children for stylesheet"
 
     xml = """<?xml version="1.0"?> 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
@@ -430,5 +452,4 @@ if __name__ == "__main__":
 </xsl:stylesheet>
 """
     assert getValidTagNames(xml) == ['attribute-set', 'decimal-format', 'import', 'include', 'key', 'namespace-alias', 'output', 'param', 'preserve-space', 'strip-space', 'template', 'variable'], \
-                "invalid children for stylesheet"
-
+        "invalid children for stylesheet"

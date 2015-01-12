@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Test some JavaScript-specific codeintel handling."""
@@ -55,12 +55,11 @@ from testlib import TestError, TestSkipped, TestFailed, tag
 from citestsupport import CodeIntelTestCase, writefile
 
 
-
 log = logging.getLogger("test")
 
 
-
 class LangJavaScriptTestCase(CodeIntelTestCase):
+
     """Direct testing of the lang_javascript ciler."""
     lang = "JavaScript"
 
@@ -72,8 +71,8 @@ class LangJavaScriptTestCase(CodeIntelTestCase):
         OP = pure.operator_style
         KW = pure.keyword_style
         ID = pure.identifier_style
-        text =   ['x', '=', 'new', 'this', '.', 'Internal1', '(', ')', ';']
-        styles = [ KW,  OP,  KW,    KW,     OP,  ID,          OP,  OP,  OP]
+        text = ['x', '=', 'new', 'this', '.', 'Internal1', '(', ')', ';']
+        styles = [KW,  OP,  KW,    KW,     OP,  ID,          OP,  OP,  OP]
         self.assertEqual(len(text), len(styles))
         ciler = lang_javascript.JavaScriptCiler(None)
         # Test the citdl type handler.
@@ -94,6 +93,7 @@ class LangJavaScriptTestCase(CodeIntelTestCase):
         from codeintel2 import tree_javascript
         evlr = tree_javascript.CandidatesForTreeEvaluator(ctlr, buf, trg,
                                                           None, None)
+
         def get_tokens(expr):
             return list(evlr._tokenize_citdl_expr(expr))
 
@@ -111,7 +111,7 @@ class LangJavaScriptTestCase(CodeIntelTestCase):
         self.assertEqual(get_tokens("chained['string']['member']"),
                          ["chained", "string", "member"])
         # This one isn't actually possible
-        #self.assertEqual(get_tokens("nested[string['member']]"),
+        # self.assertEqual(get_tokens("nested[string['member']]"),
         #                 ["nested", "string", "member"])
 
 
@@ -185,7 +185,7 @@ class TriggerTestCase(CodeIntelTestCase):
                     this.<|>name = name;
                 }
             """),
-            name="javascript-complete-object-members")
+                                  name="javascript-complete-object-members")
 
     @tag("bug70627", "knownfailure")
     def test_preceding_with_numeric(self):
@@ -236,6 +236,7 @@ class TriggerTestCase(CodeIntelTestCase):
         # This one is a little advanced, maybe one day...
         #self.assertCITDLExprIs("foo.bar['item'].<|>", "foo.bar.item")
 
+
 class CplnTestCase(CodeIntelTestCase):
     lang = "JavaScript"
     test_dir = join(os.getcwd(), "tmp")
@@ -247,8 +248,9 @@ class CplnTestCase(CodeIntelTestCase):
             /** @<1>param <2>name Some comment
         """))
         from codeintel2.jsdoc import jsdoc_tags
-        cplns = [ ("variable", x) for x in sorted(jsdoc_tags.keys()) ]
-        self.assertCompletionsAre(markup_text(content, pos=positions[1]), cplns)
+        cplns = [("variable", x) for x in sorted(jsdoc_tags.keys())]
+        self.assertCompletionsAre(
+            markup_text(content, pos=positions[1]), cplns)
         self.assertCalltipIs(markup_text(content, pos=positions[2]),
                              jsdoc_tags["param"])
 
@@ -284,7 +286,7 @@ class CplnTestCase(CodeIntelTestCase):
             myAnimal.<1>
         """))
         self.assertCompletionsAre(markup_text(content, pos=positions[1]),
-            [("variable", "owner")]);
+                                  [("variable", "owner")])
 
     @tag("bug53217", "bug53237")
     def test_local(self):
@@ -345,7 +347,7 @@ class CplnTestCase(CodeIntelTestCase):
             markup_text(content, pos=positions[8]),
             None)
 
-    #TODO:
+    # TODO:
     # - Test case where a JS class' ctor is NOT the same name as the
     #   class. E.g., is it possible for class Cat in test_local()
     #   above to not define it's own ctor -- i.e. just use Mammal's?
@@ -527,8 +529,8 @@ class CplnTestCase(CodeIntelTestCase):
             player.<|>
         """)
         self.assertCompletionsInclude(content,
-            [("namespace", "FighterStyles"),
-             ("variable", "hitBox")])
+                                      [("namespace", "FighterStyles"),
+                                       ("variable", "hitBox")])
 
     @tag("assertScopeLpathIs")
     def test_intermixed_class_definitions(self):
@@ -652,9 +654,9 @@ class CplnTestCase(CodeIntelTestCase):
 
         buf = self.mgr.buf_from_path(join(test_dir, "foo.js"),
                                      lang="JavaScript")
-        self.assertCalltipIs2(buf, foo_js_positions[1], "Bar(name)");
+        self.assertCalltipIs2(buf, foo_js_positions[1], "Bar(name)")
         self.assertCompletionsInclude2(buf, foo_js_positions[2],
-            [("function", "bar"), ("variable", "name")])
+                                       [("function", "bar"), ("variable", "name")])
 
     def test_override_stdlib_class(self):
         env = SimplePrefsEnvironment(codeintel_selected_catalogs=['prototype'])
@@ -666,15 +668,15 @@ class CplnTestCase(CodeIntelTestCase):
             String.<1>foo; // should still get stdlib String attrs here
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [# local extensions:
-             ("function", "foo"),
-             # prototype extensions:
-             ("function", "camelize"),
-             ("function", "escapeHTML"),
-             # std String attrs:
-             ("variable", "length"),
-             ("function", "concat"),
-            ],
+                                      [  # local extensions:
+            ("function", "foo"),
+            # prototype extensions:
+            ("function", "camelize"),
+            ("function", "escapeHTML"),
+            # std String attrs:
+            ("variable", "length"),
+            ("function", "concat"),
+        ],
             env=env)
 
     @tag("bug65447")
@@ -695,15 +697,15 @@ class CplnTestCase(CodeIntelTestCase):
             tc.<1>abc;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "x"),
-             ("function", "showMe"),])
+                                      [("variable", "x"),
+                                       ("function", "showMe"), ])
 
     @tag("bug59127")
     def test_builtin_object_calltips(self):
         self.assertCalltipIs("var foo = new String(<|>);",
-            "String(...)")
+                             "String(...)")
         self.assertCalltipIs("var foo = new Boolean(<|>);",
-            "Boolean(...)")
+                             "Boolean(...)")
 
     @tag("bug65277")
     def test_citdl_expr_with_exclamation(self):
@@ -756,20 +758,20 @@ class CplnTestCase(CodeIntelTestCase):
             newNode.<5>x;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "length"),
-             ("function", "indexOf"),])
+                                      [("variable", "length"),
+                                       ("function", "indexOf"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "nodeName"),
-             ("function", "appendChild"),])
+                                      [("variable", "nodeName"),
+                                       ("function", "appendChild"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("variable", "length"),
-             ("function", "indexOf"),])
+                                      [("variable", "length"),
+                                       ("function", "indexOf"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[4]),
-            [("variable", "nodeName"),
-             ("function", "appendChild"),])
+                                      [("variable", "nodeName"),
+                                       ("function", "appendChild"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[5]),
-            [("variable", "nodeName"),
-             ("function", "appendChild"),])
+                                      [("variable", "nodeName"),
+                                       ("function", "appendChild"), ])
 
     @tag("bug66842")
     def test_function_return_chaining(self):
@@ -783,11 +785,11 @@ class CplnTestCase(CodeIntelTestCase):
             var y = x.<1>split('').<2>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "length"),
-             ("function", "indexOf"),])
+                                      [("variable", "length"),
+                                       ("function", "indexOf"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "length"),
-             ("function", "push"),])
+                                      [("variable", "length"),
+                                       ("function", "push"), ])
 
     @tag("bug67123")
     def test_named_function(self):
@@ -825,26 +827,26 @@ class CplnTestCase(CodeIntelTestCase):
             test2("abc").<8>xyz;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [('function', 'concat'),
-             ('function', 'toLowerCase'),
-             ('function', 'indexOf')])
+                                      [('function', 'concat'),
+                                       ('function', 'toLowerCase'),
+                                       ('function', 'indexOf')])
         self.assertCalltipIs(markup_text(content, pos=positions[2]),
-            "charAt(pos) -> String\nReturn the character at a particular "
-            "index in the string.")
+                             "charAt(pos) -> String\nReturn the character at a particular "
+                             "index in the string.")
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [('function', 'concat'),
-             ('function', 'toLowerCase'),
-             ('function', 'indexOf')])
+                                      [('function', 'concat'),
+                                       ('function', 'toLowerCase'),
+                                       ('function', 'indexOf')])
         self.assertNoTrigger(markup_text(content, pos=positions[4]))
         self.assertNoTrigger(markup_text(content, pos=positions[5]))
         self.assertCompletionsInclude(markup_text(content, pos=positions[6]),
-            [('function', 'concat'),
-             ('function', 'toLowerCase'),
-             ('function', 'indexOf')])
+                                      [('function', 'concat'),
+                                       ('function', 'toLowerCase'),
+                                       ('function', 'indexOf')])
         self.assertCompletionsInclude(markup_text(content, pos=positions[7]),
-            [('function', 'getElementById'), ])
+                                      [('function', 'getElementById'), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[8]),
-            [('function', 'toPrecision'), ])
+                                      [('function', 'toPrecision'), ])
 
     @tag("bug71343")
     def test_instance_defined_in_class_function(self):
@@ -859,11 +861,11 @@ class CplnTestCase(CodeIntelTestCase):
             v.str.<2>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "charAt"),
-             ("function", "concat")])
+                                      [("function", "charAt"),
+                                       ("function", "concat")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("function", "charAt"),
-             ("function", "concat")])
+                                      [("function", "charAt"),
+                                       ("function", "concat")])
 
     @tag("bug71345")
     def test_find_scope_from_line(self):
@@ -876,8 +878,8 @@ class CplnTestCase(CodeIntelTestCase):
             }
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "charAt"),
-             ("function", "concat")])
+                                      [("function", "charAt"),
+                                       ("function", "concat")])
 
     @tag("bug71666")
     def test_instance_name_same_as_class(self):
@@ -899,15 +901,15 @@ class CplnTestCase(CodeIntelTestCase):
             myvalue.<3>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "name"),
-             ("variable", "str"),
-             ("function", "setup")])
+                                      [("variable", "name"),
+                                       ("variable", "str"),
+                                       ("function", "setup")])
         self.assertCalltipIs(markup_text(content, pos=positions[2]),
-            "setup()")
+                             "setup()")
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("variable", "length"),
-             ("function", "toLowerCase"),
-             ("function", "indexOf")])
+                                      [("variable", "length"),
+                                       ("function", "toLowerCase"),
+                                       ("function", "indexOf")])
 
     @tag("bug72159")
     def test_variable_call(self):
@@ -921,13 +923,13 @@ class CplnTestCase(CodeIntelTestCase):
             x().<2>xxx;  // Test function chaining.
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "length"),
-             ("function", "toLowerCase"),
-             ("function", "indexOf")])
+                                      [("variable", "length"),
+                                       ("function", "toLowerCase"),
+                                       ("function", "indexOf")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "length"),
-             ("function", "toLowerCase"),
-             ("function", "indexOf")])
+                                      [("variable", "length"),
+                                       ("function", "toLowerCase"),
+                                       ("function", "indexOf")])
 
     @tag("bug76504")
     def test_function_completions(self):
@@ -941,25 +943,25 @@ class CplnTestCase(CodeIntelTestCase):
             var_to_func_bug76504.<2>xxx;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "constructor"),
-             ("variable", "length"),
-             ("variable", "prototype"),
-             ("variable", "length"),
-             ("function", "apply"),
-             ("function", "call"),
-             ("function", "toString"),
-             ("function", "valueOf"),
-            ])
+                                      [("variable", "constructor"),
+                                       ("variable", "length"),
+                                       ("variable", "prototype"),
+                                       ("variable", "length"),
+                                       ("function", "apply"),
+                                       ("function", "call"),
+                                       ("function", "toString"),
+                                       ("function", "valueOf"),
+                                       ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "constructor"),
-             ("variable", "length"),
-             ("variable", "prototype"),
-             ("variable", "length"),
-             ("function", "apply"),
-             ("function", "call"),
-             ("function", "toString"),
-             ("function", "valueOf"),
-            ])
+                                      [("variable", "constructor"),
+                                       ("variable", "length"),
+                                       ("variable", "prototype"),
+                                       ("variable", "length"),
+                                       ("function", "apply"),
+                                       ("function", "call"),
+                                       ("function", "toString"),
+                                       ("function", "valueOf"),
+                                       ])
 
     def test_function_extra_completions(self):
         # Ensure we can get extra things off of functions we hang things off of
@@ -969,9 +971,9 @@ class CplnTestCase(CodeIntelTestCase):
             func_extras.<1>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "hello"),
-             ("function", "apply"),
-            ])
+                                      [("function", "hello"),
+                                       ("function", "apply"),
+                                       ])
 
     @tag("bug80880")
     def test_function_calltips(self):
@@ -1000,11 +1002,11 @@ class CplnTestCase(CodeIntelTestCase):
             test_bug76711['<2>'];
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "name"),
-             ("variable", "property"), ])
+                                      [("variable", "name"),
+                                       ("variable", "property"), ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "name"),
-             ("variable", "property"), ])
+                                      [("variable", "name"),
+                                       ("variable", "property"), ])
 
     @tag("bug78185")
     def test_keyword_completions(self):
@@ -1013,12 +1015,12 @@ class CplnTestCase(CodeIntelTestCase):
             if (typ<3>) {}
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("keyword", "function"),
-             ("function", "funtime"), ])
+                                      [("keyword", "function"),
+                                       ("function", "funtime"), ])
         # Should not trigger a names-completion after "function".
         self.assertNoTrigger(markup_text(content, pos=positions[2]))
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("keyword", "typeof"), ])
+                                      [("keyword", "typeof"), ])
 
     @tag("bug78497")
     def test_object_assignment_ciling(self):
@@ -1032,7 +1034,7 @@ class CplnTestCase(CodeIntelTestCase):
             inst_bug78497.<1>;
         """))
         self.assertCompletionsAre(markup_text(content, pos=positions[1]),
-            [("namespace", "ab"), ])
+                                  [("namespace", "ab"), ])
 
     @tag("bug90823")
     def test_implied_globals_not_exported(self):
@@ -1070,16 +1072,16 @@ class CplnTestCase(CodeIntelTestCase):
                                      lang="JavaScript")
         # make sure we picked up things from other.js
         self.assertCompletionsInclude2(buf, target_js_positions[1],
-            [("variable", "newprop")])
+                                       [("variable", "newprop")])
         # but not implicitly declared properties on exported globals
         self.assertCompletionsDoNotInclude2(buf, target_js_positions[1],
-            [("namespace", "implicit")])
+                                            [("namespace", "implicit")])
         # also no implicitly declared globals
         self.assertCompletionsDoNotInclude2(buf, target_js_positions[2],
-            [("namespace", "object")])
+                                            [("namespace", "object")])
         # but we should get implicit properties in the same file
         self.assertCompletionsInclude2(buf, target_js_positions[3],
-            [("namespace", "implicit")])
+                                       [("namespace", "implicit")])
 
     @tag("bug91476")
     def test_function_alias_no_parens(self):
@@ -1093,9 +1095,9 @@ class CplnTestCase(CodeIntelTestCase):
             })();
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("namespace", "foo")])
+                                      [("namespace", "foo")])
         self.assertCompletionsDoNotInclude(markup_text(content, pos=positions[1]),
-            [("namespace", "foo()")])
+                                           [("namespace", "foo()")])
 
     @tag("bug93858")
     def test_local_variable_completions(self):
@@ -1106,7 +1108,7 @@ class CplnTestCase(CodeIntelTestCase):
             }
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "myWin")])
+                                      [("variable", "myWin")])
 
     def test_fat_arrow_functions(self):
         """Test fat arrow functions (ES6) for binding"""
@@ -1132,31 +1134,34 @@ class CplnTestCase(CodeIntelTestCase):
 
         for i in (1, 3, 5):
             self.assertCompletionsInclude2(buf, pos[i],
-                [("variable", "member"),
-                 ("function", "method"),
-                 ("function", "private_method")])
+                                           [("variable", "member"),
+                                            ("function", "method"),
+                                            ("function", "private_method")])
             self.assertCompletionsDoNotInclude2(buf, pos[i],
-                [("function", "not_a_method")])
+                                                [("function", "not_a_method")])
         self.assertCompletionsInclude2(buf, pos[2],
-            [("argument", "arg_name")])
+                                       [("argument", "arg_name")])
         self.assertCompletionsInclude2(buf, pos[4],
-            [("argument", "arg1"),
-             ("argument", "arg2")])
+                                       [("argument", "arg1"),
+                                        ("argument", "arg2")])
+
 
 class DOMTestCase(CodeIntelTestCase):
     lang = "JavaScript"
+
     @tag("bug86391")
     def test_html_style_attribute(self):
         content, positions = unmark_text(dedent("""\
             document.getElementById("foo").<1>style.<2>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "style")])
+                                      [("variable", "style")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "background"),
-             ("variable", "azimuth"),
-             ("function", "getPropertyCSSValue"),
-             ("function", "setProperty")])
+                                      [("variable", "background"),
+                                       ("variable", "azimuth"),
+                                       ("function", "getPropertyCSSValue"),
+                                       ("function", "setProperty")])
+
 
 class HTMLJavaScriptTestCase(CodeIntelTestCase):
     lang = "HTML"
@@ -1176,17 +1181,17 @@ class HTMLJavaScriptTestCase(CodeIntelTestCase):
         """))
 
         self.assertCompletionsInclude(
-                markup_text(content, pos=positions[1]),
-                [("function", "getElementById")])
+            markup_text(content, pos=positions[1]),
+            [("function", "getElementById")])
         self.assertCalltipIs(
-                markup_text(content, pos=positions[2]),
-                dedent("""\
+            markup_text(content, pos=positions[2]),
+            dedent("""\
                     getElementById(elementId)
                     Returns the Element whose ID is given by elementId. If no
                     such element exists, returns null."""))
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-                [("variable", "nodeName"),
-                 ("function", "appendChild"),])
+                                      [("variable", "nodeName"),
+                                       ("function", "appendChild"), ])
 
     @tag("bug95946")
     def test_html_onattributes(self):
@@ -1198,17 +1203,17 @@ class HTMLJavaScriptTestCase(CodeIntelTestCase):
         """))
 
         self.assertCompletionsInclude(
-                markup_text(content, pos=positions[1]),
-                [("function", "getElementById")])
+            markup_text(content, pos=positions[1]),
+            [("function", "getElementById")])
         self.assertCalltipIs(
-                markup_text(content, pos=positions[2]),
-                dedent("""\
+            markup_text(content, pos=positions[2]),
+            dedent("""\
                     getElementById(elementId)
                     Returns the Element whose ID is given by elementId. If no
                     such element exists, returns null."""))
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-                [("variable", "nodeName"),
-                 ("function", "appendChild"),])
+                                      [("variable", "nodeName"),
+                                       ("function", "appendChild"), ])
 
     @tag("bug102993")
     def test_html5_canvas(self):
@@ -1235,11 +1240,13 @@ class HTMLJavaScriptTestCase(CodeIntelTestCase):
         """))
 
         self.assertCompletionsInclude(
-                markup_text(content, pos=positions[1]),
-                [("function", "getElementById")])
+            markup_text(content, pos=positions[1]),
+            [("function", "getElementById")])
+
 
 class JSDocTestCase(CodeIntelTestCase):
     lang = "JavaScript"
+
     def test_jsdoc_extends(self):
         content, positions = unmark_text(dedent("""\
             function myfoo1() {
@@ -1257,9 +1264,9 @@ class JSDocTestCase(CodeIntelTestCase):
             }
         """))
         self.assertCompletionsAre(markup_text(content, pos=positions[1]),
-            [("variable", "foo1"),
-             ("variable", "foo2"),
-             ("variable", "x")])
+                                  [("variable", "foo1"),
+                                   ("variable", "foo2"),
+                                   ("variable", "x")])
 
     @tag("bug93261")
     def test_jsdoc_object_extends(self):
@@ -1277,8 +1284,8 @@ class JSDocTestCase(CodeIntelTestCase):
             myfoo2.<1>x = 1;
         """))
         self.assertCompletionsAre(markup_text(content, pos=positions[1]),
-            [("variable", "f1"),
-             ("variable", "f2")])
+                                  [("variable", "f1"),
+                                   ("variable", "f2")])
 
     @tag("bug92803")
     def test_jsdoc_type_comments(self):
@@ -1299,11 +1306,11 @@ class JSDocTestCase(CodeIntelTestCase):
             obj.bar.<3>z;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "poit")])
+                                      [("variable", "poit")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "poit")])
+                                      [("variable", "poit")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("variable", "poit")])
+                                      [("variable", "poit")])
 
     @tag("bug98344", "knownfailure")
     def test_jsdoc_type_comments(self):
@@ -1316,7 +1323,8 @@ class JSDocTestCase(CodeIntelTestCase):
             b.propNam.<1>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("method", "push"), ("method", "shift")])
+                                      [("method", "push"), ("method", "shift")])
+
 
 class MochiKitTestCase(CodeIntelTestCase):
     lang = "JavaScript"
@@ -1332,36 +1340,39 @@ class MochiKitTestCase(CodeIntelTestCase):
             toISODate(<8>);
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("namespace", "Visual"), ("namespace", "DateTime")],
-            env=env)
+                                      [("namespace", "Visual"),
+                                       ("namespace", "DateTime")],
+                                      env=env)
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("function", "roundElement"), ("function", "roundClass")],
-            env=env)
+                                      [("function", "roundElement"),
+                                       ("function", "roundClass")],
+                                      env=env)
         calltip = dedent("""\
             roundElement(element[, options])
             Immediately round the corners of the specified element.
             element: An element ID string or a DOM node (see
             MochiKit.DOM.getElement).""")
         self.assertCalltipIs(markup_text(content, pos=positions[3]),
-            calltip, env=env)
+                             calltip, env=env)
         self.assertCalltipIs(markup_text(content, pos=positions[4]),
-            calltip, env=env)
+                             calltip, env=env)
 
         self.assertCompletionsInclude(markup_text(content, pos=positions[5]),
-            [("namespace", "Visual"), ("namespace", "DateTime")],
-            env=env)
+                                      [("namespace", "Visual"),
+                                       ("namespace", "DateTime")],
+                                      env=env)
         self.assertCompletionsInclude(markup_text(content, pos=positions[6]),
-            [("function", "toISODate"),
-             ("function", "toAmericanDate")],
-            env=env)
+                                      [("function", "toISODate"),
+                                       ("function", "toAmericanDate")],
+                                      env=env)
         calltip = dedent("""\
             toISODate(date)
             Convert a Date object to an ISO 8601 [1] date string (YYYY-
             MM-DD) Availability: Available in MochiKit 1.3.1+""")
         self.assertCalltipIs(markup_text(content, pos=positions[7]),
-            calltip, env=env)
+                             calltip, env=env)
         self.assertCalltipIs(markup_text(content, pos=positions[8]),
-            calltip, env=env)
+                             calltip, env=env)
 
     @tag("bug63228")
     def test_repr_with_collision(self):
@@ -1375,15 +1386,15 @@ class MochiKitTestCase(CodeIntelTestCase):
         #      File ".../codeintel2/tree_javascript.py", line 230, in _calltip_from_class
         #        ctor = elem.names[name]
         #    KeyError: 'repr'
-        #    test_repr_with_collision (test_javascript.MochiKitTestCase) ... FAIL
+        # test_repr_with_collision (test_javascript.MochiKitTestCase) ... FAIL
         env = SimplePrefsEnvironment(
-                codeintel_selected_catalogs=['mochikit', 'dojo'])
+            codeintel_selected_catalogs=['mochikit', 'dojo'])
         self.assertCalltipIs("repr(<|>)",
-            ('repr(obj)\n'
-             'Return a programmer representation for obj. See the\n'
-             'Programmer Representation overview for more information\n'
-             'about this function.'),
-            env=env)
+                             ('repr(obj)\n'
+                              'Return a programmer representation for obj. See the\n'
+                              'Programmer Representation overview for more information\n'
+                              'about this function.'),
+                             env=env)
 
     @tag("bug59477", "knownfailure")
     def test_deferred(self):
@@ -1396,11 +1407,11 @@ class MochiKitTestCase(CodeIntelTestCase):
             d.addCallback(gotDocument);   
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "addCallback"), ("function", "addErrback"),
-             ("function", "cancel")],
-            env=env)
+                                      [("function", "addCallback"), ("function", "addErrback"),
+                                       ("function", "cancel")],
+                                      env=env)
         self.assertCalltipIs(markup_text(content, pos=positions[2]),
-            "addCallback(...) blah blah", env=env)
+                             "addCallback(...) blah blah", env=env)
 
     @tag("bug65370")
     def test_class_ctor(self):
@@ -1416,12 +1427,12 @@ entries in the log."""
             log.<2>xyz();
         """))
         self.assertCalltipIs(markup_text(content, pos=positions[1]),
-            expected_signature, env=env)
+                             expected_signature, env=env)
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("function", "addListener"),
-             ("function", "baseLog"),
-             ("function", "clear")],
-            env=env)
+                                      [("function", "addListener"),
+                                       ("function", "baseLog"),
+                                       ("function", "clear")],
+                                      env=env)
 
 
 class DojoTestCase(CodeIntelTestCase):
@@ -1438,8 +1449,8 @@ class DojoTestCase(CodeIntelTestCase):
             dojo.byId(<3>);
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "addOnLoad"), ("function", "byId"),
-             ("function", "require")])
+                                      [("function", "addOnLoad"), ("function", "byId"),
+                                       ("function", "require")])
         expectedCalltip = "addOnLoad(obj)\nRegisters a function to be " \
                           "triggered after the DOM and dojo.require() calls " \
                           "have finished loading."
@@ -1467,8 +1478,8 @@ class DojoTestCase(CodeIntelTestCase):
             inst_bug75069.<1>
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "name"),
-             ("function", "extended_fn")])
+                                      [("variable", "name"),
+                                       ("function", "extended_fn")])
 
     @tag("bug75069")
     def test_dojo_declare(self):
@@ -1494,14 +1505,14 @@ class DojoTestCase(CodeIntelTestCase):
             matt_bug75069.<2>moveToNewCity(<3>
         """))
         self.assertCalltipIs(markup_text(content, pos=positions[1]),
-            "Person_bug75069(name, age, currentResidence)")
+                             "Person_bug75069(name, age, currentResidence)")
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "name"),
-             ("variable", "age"),
-             ("variable", "currentResidence"),
-             ("function", "moveToNewCity")])
+                                      [("variable", "name"),
+                                       ("variable", "age"),
+                                       ("variable", "currentResidence"),
+                                       ("function", "moveToNewCity")])
         self.assertCalltipIs(markup_text(content, pos=positions[3]),
-            "moveToNewCity(newState)")
+                             "moveToNewCity(newState)")
 
 
 class YUITestCase(CodeIntelTestCase):
@@ -1513,25 +1524,26 @@ class YUITestCase(CodeIntelTestCase):
 
     def test_toplevel(self):
         self.assertCompletionsInclude("YAHOO.<|>",
-            [("namespace", "util"), ("namespace", "widget")])
+                                      [("namespace", "util"), ("namespace", "widget")])
 
     @tag("bug63258", "bug63297")
     def test_util(self):
         # Try more than once to test alternate code path after caching.
         for i in range(2):
             self.assertCompletionsInclude("YAHOO.<|>util",
-                [("namespace", "util")])
+                                          [("namespace", "util")])
             self.assertCompletionsInclude("YAHOO.<|>util.<|>",
-                [("class", "Anim"), 
-                 ("class", "DD"),
-                 ("namespace", "Dom"), # bug 63297
-                ])
+                                          [("class", "Anim"),
+                                           ("class", "DD"),
+                                              # bug 63297
+                                              ("namespace", "Dom"),
+                                           ])
             # bug 63258
             self.assertCompletionsInclude("YAHOO.<|>util.DD.<|>",
-                [("function", "alignElWithMouse"), 
-                 ("function", "autoScroll"),
-                 ("variable", "scroll"),
-                ])
+                                          [("function", "alignElWithMouse"),
+                                           ("function", "autoScroll"),
+                                              ("variable", "scroll"),
+                                           ])
 
     @tag("bug60048")
     def test_yui_with_local_YAHOO(self):
@@ -1556,12 +1568,12 @@ class PrototypeTestCase(CodeIntelTestCase):
     @tag("bug63098")
     def test_dollar_func(self):
         self.assertCalltipIs("$(<|>)",
-            ("$(elementId [, ...]) --> Element\n"
-             "The $() function is a handy shortcut to the all-too-frequent\n"
-             "document.getElementById() function of the DOM. Like the DOM\n"
-             "function, this one returns the element that has the id\n"
-             "passed as an argument."),
-            env=self.env)
+                             ("$(elementId [, ...]) --> Element\n"
+                              "The $() function is a handy shortcut to the all-too-frequent\n"
+                              "document.getElementById() function of the DOM. Like the DOM\n"
+                              "function, this one returns the element that has the id\n"
+                              "passed as an argument."),
+                             env=self.env)
 
     def test_basics(self):
         # Some basic prototype definitions.
@@ -1570,23 +1582,23 @@ class PrototypeTestCase(CodeIntelTestCase):
             Enumerable.<2>each(<3>);
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "activeRequestCount"),
-             ("namespace", "Responders"),
-             ("function", "getTransport"),
-             ("class", "Base")],
-            env=self.env)
+                                      [("variable", "activeRequestCount"),
+                                       ("namespace", "Responders"),
+                                       ("function", "getTransport"),
+                                       ("class", "Base")],
+                                      env=self.env)
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("function", "each"),
-             ("function", "all"),
-             ("function", "grep")],
-            env=self.env)
+                                      [("function", "each"),
+                                       ("function", "all"),
+                                       ("function", "grep")],
+                                      env=self.env)
         self.assertCalltipIs(markup_text(content, pos=positions[3]),
-            ("each(iterator)\n"
-             "Calls the given iterator function passing each element in\n"
-             "the list in the first argument and the index of the element\n"
-             "in the second argument"),
-            env=self.env)
-        
+                             ("each(iterator)\n"
+                              "Calls the given iterator function passing each element in\n"
+                              "the list in the first argument and the index of the element\n"
+                              "in the second argument"),
+                             env=self.env)
+
     @tag("bug63137", "bug63208")
     def test_extend_builtins1(self):
         # Test some of the places in which prototype extends JS builtins.
@@ -1594,18 +1606,23 @@ class PrototypeTestCase(CodeIntelTestCase):
             String.<1>stripTags(<2>);
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("function", "toUpperCase"),   # from JS String
-             ("variable", "length"),        # from JS String
-             ("function", "toString"),      # from JS Object
-             ("function", "stripTags"),     # from Prototype's String
-             ("function", "camelize"),      # from Prototype's String
-             ("function", "inspect"),       # from Prototype's Object
-             ],
-            env=self.env)
+                                      [("function", "toUpperCase"),   # from JS String
+                                       # from JS String
+                                       ("variable", "length"),
+                                       # from JS Object
+                                       ("function", "toString"),
+                                       # from Prototype's String
+                                       ("function", "stripTags"),
+                                       # from Prototype's String
+                                       ("function", "camelize"),
+                                       # from Prototype's Object
+                                       ("function", "inspect"),
+                                       ],
+                                      env=self.env)
         self.assertCalltipIs(markup_text(content, pos=positions[2]),
-            ("stripTags()\n"
-             "Returns the string with any HTML or XML tags removed"),
-            env=self.env)
+                             ("stripTags()\n"
+                              "Returns the string with any HTML or XML tags removed"),
+                             env=self.env)
 
     @tag("bug63137")
     def test_extend_builtins2(self):
@@ -1614,16 +1631,17 @@ class PrototypeTestCase(CodeIntelTestCase):
             document.<3>getElementsByClassName(<4>);
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("function", "getElementById"),            # from JS
-             ("function", "getElementsByClassName"),    # from Prototype
-             ],
-            env=self.env)
+                                      [("function", "getElementById"),            # from JS
+                                       # from Prototype
+                                       ("function", "getElementsByClassName"),
+                                       ],
+                                      env=self.env)
         self.assertCalltipIs(markup_text(content, pos=positions[4]),
-            ("getElementsByClassName(className [, parentElement])\n"
-             "Returns all the elements that are associated with the given\n"
-             "CSS class name. If no parentElement id given, the entire\n"
-             "document body will be searched."),
-            env=self.env)
+                             ("getElementsByClassName(className [, parentElement])\n"
+                              "Returns all the elements that are associated with the given\n"
+                              "CSS class name. If no parentElement id given, the entire\n"
+                              "document body will be searched."),
+                             env=self.env)
 
     @tag("bug63297", "knownfailure")
     def test_self_invoking_functions(self):
@@ -1643,12 +1661,12 @@ class PrototypeTestCase(CodeIntelTestCase):
             t.<2>c1 = "new c1";
         """))
         self.assertCalltipIs(markup_text(content, pos=positions[1]),
-            ("TestCode(a1)"))
+                             ("TestCode(a1)"))
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "a1"),
-             ("variable", "c1"),
-             ("function", "test"),
-             ("variable", "enabled")])
+                                      [("variable", "a1"),
+                                       ("variable", "c1"),
+                                       ("function", "test"),
+                                       ("variable", "enabled")])
 
     @tag("bug65197")
     def test_multiple_variable_assignment(self):
@@ -1671,25 +1689,29 @@ class PrototypeTestCase(CodeIntelTestCase):
             item3.<4>toString();
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "a1"),
-             ("variable", "c1"),
-             ("function", "test"),
-             ("variable", "enabled")])
+                                      [("variable", "a1"),
+                                       ("variable", "c1"),
+                                       ("function", "test"),
+                                       ("variable", "enabled")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "a1"),
-             ("variable", "c1"),
-             ("function", "test"),
-             ("variable", "enabled")])
+                                      [("variable", "a1"),
+                                       ("variable", "c1"),
+                                       ("function", "test"),
+                                       ("variable", "enabled")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("function", "toUpperCase"),   # from JS String
-             ("variable", "length"),        # from JS String
-             ("function", "toString"),      # from JS Object
-             ])
+                                      [("function", "toUpperCase"),   # from JS String
+                                       # from JS String
+                                       ("variable", "length"),
+                                       # from JS Object
+                                       ("function", "toString"),
+                                       ])
         self.assertCompletionsInclude(markup_text(content, pos=positions[4]),
-            [("function", "push"),          # from JS Array
-             ("variable", "length"),        # from JS Array
-             ("function", "toString"),      # from JS Object
-             ])
+                                      [("function", "push"),          # from JS Array
+                                       # from JS Array
+                                       ("variable", "length"),
+                                       # from JS Object
+                                       ("function", "toString"),
+                                       ])
 
     @tag("knownfailure", "bug63717")
     def test_try_calltip(self):
@@ -1709,9 +1731,9 @@ class PrototypeTestCase(CodeIntelTestCase):
             bug<1>
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "bug62767"),
-             ("function", "bug62767_function"),
-             ("class", "bug62767_class")])
+                                      [("variable", "bug62767"),
+                                       ("function", "bug62767_function"),
+                                       ("class", "bug62767_class")])
 
     @tag("bug62767")
     def test_complete_names_for_bultins(self):
@@ -1727,15 +1749,15 @@ class PrototypeTestCase(CodeIntelTestCase):
             field | par<6>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "window")])
+                                      [("variable", "window")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[2]),
-            [("variable", "document")])
+                                      [("variable", "document")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[3]),
-            [("function", "parseFloat"), ("function", "parseInt")])
+                                      [("function", "parseFloat"), ("function", "parseInt")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[4]),
-            [("function", "parseFloat"), ("function", "parseInt")])
+                                      [("function", "parseFloat"), ("function", "parseInt")])
         self.assertCompletionsInclude(markup_text(content, pos=positions[5]),
-            [("function", "parseFloat"), ("function", "parseInt")])
+                                      [("function", "parseFloat"), ("function", "parseInt")])
         # We should not trigger here.
         self.assertNoTrigger("window.        doc<|>;")
 
@@ -1745,7 +1767,7 @@ class ExtTestCase(CodeIntelTestCase):
     lang = "JavaScript"
     env = SimplePrefsEnvironment(codeintel_selected_catalogs=['ext'])
 
-    #def test_toplevel(self):
+    # def test_toplevel(self):
     #    self.assertCompletionsInclude("YAHOO.<|>",
     #        [("variable", "util"), ("variable", "widget")])
 
@@ -1766,10 +1788,10 @@ class ExtTestCase(CodeIntelTestCase):
             myElem.<1>;
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "dom"),
-             ("variable", "originalDisplay"),
-             ("variable", "visibilityMode"),
-             ])
+                                      [("variable", "dom"),
+                                       ("variable", "originalDisplay"),
+                                       ("variable", "visibilityMode"),
+                                       ])
 
 
 class ExtendTestCase(CodeIntelTestCase):
@@ -1806,11 +1828,14 @@ class ExtendTestCase(CodeIntelTestCase):
             myDog.<1>haveABaby();
         """))
         self.assertCompletionsInclude(markup_text(content, pos=positions[1]),
-            [("variable", "name"),          # From Dog
-             ("variable", "offspring"),     # From Mammel
-             ("variable", "colour"),        # From Dog extension
-             ("function", "toString"),      # From Dog extension
-             ("function", "haveABaby")])    # From Mammel
+                                      [("variable", "name"),          # From Dog
+                                       # From Mammel
+                                       ("variable", "offspring"),
+                                       # From Dog extension
+                                       ("variable", "colour"),
+                                       # From Dog extension
+                                       ("function", "toString"),
+                                       ("function", "haveABaby")])    # From Mammel
 
 
 class DefnTestCase(CodeIntelTestCase):
@@ -1834,16 +1859,25 @@ class DefnTestCase(CodeIntelTestCase):
         self.assertCITDLExprUnderPosIs("foo.bar.baz<|>", "foo.bar.baz")
         self.assertCITDLExprUnderPosIs("foo.b<|>ar.baz", "foo.bar")
         self.assertCITDLExprUnderPosIs("<|>foo.bar.baz", "foo")
+
     def test_citdl_expr_under_pos_multiline(self):
         self.assertCITDLExprUnderPosIs("foo(bar,\nblam.<|>)", "blam")
-        self.assertCITDLExprUnderPosIs("foo(bar,\nblam).spam.<|>", "foo().spam")
+        self.assertCITDLExprUnderPosIs(
+            "foo(bar,\nblam).spam.<|>", "foo().spam")
         self.assertCITDLExprUnderPosIs("foo.\\\nbar.<|>", "foo.bar")
-        self.assertCITDLExprUnderPosIs("foo(1, // one\n2).bar.<|>", "foo().bar")
-        self.assertCITDLExprUnderPosIs("foo(1, // o)ne\n2).b<|>ar.", "foo().bar")
-        self.assertCITDLExprUnderPosIs("foo(1, // (o)ne\n2).bar.<|>", "foo().bar")
-        self.assertCITDLExprUnderPosIs("foo(1, // (one\n2).bar.<|>", "foo().bar")
-        self.assertCITDLExprUnderPosIs("foo( //this is a ) comment\nb,d).<|>", "foo()")
-        self.assertCITDLExprUnderPosIs("foo\\\n(',({[', {one:1,two:2}).<|>", "foo()")
+        self.assertCITDLExprUnderPosIs(
+            "foo(1, // one\n2).bar.<|>", "foo().bar")
+        self.assertCITDLExprUnderPosIs(
+            "foo(1, // o)ne\n2).b<|>ar.", "foo().bar")
+        self.assertCITDLExprUnderPosIs(
+            "foo(1, // (o)ne\n2).bar.<|>", "foo().bar")
+        self.assertCITDLExprUnderPosIs(
+            "foo(1, // (one\n2).bar.<|>", "foo().bar")
+        self.assertCITDLExprUnderPosIs(
+            "foo( //this is a ) comment\nb,d).<|>", "foo()")
+        self.assertCITDLExprUnderPosIs(
+            "foo\\\n(',({[', {one:1,two:2}).<|>", "foo()")
+
     def test_citdl_expr_under_pos_extra(self):
         self.assertCITDLExprUnderPosIs("if (foo.<|>(", "foo")
         self.assertCITDLExprUnderPosIs("else if (foo.<|>(", "foo")
@@ -1868,8 +1902,8 @@ class DefnTestCase(CodeIntelTestCase):
 
         buf = self.mgr.buf_from_path(path)
         self.assertDefnMatches2(buf, foo_positions[1],
-            ilk="function", name="test1", line=1, path=path, )
-        
+                                ilk="function", name="test1", line=1, path=path, )
+
     @tag("bug99108")
     def test_scope_scopestart_is_int(self):
         test_dir = join(self.test_dir, "test_defn_scope_scopestart_is_int")
@@ -1894,20 +1928,19 @@ class DefnTestCase(CodeIntelTestCase):
         writefile(path, foo_content)
         buf = self.mgr.buf_from_path(path)
         self.assertDefnMatches2(buf, foo_positions[1],
-            ilk="function", name="test1", line=4,
+                                ilk="function", name="test1", line=4,
                                 lpath=[],
-            scopestart=1, scopeend=0, path=path, )
+                                scopestart=1, scopeend=0, path=path, )
         self.assertDefnMatches2(buf, foo_positions[2],
-            ilk="function", name="cheeseboogie", line=9,
+                                ilk="function", name="cheeseboogie", line=9,
                                 lpath=['test1'],
-            scopestart=4, scopeend=13, path=path, )
+                                scopestart=4, scopeend=13, path=path, )
         self.assertScopeLpathIs(
             markup_text(foo_content, pos=foo_positions[3]),
             [])
         self.assertScopeLpathIs(
             markup_text(foo_content, pos=foo_positions[4]),
-                                ["test1"])
-
+            ["test1"])
 
     @tag("knownfailure")
     def test_simple_import(self, fn=None):
@@ -1993,9 +2026,9 @@ class DefnTestCase(CodeIntelTestCase):
             var c<7> = Class<8>();
             print(c<9>.getFoo<10>());
         """))
-        writefile(path, content);
-        lines = lines_from_pos(content, positions);
-        buf = self.mgr.buf_from_path(path);
+        writefile(path, content)
+        lines = lines_from_pos(content, positions)
+        buf = self.mgr.buf_from_path(path)
 
         self.assertDefnMatches2(buf, path=path, pos=positions[1],
                                 ilk="class", name="Class", line=lines[1])
@@ -2036,16 +2069,14 @@ class DefnTestCase(CodeIntelTestCase):
 
         buf = self.mgr.buf_from_path(path)
         self.assertDefnMatches2(buf, positions[1],
-            ilk="function", name="func_test", line=3, path=path, )
+                                ilk="function", name="func_test", line=3, path=path, )
         self.assertDefnMatches2(buf, positions[2],
-            ilk="class", name="class_test", line=4, path=path, )
+                                ilk="class", name="class_test", line=4, path=path, )
         self.assertDefnMatches2(buf, positions[3],
-            ilk="function", name="getName", line=5, path=path, )
+                                ilk="function", name="getName", line=5, path=path, )
 
 
 #---- mainline
 
 if __name__ == "__main__":
     unittest.main()
-
-

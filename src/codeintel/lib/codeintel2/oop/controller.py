@@ -8,7 +8,9 @@ import pprint
 
 log = logging.getLogger("codeintel.oop.controller")
 
+
 class OOPEvalController(EvalController):
+
     """Eval controller for out-of-process codeintel
     """
 
@@ -96,26 +98,28 @@ class OOPEvalController(EvalController):
             self.driver.send(defns=map(defn_serializer, self.defns or []),
                              request=self.request, retrigger=retrigger)
         elif self.is_aborted():
-            pass # already reported the abort
+            pass  # already reported the abort
         elif self.best_msg[0]:
             try:
                 msg = "No %s found" % (self.desc,)
                 if self.have_errors:
-                    msg = self.best_msg[1] + " (error determining %s)" % (self.desc,)
+                    msg = self.best_msg[
+                        1] + " (error determining %s)" % (self.desc,)
                     self.driver.report_error(self.log_stream.getvalue())
                 elif self.have_warnings:
                     msg += "(warning: %s)" % (self.best_msg[1],)
             except TypeError as ex:
                 # Guard against this common problem in log formatting above:
                 #   TypeError: not enough arguments for format string
-                log.exception("problem logging eval failure: self.log=%r", self.log_entries)
+                log.exception(
+                    "problem logging eval failure: self.log=%r", self.log_entries)
                 msg = "error evaluating '%s'" % desc
             self.driver.fail(request=self.request, message=msg)
         else:
             # ERROR
             self.driver.fail(request=self.request, message=reason)
 
-        self.log = log # If we have any more problems, put it in the main log
+        self.log = log  # If we have any more problems, put it in the main log
         self.log_stream.close()
         EvalController.done(self, reason)
 
@@ -124,7 +128,7 @@ class OOPEvalController(EvalController):
             desc = {codeintel2.common.TRG_FORM_CPLN: "completions",
                     codeintel2.common.TRG_FORM_CALLTIP: "calltip",
                     codeintel2.common.TRG_FORM_DEFN: "definition",
-                   }.get(self.trg.form, "???")
+                    }.get(self.trg.form, "???")
             self.set_desc(desc)
 
     def debug(self, msg, *args):
@@ -134,6 +138,7 @@ class OOPEvalController(EvalController):
         self.log.debug(msg, *args)
         if self.best_msg[0] < logging.DEBUG:
             self.best_msg = (logging.DEBUG, msg % args)
+
     def info(self, msg, *args):
         if self.silent:
             return
@@ -141,6 +146,7 @@ class OOPEvalController(EvalController):
         self.log.info(msg, *args)
         if self.best_msg[0] < logging.INFO:
             self.best_msg = (logging.INFO, msg % args)
+
     def warn(self, msg, *args):
         if self.silent:
             return
@@ -149,6 +155,7 @@ class OOPEvalController(EvalController):
         if self.best_msg[0] < logging.WARN:
             self.best_msg = (logging.WARN, msg % args)
         self.have_warnings = True
+
     def error(self, msg, *args):
         if self.silent:
             return

@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Basic luddite commands."""
@@ -44,20 +44,20 @@ import re
 
 from ludditelib import parser, gen, constants
 from ludditelib.common import LudditeError, guid_pat, norm_guid, \
-                              generate_guid
-import chromereg # see __init__.py for finding where that is
+    generate_guid
+import chromereg  # see __init__.py for finding where that is
 
 _log = logging.getLogger("luddite.commands")
 
 
 def compile(udl_path, output_dir=None, include_path=None, log=None):
     """Compile the given .udl file to a Komodo lexer resource.
-    
+
     If not given, the output dir will be the same as the input .udl file.
     The output filename is "${safe_lang}.lexres", where "safe_lang" is a
     slightly massaged version of the language name defined in the .udl
     file with the "language" UDL statement.
-    
+
     "include_path" is a list of directories from which support .udl files
     can be included (by default the current dir, the dir of the input .udl
     file is alway part of the include path).
@@ -78,13 +78,13 @@ def compile(udl_path, output_dir=None, include_path=None, log=None):
     log.debug("parse `%s'", udl_path)
     parse_tree = parse(udl_path, include_path=include_path)
     if parse_tree is None:
-        raise LudditeError("parse failed");
+        raise LudditeError("parse failed")
     mainObj = gen.MainObj()
     analyzer = gen.Analyzer(mainObj)
     analyzer.processTree(parse_tree)
     mainObj.calcUniqueStates()
 
-    #XXX Grr. Crappy error handling again. This should be changed to
+    # XXX Grr. Crappy error handling again. This should be changed to
     #    raise a LudditeError if the semanticCheck fails then just call:
     #       analyzer.semanticCheck()
     if analyzer.semanticCheck() is None:
@@ -94,7 +94,7 @@ def compile(udl_path, output_dir=None, include_path=None, log=None):
     # output dir.
     lang_name = mainObj.languageName
     safe_lang_name = mainObj.safeLangName
-    lexres_path = join(output_dir, safe_lang_name+".lexres")
+    lexres_path = join(output_dir, safe_lang_name + ".lexres")
     log.info("compile `%s' to `%s'", udl_path, lexres_path)
     if exists(lexres_path):
         log.debug("rm `%s'", lexres_path)
@@ -107,16 +107,15 @@ def compile(udl_path, output_dir=None, include_path=None, log=None):
     mainObj.dumpAsTable(constants.vals, lexres_path)
 
 
-
 def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
                        ext=None, force=False, add_missing=False, log=None,
                        version=None, creator=None, ext_id=None,
                        description=None):
     """Compile the given .udl file to Komodo language resources.
-    
+
     DEPRECATED: The 'skel' generation in luddite has been deprecated in
     favour of the more generic support of the 'koext' tool.
-    
+
     One of "guid" or "guid_from_lang" can be given to specify the XPCOM
     language service GUID. If neither is given then a new one will be
     generated.
@@ -143,13 +142,13 @@ def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
     # Parse and load the UDL definition.
     parse_tree = parse(udl_path)
     if parse_tree is None:
-        raise LudditeError("parse failed");
+        raise LudditeError("parse failed")
     mainObj = gen.MainObj()
     analyzer = gen.Analyzer(mainObj)
     analyzer.processTree(parse_tree)
     mainObj.calcUniqueStates()
 
-    #XXX Grr. Crappy error handling again. This should be changed to
+    # XXX Grr. Crappy error handling again. This should be changed to
     #    raise a LudditeError if the semanticCheck fails then just call:
     #       analyzer.semanticCheck()
     if analyzer.semanticCheck() is None:
@@ -170,7 +169,7 @@ def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
         os.makedirs(build_dir)
 
     # Generate all outputs.
-    lexres_path = join(build_dir, "lexers", safe_lang_name+".lexres")
+    lexres_path = join(build_dir, "lexers", safe_lang_name + ".lexres")
     lexres_exists = exists(lexres_path)
     if lexres_exists and not force:
         if not add_missing:
@@ -224,8 +223,8 @@ def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
         else:
             template_paths = [
                 join(build_dir, "templates", "All Languages",
-                     safe_lang_name+ext),
-                join(build_dir, "templates", "Common", safe_lang_name+ext),
+                     safe_lang_name + ext),
+                join(build_dir, "templates", "Common", safe_lang_name + ext),
             ]
             for template_path in template_paths:
                 template_exists = exists(template_path)
@@ -252,17 +251,19 @@ def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
             version = "1.0.0"
             log.warn("defaulting 'version' to '%s' (use version option)",
                      version)
-        #else:
+        # else:
         #    XXX validate version
         if description is None:
             description = "%s language support for Komodo (UDL-based)" % lang_name
         if creator is None:
             creator = "Anonymous Coward"
-            log.warn("defaulting 'creator' to '%s' (use creator option)", creator)
-    
+            log.warn(
+                "defaulting 'creator' to '%s' (use creator option)", creator)
+
         install_rdf_in = join(dirname(constants.__file__), "install.rdf.in")
         log.debug("reading 'install.rdf' template from '%s'", install_rdf_in)
-        install_rdf_template = string.Template(open(install_rdf_in, 'r').read())
+        install_rdf_template = string.Template(
+            open(install_rdf_in, 'r').read())
         install_rdf = install_rdf_template.substitute(
             id=ext_id, name=name, codename=codename, version=version,
             description=description, creator=creator)
@@ -281,13 +282,13 @@ def deprecated_compile(udl_path, skel=False, guid=None, guid_from_lang=None,
 
 def parse(udl_path, include_path=None, log=None):
     """Parse the given .udl file.
-    
+
     PLY (i.e. yacc.py and lex.py) are messy. They leave 'parser.out' and
     'parsetab.py' turds in the current directory. Attempting to hack around
     this by cd'ing into the build dir to run. However this breaks the parse
     for a reason I don't understand. It would be good to fix that at some
     point.
-    
+
     Notes on the above analysis: The 'parser.out' debug file can be
     suppressed with `yaccdebug = 0` in yacc.py. The 'parsetab.py' file
     is generated by yacc.py::lr_write_tables() and can be suppressed
@@ -303,13 +304,13 @@ def parse(udl_path, include_path=None, log=None):
         raise LudditeError("could not parse '%s': %d error(s)"
                            % (udl_path, parser.num_errs))
     return parse_tree
-    
 
 
 #---- internal support
 
 def _get_build_dir(lang):
     return join("build", lang)
+
 
 def _codename_from_name(name):
     """Transform a Komodo extension name to a "code" name, i.e. one that is
@@ -320,6 +321,8 @@ def _codename_from_name(name):
 
 # Recipe: run (0.5.3) in C:\trentm\tm\recipes\cookbook
 _RUN_DEFAULT_LOGSTREAM = ("RUN", "DEFAULT", "LOGSTREAM")
+
+
 def __run_log(logstream, msg, *args, **kwargs):
     if not logstream:
         pass
@@ -333,6 +336,7 @@ def __run_log(logstream, msg, *args, **kwargs):
                 log.debug(msg, *args, **kwargs)
     else:
         logstream(msg, *args, **kwargs)
+
 
 def _run(cmd, logstream=_RUN_DEFAULT_LOGSTREAM):
     """Run the given command.
@@ -352,8 +356,9 @@ def _run(cmd, logstream=_RUN_DEFAULT_LOGSTREAM):
     else:
         status = retval
     if status:
-        #TODO: add std OSError attributes or pick more approp. exception
+        # TODO: add std OSError attributes or pick more approp. exception
         raise OSError("error running '%s': %r" % (cmd, status))
+
 
 def _run_in_dir(cmd, cwd, logstream=_RUN_DEFAULT_LOGSTREAM):
     """Run the given command in the given working directory.

@@ -60,20 +60,22 @@ import sys
 
 import elementtree.ElementTree as ET
 
+
 class Compare:
+
     def compare(self, f1, f2, ignores):
         e1 = ET.parse(f1).getroot()
         e2 = ET.parse(f2).getroot()
         self.ignores = ignores
         self.rc = 0
         self._do_diff(e1, e2)
-        
+
     def fix_ws(self, s):
         s1 = re.sub(r'\r?\n', ' ', s)
         s2 = re.sub(r'\t', ' ', s1)
         s3 = re.sub(r'\s+', ' ', s2).strip()
         return s3
-    
+
     def err(self, rc):
         if self.rc < rc:
             self.rc = rc
@@ -100,8 +102,10 @@ class Compare:
             ta = [getattr(e1, pyattr, None), getattr(e2, pyattr, None)]
             for i in (0, 1):
                 t = ta[i]
-                if t is None: ta[i] = ""
-                else: ta[i] = ta[i].strip()
+                if t is None:
+                    ta[i] = ""
+                else:
+                    ta[i] = ta[i].strip()
             t1 = ta[0]
             t2 = ta[1]
             if t1 != t2:
@@ -118,7 +122,7 @@ class Compare:
         else:
             for i in range(len(c1)):
                 self._do_diff(c1[i], c2[i])
-        
+
 if __name__ == "__main__":
     argv = sys.argv
     cmd = argv[0]

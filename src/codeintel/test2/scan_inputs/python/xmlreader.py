@@ -9,6 +9,7 @@ from _exceptions import SAXNotSupportedException, SAXNotRecognizedException
 # ===== XMLREADER =====
 
 class XMLReader:
+
     """Interface for reading an XML document using callbacks.
 
     XMLReader is the interface that an XML parser's SAX2 driver must
@@ -88,7 +89,9 @@ class XMLReader:
         "Sets the value of a SAX2 property."
         raise SAXNotRecognizedException("Property '%s' not recognized" % name)
 
+
 class IncrementalParser(XMLReader):
+
     """This interface adds three extra methods to the XMLReader
     interface that allow XML parsers to support incremental
     parsing. Support for this interface is optional, since not all
@@ -108,7 +111,7 @@ class IncrementalParser(XMLReader):
     IncrementalParser interface as a convenience to SAX 2.0 driver
     writers."""
 
-    def __init__(self, bufsize=2**16):
+    def __init__(self, bufsize=2 ** 16):
         self._bufsize = bufsize
         XMLReader.__init__(self)
 
@@ -160,7 +163,9 @@ class IncrementalParser(XMLReader):
 
 # ===== LOCATOR =====
 
+
 class Locator:
+
     """Interface for associating a SAX event with a document
     location. A locator object will return valid results only during
     calls to DocumentHandler methods; at any other time, the
@@ -184,7 +189,9 @@ class Locator:
 
 # ===== INPUTSOURCE =====
 
+
 class InputSource:
+
     """Encapsulation of the information needed by the XMLReader to
     read entities.
 
@@ -200,12 +207,12 @@ class InputSource:
     allowed to modify InputSource objects passed to it from the
     application, although it may make copies and modify those."""
 
-    def __init__(self, system_id = None):
+    def __init__(self, system_id=None):
         self.__system_id = system_id
         self.__public_id = None
-        self.__encoding  = None
-        self.__bytefile  = None
-        self.__charfile  = None
+        self.__encoding = None
+        self.__bytefile = None
+        self.__charfile = None
 
     def setPublicId(self, public_id):
         "Sets the public identifier of this InputSource."
@@ -273,6 +280,7 @@ class InputSource:
 
 # ===== ATTRIBUTESIMPL =====
 
+
 class AttributesImpl:
 
     def __init__(self, attrs):
@@ -334,6 +342,7 @@ class AttributesImpl:
         return self._attrs.values()
 
 # ===== ATTRIBUTESNSIMPL =====
+
 
 class AttributesNSImpl(AttributesImpl):
 

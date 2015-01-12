@@ -14,7 +14,7 @@ Utility Functions:
 # - MSDN on where to store app data files:
 #   http://support.microsoft.com/default.aspx?scid=kb;en-us;310294#XSLTH3194121123120121120120
 #
-#TODO:
+# TODO:
 # - Add cross-platform versions of other abstracted dir locations, like
 #   a prefs dir, something like bundle/Contents/SharedSupport
 #   on OS X, etc.
@@ -35,10 +35,9 @@ class Error(Exception):
     pass
 
 
-
 def user_data_dir(appname, owner=None, version=None):
     """Return full path to the user-specific data dir for this application.
-    
+
         "appname" is the name of application.
         "owner" (only required and used on Windows) is the name of the
             owner or distributing body for this application. Typically
@@ -47,12 +46,12 @@ def user_data_dir(appname, owner=None, version=None):
             path. You might want to use this if you want multiple versions
             of your app to be able to run independently. If used, this
             would typically be "<major>.<minor>".
-    
+
     Typical user data directories are:
         Win XP:     C:\Documents and Settings\USER\Application Data\<owner>\<appname>
         Mac OS X:   ~/Library/Application Support/<appname>
         Unix:       ~/.<lowercased-appname>
-    
+
     For Unix there is no *real* standard here. For example, Firefox uses:
     "~/.mozilla/firefox" which is a "~/.<owner>/<appname>"-type scheme.
     """
@@ -63,7 +62,7 @@ def user_data_dir(appname, owner=None, version=None):
                             owner, appname)
     elif sys.platform == 'darwin':
         if os.uname()[-1] == 'i386':
-            #XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
+            # XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
             basepath = os.path.expanduser('~/Library/Application Support')
         else:
             from Carbon import Folder, Folders
@@ -81,7 +80,7 @@ def user_data_dir(appname, owner=None, version=None):
 
 def site_data_dir(appname, owner=None, version=None):
     """Return full path to the user-shared data dir for this application.
-    
+
         "appname" is the name of application.
         "owner" (only required and used on Windows) is the name of the
             owner or distributing body for this application. Typically
@@ -90,7 +89,7 @@ def site_data_dir(appname, owner=None, version=None):
             path. You might want to use this if you want multiple versions
             of your app to be able to run independently. If used, this
             would typically be "<major>.<minor>".
-    
+
     Typical user data directories are:
         Win XP:     C:\Documents and Settings\All Users\Application Data\<owner>\<appname>
         Mac OS X:   /Library/Application Support/<appname>
@@ -103,7 +102,7 @@ def site_data_dir(appname, owner=None, version=None):
                             owner, appname)
     elif sys.platform == 'darwin':
         if os.uname()[-1] == 'i386':
-            #XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
+            # XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
             basepath = os.path.expanduser('~/Library/Application Support')
         else:
             from Carbon import Folder, Folders
@@ -113,7 +112,7 @@ def site_data_dir(appname, owner=None, version=None):
             basepath = os.path.join(path.FSRefMakePath(), appname)
         path = os.path.join(basepath, appname)
     else:
-        path = "/etc/"+appname.lower()
+        path = "/etc/" + appname.lower()
     if version:
         path = os.path.join(path, version)
     return path
@@ -121,7 +120,7 @@ def site_data_dir(appname, owner=None, version=None):
 
 def user_cache_dir(appname, owner=None, version=None):
     """Return full path to the user-specific cache dir for this application.
-    
+
         "appname" is the name of application.
         "owner" (only required and used on Windows) is the name of the
             owner or distributing body for this application. Typically
@@ -130,7 +129,7 @@ def user_cache_dir(appname, owner=None, version=None):
             path. You might want to use this if you want multiple versions
             of your app to be able to run independently. If used, this
             would typically be "<major>.<minor>".
-    
+
     Typical user data directories are:
         Win XP:     C:\Documents and Settings\USER\Local Settings\Application Data\<owner>\<appname>
         Mac OS X:   ~/Library/Caches/<appname>
@@ -146,7 +145,7 @@ def user_cache_dir(appname, owner=None, version=None):
                             owner, appname)
     elif sys.platform == 'darwin':
         if os.uname()[-1] == 'i386':
-            #XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
+            # XXX Folder.FSFindFolder() fails with error -43 on x86. See 42669.
             basepath = os.path.expanduser('~/Library/Caches')
         else:
             from Carbon import Folder, Folders
@@ -162,8 +161,6 @@ def user_cache_dir(appname, owner=None, version=None):
     return path
 
 
-
-
 #---- internal support stuff
 
 def _get_win_folder_from_registry(csidl_name):
@@ -172,7 +169,7 @@ def _get_win_folder_from_registry(csidl_name):
     names.
     """
     import _winreg
-    
+
     shell_folder_name = {
         "CSIDL_APPDATA": "AppData",
         "CSIDL_COMMON_APPDATA": "Common AppData",
@@ -180,8 +177,9 @@ def _get_win_folder_from_registry(csidl_name):
     }[csidl_name]
 
     key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
-        r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+                          r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
     dir, type = _winreg.QueryValueEx(key, shell_folder_name)
+
 
 def _get_win_folder_with_ctypes(csidl_name):
     import ctypes
@@ -191,7 +189,7 @@ def _get_win_folder_with_ctypes(csidl_name):
         "CSIDL_COMMON_APPDATA": 35,
         "CSIDL_LOCAL_APPDATA": 28,
     }[csidl_name]
-    
+
     buf = ctypes.create_unicode_buffer(1024)
     ctypes.windll.shell32.SHGetFolderPathW(None, csidl_const, None, 0, buf)
     return buf.value
@@ -204,11 +202,9 @@ if sys.platform == "win32":
         _get_win_folder = _get_win_folder_from_registry
 
 
-
 #---- self test code
 
 if __name__ == "__main__":
     print "applib: user data dir:", user_data_dir("Komodo", "ActiveState")
     print "applib: site data dir:", site_data_dir("Komodo", "ActiveState")
     print "applib: user cache dir:", user_cache_dir("Komodo", "ActiveState")
-

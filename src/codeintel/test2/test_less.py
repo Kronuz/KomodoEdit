@@ -2,6 +2,7 @@ from test_css import _BaseCSSTestCase
 from codeintel2.util import dedent, CompareNPunctLast
 from testlib import tag
 
+
 class Less_StraightTest(_BaseCSSTestCase):
     lang = "Less"
 
@@ -17,13 +18,13 @@ class Less_StraightTest(_BaseCSSTestCase):
         # Not sure about this one, fail or okay. It's a completion but nothing
         # to complete to.
         self.assertTriggerMatches("a i<|>mg")
-        tag_names = [ 's', 'samp', 'script', 'select', 'small', 'span',
-                     'strike', 'strong', 'style', 'sub', 'sup' ]
+        tag_names = ['s', 'samp', 'script', 'select', 'small', 'span',
+                     'strike', 'strong', 'style', 'sub', 'sup']
         tag_names.sort(CompareNPunctLast)
         self.assertCompletionsInclude("s<|>tr",
-            [ ("element", v) for v in tag_names ])
+                                      [("element", v) for v in tag_names])
         self.assertCompletionsInclude(" b<|>ody { } ",
-            [("element", "body")])
+                                      [("element", "body")])
 
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "../a i<|>mage.png"')
@@ -34,10 +35,11 @@ class Less_StraightTest(_BaseCSSTestCase):
         #        selector {
         #            abc<|>...;
         #            def<|>...;
-        expected_trg_name = self.lang.lower() + "-complete-tag-or-property-names"
+        expected_trg_name = self.lang.lower(
+        ) + "-complete-tag-or-property-names"
         self.assertTriggerMatches("h1 { a<|>bc",
                                   name=expected_trg_name)
-        #XXX Or should this NOT trigger here. I.e. when sub-editing an
+        # XXX Or should this NOT trigger here. I.e. when sub-editing an
         #    existing property name.
         self.assertTriggerMatches("h1 { c<|>olor ",
                                   name=expected_trg_name)
@@ -48,12 +50,12 @@ class Less_StraightTest(_BaseCSSTestCase):
                                   name=expected_trg_name, pos=5)
         #self.assertTriggerMatches("h1 { color: blue; pad<|> ", name="less-complete-property-names", pos=21)
         self.assertNoTrigger("/* c<|>ol")
-        property_names = ( 'margin', 'margin-bottom', 'margin-left',
+        property_names = ('margin', 'margin-bottom', 'margin-left',
                           'margin-right', 'margin-top', 'marker-offset',
                           'marks', 'max-height', 'max-width', 'min-height',
                           'min-width', )
         self.assertCompletionsInclude("h1 { m<|>ax ",
-            [ ("property", v + ': ') for v in property_names ])
+                                      [("property", v + ': ') for v in property_names])
         # assert no trig in string or URL
         self.assertNoTrigger('body { background: "../myimage.png { m<|>ax"')
         # This one is a bit much to ask for udl
@@ -61,7 +63,8 @@ class Less_StraightTest(_BaseCSSTestCase):
 
     @tag("bug65994")
     def test_no_trg_after_comment(self):
-        expected_trg_name = self.lang.lower() + "-complete-tag-or-property-names"
+        expected_trg_name = self.lang.lower(
+        ) + "-complete-tag-or-property-names"
         self.assertTriggerMatches(dedent("""
                 body {
                     color: #036;
@@ -69,7 +72,7 @@ class Less_StraightTest(_BaseCSSTestCase):
                     b<|>
                 }
             """),
-            name=expected_trg_name)
+                                  name=expected_trg_name)
 
 
 class SCSS_StraightTest(Less_StraightTest):

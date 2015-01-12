@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 r"""Database of static info for (text) languages (e.g. Python, Perl, ...).
@@ -70,22 +70,22 @@ allow Komodo extensions to add/override language info.)
 
 # TODO:
 # - add other Komodo languages
-# - langinfo_komodo.py, langinfo_apple.py, langinfo_microsoft.py, 
+# - langinfo_komodo.py, langinfo_apple.py, langinfo_microsoft.py,
 #   langinfo_adobe.py
 # - Python: .pth, .egg-info
 # - some XML langs to add:  DocBook, Atom, Dita,
 #   RDF, RSS (various versions?), RelaxNG, XML Schema, XSLT.
 #   ODF, UBL (these mentioned by Tim Bray, http://www.tbray.org/ongoing/When/200x/2006/01/08/No-New-XML-Languages)
 #   others?
-#TODO: .wiki (for google code)
-#TODO: .*rc files?
-#TODO: .cvsignore
-#TODO: .pyx? .pxd? .pyd?  (see tm/check/contrib/pyyaml/ext/)
-#TODO: .deb, .rpm
+# TODO: .wiki (for google code)
+# TODO: .*rc files?
+# TODO: .cvsignore
+# TODO: .pyx? .pxd? .pyd?  (see tm/check/contrib/pyyaml/ext/)
+# TODO: .deb, .rpm
 # - .phpt (in PHP tree)
-#TODO: http://en.wikipedia.org/wiki/Adobe_Flash#Related_file_formats_and_extensions
-#TODO: text .nib's, .plist, .pbxuser, .pbxproj, .m, .strings,
-#TODO: "/Library/Application Support/Apple/Developer Tools/Quartz Composer/Clips/Cubic.qtz"
+# TODO: http://en.wikipedia.org/wiki/Adobe_Flash#Related_file_formats_and_extensions
+# TODO: text .nib's, .plist, .pbxuser, .pbxproj, .m, .strings,
+# TODO: "/Library/Application Support/Apple/Developer Tools/Quartz Composer/Clips/Cubic.qtz"
 #      not recognized as "data", but it *is* by `file`.
 
 __version_info__ = (1, 0, 0)
@@ -106,11 +106,11 @@ import warnings
 import operator
 
 
-
 #---- exceptions and warnings
 
 class LangInfoError(Exception):
     pass
+
 
 class InvalidLangInfoWarning(Warning):
     pass
@@ -120,7 +120,7 @@ warnings.simplefilter("once", InvalidLangInfoWarning)
 #---- globals
 
 log = logging.getLogger("langinfo")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 
 #---- module API
@@ -129,10 +129,10 @@ def langinfo_from_lang(lang):
     return get_default_database().langinfo_from_lang(lang)
 
 
-
 #---- base LangInfo definition
 
 class LangInfo(object):
+
     """Base language info class. A subclass of LangInfo defines static
     information about a particular text language (e.g. Python, Perl,
     CSS, ...).
@@ -157,7 +157,7 @@ class LangInfo(object):
     # usage. If not given the key is `(name, 0)`. Then, for example,
     # to ensure magic number checks before Python, one could set
     #   _magic_number_precedence = ('Python', -1)
-    _magic_number_precedence = None 
+    _magic_number_precedence = None
 
     # Some languages mandate a default encoding, e.g. for Python it is
     # ASCII, for XML UTF-8.
@@ -224,7 +224,6 @@ class LangInfo(object):
                 if val is not None:
                     return val
         return None
-        
 
 
 #---- LangInfo classes (most are defined in separate langinfo_*.py files)
@@ -240,6 +239,7 @@ def _generateFallbackKoLangInfo(langinfo_db, koLangInst):
     class FallbackKoLangInfo(LangInfo):
         conforms_to_bases = ["Text"]
         default_encoding = "utf-8"
+
         def __init__(self, db, koLang):
             LangInfo.__init__(self, db)
             self.name = koLang.name
@@ -249,7 +249,9 @@ def _generateFallbackKoLangInfo(langinfo_db, koLangInst):
 
 #---- the Database
 
+
 class Database(object):
+
     def __init__(self, dirs=None):
         self._langinfo_from_norm_lang = {}
         self._langinfo_from_ext = None
@@ -282,7 +284,7 @@ class Database(object):
 
     def langinfo_from_komodo_lang(self, komodo_lang, tryFallback=True):
         """Return a langinfo for the given Komodo language name.
-        
+
         There are some minor differences in Komodo language names and
         those in langinfo (e.g. "Django" in Komodo vs "Django HTML
         Template" in langinfo).
@@ -301,10 +303,10 @@ class Database(object):
             try:
                 from xpcom import components
             except ImportError:
-                pass # no xpcom
+                pass  # no xpcom
             else:
                 langSvc = components.classes["@activestate.com/koLanguageRegistryService;1"] \
-                            .getService(components.interfaces.koILanguageRegistryService)
+                    .getService(components.interfaces.koILanguageRegistryService)
                 # Note: When the language does not exist, we get a fallback of
                 #       koILang.Text
                 koLang = langSvc.getLanguage(komodo_lang)
@@ -313,7 +315,8 @@ class Database(object):
                     # dummy langinfo for it.
                     log.warn("no LangInfo class found for %r, creating a fallback for it",
                              komodo_lang)
-                    self._langinfo_from_norm_lang[norm_komodo_lang] = _generateFallbackKoLangInfo(self, koLang)
+                    self._langinfo_from_norm_lang[
+                        norm_komodo_lang] = _generateFallbackKoLangInfo(self, koLang)
                     self._build_tables()
                     return self.langinfo_from_komodo_lang(komodo_lang, tryFallback=False)
         raise LangInfoError("no info on %r komodo lang" % komodo_lang)
@@ -342,7 +345,8 @@ class Database(object):
         """
         if self._langinfo_from_ext is None:
             self._build_tables()
-        if sys.platform in ("win32", "darwin"): # Case-insensitive filesystems.
+        # Case-insensitive filesystems.
+        if sys.platform in ("win32", "darwin"):
             ext = ext.lower()
         return self._langinfo_from_ext.get(ext)
 
@@ -390,7 +394,7 @@ class Database(object):
                     length = struct.calcsize(format)
                 except struct.error, ex:
                     warnings.warn("error in %s magic number struct format: %r"
-                                      % (li, format),
+                                  % (li, format),
                                   InvalidLangInfoWarning)
                 end = start + length
                 bytes = head_bytes[start:end]
@@ -401,7 +405,7 @@ class Database(object):
     def langinfo_from_doctype(self, public_id=None, system_id=None):
         """Return a LangInfo instance matching any of the specified
         pieces of doctype info, or None if no match is found.
-        
+
         The behaviour when doctype info from multiple LangInfo classes
         collide is undefined (in the current impl, the last one wins).
 
@@ -415,7 +419,7 @@ class Database(object):
         """
         if self._li_from_doctype_public_id is None:
             self._build_tables()
-        
+
         if public_id is not None \
            and public_id in self._li_from_doctype_public_id:
             return self._li_from_doctype_public_id[public_id]
@@ -440,13 +444,15 @@ class Database(object):
         self._langinfo_from_ext = {}
         self._langinfo_from_filename = {}
         self._langinfo_from_filename_re = {}
-        self._magic_table = []  # list of (<magic-tuple>, <langinfo>, <sort-key>)
+        # list of (<magic-tuple>, <langinfo>, <sort-key>)
+        self._magic_table = []
         self._li_from_doctype_public_id = {}
         self._li_from_doctype_system_id = {}
         self._li_from_emacs_mode = {}
         self._li_from_vi_filetype = {}
         self._li_from_norm_komodo_lang = {}
-        self._specialization_hints_from_lang = {} # <lang> -> (<hint>, <specialized-langinfo>)
+        # <lang> -> (<hint>, <specialized-langinfo>)
+        self._specialization_hints_from_lang = {}
 
         for li in self._langinfo_from_norm_lang.values():
             if li.exts:
@@ -465,13 +471,14 @@ class Database(object):
                                       ext, li, current_li)
                         elif ext.startswith(".py"):
                             log.debug("ext update: ext: %s, %r is *not* a minor variant of %r",
-                                  ext, li, current_li)
+                                      ext, li, current_li)
                         if variant is not None and variant.name == current_li.name:
                             log.debug("ext update: found variant for ext %s, li:%r, using:%r",
                                       ext, li, current_li)
                             do_replace = False
                         else:
-                            variant = getattr(current_li, "is_minor_variant", None)
+                            variant = getattr(
+                                current_li, "is_minor_variant", None)
                             if variant is None or variant.name != li.name:
                                 log.debug("ext conflict: %r for %r conflicts "
                                           "with the same for %r (%r wins)", ext, li,
@@ -515,7 +522,7 @@ class Database(object):
             if li.specialization_hints_from_lang:
                 for lang, hint in li.specialization_hints_from_lang.items():
                     self._specialization_hints_from_lang[lang] = (hint, li)
-        
+
         self._magic_table.sort(key=operator.itemgetter(2))
 
     def _norm_lang_from_lang(self, lang):
@@ -537,14 +544,14 @@ class Database(object):
             except Exception, ex:
                 log.warn("could not import `%s': %s", path, ex)
                 #import traceback
-                #traceback.print_exc()
+                # traceback.print_exc()
                 continue
             for name in dir(module):
                 attr = getattr(module, name)
                 if (not name.startswith("_")   # skip internal bases
-                    and isinstance(attr, (types.ClassType, types.TypeType))
-                    and issubclass(attr, LangInfo)
-                    and attr is not LangInfo):
+                        and isinstance(attr, (types.ClassType, types.TypeType))
+                        and issubclass(attr, LangInfo)
+                        and attr is not LangInfo):
                     norm_lang = self._norm_lang_from_lang(attr.name)
                     self._langinfo_from_norm_lang[norm_lang] = attr(self)
 
@@ -553,11 +560,14 @@ class Database(object):
 
 _g_default_database = None
 _g_default_dirs = None
+
+
 def set_default_dirs(dirs):
     global _g_default_dirs, _g_default_database
     if dirs != _g_default_dirs:
         _g_default_dirs = dirs
         _g_default_database = None
+
 
 def get_default_database():
     global _g_default_database, _g_default_database
@@ -566,13 +576,15 @@ def get_default_database():
     return _g_default_database
 
 # Recipe: module_from_path (1.0.1+)
+
+
 def _module_from_path(path):
-    import imp, os
+    import imp
+    import os
     dir = os.path.dirname(path) or os.curdir
     name = os.path.splitext(os.path.basename(path))[0]
     iinfo = imp.find_module(name, [dir])
     return imp.load_module(name, *iinfo)
-
 
 
 #---- self-test
@@ -583,5 +595,3 @@ def _test():
 
 if __name__ == "__main__":
     _test()
-    
-

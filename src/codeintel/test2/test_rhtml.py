@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Test RHTML codeintel support."""
@@ -51,7 +51,6 @@ from codeintel2.util import indent, dedent, banner, markup_text, unmark_text
 
 from testlib import TestError, TestSkipped, TestFailed, tag
 from citestsupport import CodeIntelTestCase, writefile
-
 
 
 log = logging.getLogger("test")
@@ -78,15 +77,17 @@ class RHTMLCplnTestCase(CodeIntelTestCase):
     def test_pass(self):
         self.assertEqual(1, 1)
 
+
 class RHTMLCpln2TestCase(CodeIntelTestCase):
     lang = "RHTML"
     test_dir = join(os.getcwd(), "tmp")
-    
+
     # Some basic tests patterned on tests in test_ruby
-    
+
     @tag("knownfailure")
     def test_citdl_expr_from_trg(self):
         self.assertCITDLExprIs("<%= z.<|>", "z")
+
 
 class RHTMLTestCase(CodeIntelTestCase):
     lang = "RHTML"
@@ -104,7 +105,7 @@ class RHTMLTestCase(CodeIntelTestCase):
         # New tests
         rails_view_name = "ruby-complete-rails-view-methods"
         object_methods_name = "ruby-complete-object-methods"
-        
+
         self.assertTriggerMatches(ruby1 + "opti", name=rails_view_name)
         self.assertTriggerMatches(ruby1 + "opt", name=rails_view_name)
         self.assertNoTrigger(ruby1 + "op")
@@ -132,13 +133,13 @@ class RHTMLTestCase(CodeIntelTestCase):
                                                  cd("""),
                                   name=calltip_sig_name)
         self.assertNoTrigger(ruby1 + "print 'cd(")  # string
-        self.assertNoTrigger(ruby1 + "# cd(") # comment
+        self.assertNoTrigger(ruby1 + "# cd(")  # comment
         self.assertNoTrigger(ruby1 + "if(")   # reserved word
         self.assertNoTrigger(ruby1 + dedent("""\
                                             require 'fileutils'
                                             include FileUtils
-                                            cd ("""))  #space
-                                                 
+                                            cd ("""))  # space
+
         self.assertTriggerMatches(dedent("""<%\
                                          require 'net/imap'
                                          imap = Net::IMAP.new('example.com')
@@ -163,7 +164,7 @@ class RHTMLTestCase(CodeIntelTestCase):
                                          myc = MyClass.new
                                          myc."""),
                                   name=object_methods_name)
-        
+
         module_methods_name = "ruby-complete-module-names"
         self.assertTriggerMatches(dedent("""<%\
                                          require 'fileutils'
@@ -171,11 +172,11 @@ class RHTMLTestCase(CodeIntelTestCase):
                                   name=module_methods_name)
         self.assertTriggerMatches("<%= ActionView::Helpers::DateHelper::",
                                   name=module_methods_name)
-        
+
         instance_vars_name = "ruby-complete-instance-vars"
         class_vars_name = "ruby-complete-class-vars"
         global_vars_name = "ruby-complete-global-vars"
-        
+
         self.assertTriggerMatches("<%= @", name=instance_vars_name)
         self.assertTriggerMatches("<% if @", name=instance_vars_name)
         self.assertTriggerMatches("<%= @@", name=class_vars_name)
@@ -190,7 +191,6 @@ class RHTMLTestCase(CodeIntelTestCase):
         self.assertNoTrigger("<%= 'a string: @@")
         self.assertNoTrigger("<%= \"a string: @")
         self.assertNoTrigger("<%= \"a string: $")
-        
 
     def _setup_gansta_rhtml_buf(self):
         gangsta_rhtml = join(self.test_dir, "gangsta.rhtml")
@@ -229,6 +229,7 @@ class RHTMLTestCase(CodeIntelTestCase):
 
 
 class Nothing:
+
     def test_citdl_expr_from_trg(self):
         test_cases = """
             z.<|>                       z
@@ -266,8 +267,10 @@ class Nothing:
             [1,2,3].each(<|>            Array.each
         """
         for line in test_cases.splitlines(0):
-            if not line.strip(): continue
-            if line.lstrip().startswith("#"): continue
+            if not line.strip():
+                continue
+            if line.lstrip().startswith("#"):
+                continue
             buffer, expected_citdl_expr = line.split()
             buffer = "<%= " + buffer + "%>"
             self.assertCITDLExprIs(buffer, expected_citdl_expr)
@@ -275,10 +278,7 @@ class Nothing:
         self.assertCITDLExprIs("<%= z = Zlib::Deflate.new()\nz.<|> %>", "z")
 
 
-
 #---- mainline
 
 if __name__ == "__main__":
     unittest.main()
-
-

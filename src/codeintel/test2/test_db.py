@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Test the codeintel database (v2)."""
@@ -52,26 +52,28 @@ import codeintel2
 from codeintel2.common import *
 from codeintel2.manager import Manager
 from codeintel2.util import indent, dedent, banner, markup_text, \
-                            unmark_text, safe_lang_from_lang
+    unmark_text, safe_lang_from_lang
 
 from testlib import TestError, TestSkipped, TestFailed, tag
 from citestsupport import (CodeIntelTestCase, writefile, run, run_in_dir,
-                         gen_crimper_support_dir_candidates, relpath)
+                           gen_crimper_support_dir_candidates, relpath)
 
 import ciElementTree as ET
 
 
 log = logging.getLogger("test")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 
 class DBTestCase(CodeIntelTestCase):
+
     def _check_db(self, db=None):
-        if db is None: db = self.mgr.db
+        if db is None:
+            db = self.mgr.db
         errors = db.check()
         self.failIf(errors,
-            "database internal consistency errors after run:\n%s"
-            % indent('\n'.join(errors)))
+                    "database internal consistency errors after run:\n%s"
+                    % indent('\n'.join(errors)))
 
 
 class PHPCorruptionTestCase(DBTestCase):
@@ -88,7 +90,8 @@ class PHPCorruptionTestCase(DBTestCase):
         # Manually delete the blob file.
         db = self.mgr.db
         dhash = db.dhash_from_dir(dirname(path))
-        bhash = db.bhash_from_blob_info(buf.path, "PHP", buf.tree[0][0].get("name"))
+        bhash = db.bhash_from_blob_info(
+            buf.path, "PHP", buf.tree[0][0].get("name"))
         blob_path = join(db.base_dir, "db", "php", dhash, bhash + ".blob")
         os.unlink(blob_path)
         assert not exists(blob_path)
@@ -114,7 +117,8 @@ class PHPCorruptionTestCase(DBTestCase):
         self.failUnlessEqual(blob.get("lang"), "PHP")
         self.failUnlessEqual(blob[0].get("ilk"), "function")
         self.failUnlessEqual(blob[0].get("name"), "bar")
-    
+
+
 class PythonCorruptionTestCase(DBTestCase):
     test_dir = join(os.getcwd(), "tmp", "python-db-corruption")
 
@@ -129,11 +133,12 @@ class PythonCorruptionTestCase(DBTestCase):
         # Manually delete the blob file.
         db = self.mgr.db
         dhash = db.dhash_from_dir(dirname(path))
-        bhash = db.bhash_from_blob_info(buf.path, "Python", buf.tree[0][0].get("name"))
+        bhash = db.bhash_from_blob_info(
+            buf.path, "Python", buf.tree[0][0].get("name"))
         blob_path = join(db.base_dir, "db", "python", dhash, bhash + ".blob")
         os.unlink(blob_path)
         assert not exists(blob_path)
-        
+
         # Try to get the buf data: we expect the buffer to be re-scanned
         # and proper data returned.
         #
@@ -157,6 +162,7 @@ class PythonCorruptionTestCase(DBTestCase):
         self.failUnlessEqual(blob[0].get("ilk"), "function")
         self.failUnlessEqual(blob[0].get("name"), "bar")
 
+
 class UpgradeTestCase(DBTestCase):
     # Don't create the manager and upgrade/init.
     _ci_test_setup_mgr_ = False
@@ -164,18 +170,19 @@ class UpgradeTestCase(DBTestCase):
 
     def _test_dbs(self):
         """Generate all available test DBs.
-        
+
         These will be paths to .zip files of the test DB.
         """
         for support_dir in gen_crimper_support_dir_candidates():
-            if exists(support_dir): break
+            if exists(support_dir):
+                break
         else:
             raise TestSkipped("couldn't find the codeintel support dir "
                               "on crimper")
         for path in glob(join(support_dir, "cidb2_corpus", "*.zip")):
             yield path
 
-    @tag("fs") # tag to indicate this is heavy on the filesystem
+    @tag("fs")  # tag to indicate this is heavy on the filesystem
     def test_upgrade(self):
         for db_zip in self._test_dbs():
             db_zip_base = basename(db_zip)
@@ -200,6 +207,7 @@ class UpgradeTestCase(DBTestCase):
 
 YUI_BLOB_NAME = "yui_v2.8.1"
 
+
 class CatalogTestCase(DBTestCase):
     test_catalog_dir = join(os.getcwd(), "tmp")
     _ci_db_catalog_dirs_ = [test_catalog_dir]
@@ -211,8 +219,8 @@ class CatalogTestCase(DBTestCase):
         mochikit_cix = join("catalogs", "mochikit.cix")
         landmark = join(ci_pkg_dir, mochikit_cix)
         self.failUnless(exists(landmark),
-            "landmark catalog CIX file `%s' does not exist: "
-            "cannot run this test" % landmark)
+                        "landmark catalog CIX file `%s' does not exist: "
+                        "cannot run this test" % landmark)
 
         catalogs_zone = self.mgr.db.get_catalogs_zone()
         catalogs_zone.update()
@@ -241,14 +249,14 @@ class CatalogTestCase(DBTestCase):
                 </file>
             </codeintel>
         """)
-        
+
         catalogs_zone = self.mgr.db.get_catalogs_zone()
         for lang in ("Python", "Perl", "Ruby", "Tcl", "PHP", "JavaScript"):
             catalog_lib = self.mgr.db.get_catalog_lib(lang)
             cix_path = join(self.test_catalog_dir, "test_update.cix")
             if exists(cix_path):
                 os.remove(cix_path)
-            catalogs_zone.update() # flush our test file from the catalog
+            catalogs_zone.update()  # flush our test file from the catalog
             self.failIf(catalog_lib.has_blob("test_update"))
 
             writefile(cix_path, cix_template % {"lang": lang})
@@ -263,10 +271,10 @@ class CatalogTestCase(DBTestCase):
             os.remove(cix_path)
             catalogs_zone.update()
             self.failIf(catalog_lib.has_blob("test_update"),
-                "%s catalog lib has 'test_update' blob and should not" % lang)
+                        "%s catalog lib has 'test_update' blob and should not" % lang)
             self.failIf(exists(dbpath),
-                "'%s' was removed from the catalog, but its internal "
-                "dbfile '%s' was not removed" % (cix_path, dbpath))
+                        "'%s' was removed from the catalog, but its internal "
+                        "dbfile '%s' was not removed" % (cix_path, dbpath))
 
         self._check_db()
 
@@ -285,9 +293,9 @@ class CatalogTestCase(DBTestCase):
     @tag("yui")
     def test_lpaths_from_blob(self):
         catalogs_zone = self.mgr.db.get_catalogs_zone()
-        catalogs_zone.update() # make sure yui.cix is loaded
+        catalogs_zone.update()  # make sure yui.cix is loaded
         yui_lpaths = catalogs_zone.lpaths_from_lang_and_blobname(
-                        "JavaScript", YUI_BLOB_NAME)
+            "JavaScript", YUI_BLOB_NAME)
         self.failUnless(("YAHOO",) in yui_lpaths)
 
     def test_toplevelname_index(self):
@@ -304,9 +312,9 @@ class CatalogTestCase(DBTestCase):
                 </file>
             </codeintel>
         """ % {"lang": lang, "name": name})
-        
+
         catalogs_zone = self.mgr.db.get_catalogs_zone()
-        cix_path = join(self.test_catalog_dir, name+".cix")
+        cix_path = join(self.test_catalog_dir, name + ".cix")
         writefile(cix_path, cix)
         catalogs_zone.update()
 
@@ -314,7 +322,8 @@ class CatalogTestCase(DBTestCase):
         catalogs_zone.lpaths_from_lang_and_blobname(lang, name)
         catalogs_zone.lpaths_from_lang_and_blobname(lang, YUI_BLOB_NAME)
 
-        # toplevelname_index: {lang -> ilk -> toplevelname -> res_id -> blobnames}
+        # toplevelname_index: {lang -> ilk -> toplevelname -> res_id ->
+        # blobnames}
         toplevelname_index = catalogs_zone.toplevelname_index
         self.failUnless(lang in toplevelname_index)
         self.failUnless("TestBftfl" in toplevelname_index[lang]["class"])
@@ -340,56 +349,57 @@ class CatalogTestCase(DBTestCase):
 
         # Baseline: test with no selection.
         catalog_lib = self.mgr.db.get_catalog_lib("JavaScript")
-        self.failUnless( catalog_lib.has_blob(YUI_BLOB_NAME) )
-        self.failUnless( catalog_lib.get_blob(YUI_BLOB_NAME) is not None )
-        self.failUnless( catalog_lib.hits_from_lpath(("YAHOO",)) )
-        self.failUnless( catalog_lib.has_blob("MochiKit.DateTime") )
-        self.failUnless( catalog_lib.get_blob("MochiKit.DateTime") is not None )
+        self.failUnless(catalog_lib.has_blob(YUI_BLOB_NAME))
+        self.failUnless(catalog_lib.get_blob(YUI_BLOB_NAME) is not None)
+        self.failUnless(catalog_lib.hits_from_lpath(("YAHOO",)))
+        self.failUnless(catalog_lib.has_blob("MochiKit.DateTime"))
+        self.failUnless(catalog_lib.get_blob("MochiKit.DateTime") is not None)
         # Disabled. See test_mochikit_hits_from_lpath().
         #self.failUnless( catalog_lib.hits_from_lpath(("MochiKit.DateTime",)) )
 
         # Just select MochiKit.
         selections = (["mochikit"],                        # name selector
-                      ["MochiKit"],                        # name selector with case diffs
-                      [join(catalog_dir, "mochikit.cix")]) # path selector
+                      # name selector with case diffs
+                      ["MochiKit"],
+                      [join(catalog_dir, "mochikit.cix")])  # path selector
         for selection in selections:
             catalog_lib = self.mgr.db.get_catalog_lib("JavaScript", selection)
-            self.failIf( catalog_lib.has_blob(YUI_BLOB_NAME) )
-            self.failIf( catalog_lib.get_blob(YUI_BLOB_NAME) is not None )
-            self.failIf( catalog_lib.hits_from_lpath(("YAHOO",)) )
-            self.failUnless( catalog_lib.has_blob("MochiKit.DateTime") )
-            self.failUnless( catalog_lib.get_blob("MochiKit.DateTime") is not None )
+            self.failIf(catalog_lib.has_blob(YUI_BLOB_NAME))
+            self.failIf(catalog_lib.get_blob(YUI_BLOB_NAME) is not None)
+            self.failIf(catalog_lib.hits_from_lpath(("YAHOO",)))
+            self.failUnless(catalog_lib.has_blob("MochiKit.DateTime"))
+            self.failUnless(
+                catalog_lib.get_blob("MochiKit.DateTime") is not None)
             # Disabled. See test_mochikit_hits_from_lpath().
             #self.failUnless( catalog_lib.hits_from_lpath(("MochiKit.DateTime",)) )
 
         # Just select YUI.
         selections = (["yui"],                        # name selector
-                      [join(catalog_dir, "yui.cix")]) # path selector
+                      [join(catalog_dir, "yui.cix")])  # path selector
         for selection in selections:
             catalog_lib = self.mgr.db.get_catalog_lib("JavaScript", selection)
-            self.failUnless( catalog_lib.has_blob(YUI_BLOB_NAME) )
-            self.failUnless( catalog_lib.get_blob(YUI_BLOB_NAME) is not None )
-            self.failUnless( catalog_lib.hits_from_lpath(("YAHOO",)) )
-            self.failIf( catalog_lib.has_blob("MochiKit.DateTime") )
-            self.failIf( catalog_lib.get_blob("MochiKit.DateTime") is not None )
+            self.failUnless(catalog_lib.has_blob(YUI_BLOB_NAME))
+            self.failUnless(catalog_lib.get_blob(YUI_BLOB_NAME) is not None)
+            self.failUnless(catalog_lib.hits_from_lpath(("YAHOO",)))
+            self.failIf(catalog_lib.has_blob("MochiKit.DateTime"))
+            self.failIf(catalog_lib.get_blob("MochiKit.DateTime") is not None)
             # Disabled. See test_mochikit_hits_from_lpath().
             #self.failIf( catalog_lib.hits_from_lpath(("MochiKit.DateTime",)) )
 
         # Test CatalogLib.get_sub_blobnames() with Python 'pywin32' catalog.
         catalog_lib = self.mgr.db.get_catalog_lib("Python")
-        self.failUnless( "util" in catalog_lib.get_sub_blobnames(("win32com",)) )
+        self.failUnless("util" in catalog_lib.get_sub_blobnames(("win32com",)))
         catalog_lib = self.mgr.db.get_catalog_lib("Python", ["pywin32"])
-        self.failUnless( "util" in catalog_lib.get_sub_blobnames(("win32com",)) )
+        self.failUnless("util" in catalog_lib.get_sub_blobnames(("win32com",)))
         catalog_lib = self.mgr.db.get_catalog_lib("Python", [])
-        self.failIf( "util" in catalog_lib.get_sub_blobnames(("win32com",)) )
-    
+        self.failIf("util" in catalog_lib.get_sub_blobnames(("win32com",)))
 
     @tag("knownfailure", "MochiKit")
     def test_mochikit_hits_from_lpath(self):
         # There is a difficulty is catalog_lib.hits_from_lpath() for
         # MochiKit because of its blob names including '.'.
         catalog_lib = self.mgr.db.get_catalog_lib("JavaScript", ["mochikit"])
-        self.failUnless( catalog_lib.hits_from_lpath(("MochiKit.DateTime",)) )
+        self.failUnless(catalog_lib.hits_from_lpath(("MochiKit.DateTime",)))
 
     def test_avail_catalogs(self):
         catalogs_zone = self.mgr.db.get_catalogs_zone()
@@ -409,9 +419,9 @@ class CatalogTestCase(DBTestCase):
             if catalog["lang"] == "JavaScript" \
                and catalog["name"] == "MochiKit":
                 self.failIf(catalog["selected"],
-                    "`catalog.zone.avail_catalogs' indicated that the "
-                    "'mochikit' JavaScript catalog was selected when only "
-                    "'yui' was selected")
+                            "`catalog.zone.avail_catalogs' indicated that the "
+                            "'mochikit' JavaScript catalog was selected when only "
+                            "'yui' was selected")
                 break
         else:
             self.fail("the 'MochiKit' JavaScript catalog was not found: "
@@ -419,8 +429,9 @@ class CatalogTestCase(DBTestCase):
 
 
 class ImportEverythingTestCase(DBTestCase):
+
     """Test some APIs relevant for import-everything semantics.
-    
+
     One of those is lib.toplevel_cplns().
     """
     test_dir = join(os.getcwd(), "tmp")
@@ -431,26 +442,26 @@ class ImportEverythingTestCase(DBTestCase):
     @tag("php")
     def test_stdlib(self):
         stdlib = self.mgr.db.get_stdlib("PHP")
-        
+
         # Test without a 3-char prefix.
         self.failUnless(("function", "phpinfo")
-            in stdlib.toplevel_cplns(ilk="function"))
+                        in stdlib.toplevel_cplns(ilk="function"))
         self.failUnless(("function", "array_pad")
-            in stdlib.toplevel_cplns(ilk="function"))
+                        in stdlib.toplevel_cplns(ilk="function"))
         self.failIf(("function", "phpinfo")
-            in stdlib.toplevel_cplns(ilk="class"))
+                    in stdlib.toplevel_cplns(ilk="class"))
         self.failUnless(("class", "DateTime")
-            in stdlib.toplevel_cplns(ilk="class"))
+                        in stdlib.toplevel_cplns(ilk="class"))
         self.failUnless(("variable", "_COOKIE")
-            in stdlib.toplevel_cplns(ilk="variable"))
+                        in stdlib.toplevel_cplns(ilk="variable"))
 
         # Test with a 3-char prefix.
         self.failUnless(("function", "phpinfo")
-            in stdlib.toplevel_cplns(prefix="php", ilk="function"))
+                        in stdlib.toplevel_cplns(prefix="php", ilk="function"))
         self.failUnless(("function", "phpinfo")
-            in stdlib.toplevel_cplns(prefix="php"))
+                        in stdlib.toplevel_cplns(prefix="php"))
         self.failIf(("function", "array_pad")
-            in stdlib.toplevel_cplns(prefix="php", ilk="function"))
+                    in stdlib.toplevel_cplns(prefix="php", ilk="function"))
 
     @tag("php")
     def test_multilanglib(self):
@@ -477,25 +488,25 @@ class ImportEverythingTestCase(DBTestCase):
 
         # Test with no prefix.
         self.failUnless(("function", "foo_func")
-            in langlib.toplevel_cplns(ilk="function"))
+                        in langlib.toplevel_cplns(ilk="function"))
         self.failUnless(("variable", "bar_var")
-            in langlib.toplevel_cplns(ilk="variable"))
+                        in langlib.toplevel_cplns(ilk="variable"))
         self.failIf(("function", "foo_func")
-            in langlib.toplevel_cplns(ilk="variable"))
+                    in langlib.toplevel_cplns(ilk="variable"))
         self.failIf(("variable", "bar_var")
-            in langlib.toplevel_cplns(ilk="function"))
+                    in langlib.toplevel_cplns(ilk="function"))
 
         # Test with a prefix.
         self.failUnless(("function", "foo_func")
-            in langlib.toplevel_cplns(prefix="foo"))
+                        in langlib.toplevel_cplns(prefix="foo"))
         self.failUnless(("variable", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo"))
+                        in langlib.toplevel_cplns(prefix="foo"))
         self.failUnless(("variable", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo", ilk="variable"))
+                        in langlib.toplevel_cplns(prefix="foo", ilk="variable"))
         self.failIf(("variable", "bar_var")
-            in langlib.toplevel_cplns(prefix="foo"))
+                    in langlib.toplevel_cplns(prefix="foo"))
         self.failIf(("variable", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo", ilk="class"))
+                    in langlib.toplevel_cplns(prefix="foo", ilk="class"))
 
     @tag("javascript")
     def test_langlib(self):
@@ -522,25 +533,25 @@ class ImportEverythingTestCase(DBTestCase):
 
         # Test with no prefix.
         self.failUnless(("function", "foo_func")
-            in langlib.toplevel_cplns(ilk="function"))
+                        in langlib.toplevel_cplns(ilk="function"))
         self.failUnless(("variable", "bar_var")
-            in langlib.toplevel_cplns(ilk="variable"))
+                        in langlib.toplevel_cplns(ilk="variable"))
         self.failIf(("function", "foo_func")
-            in langlib.toplevel_cplns(ilk="variable"))
+                    in langlib.toplevel_cplns(ilk="variable"))
         self.failIf(("variable", "bar_var")
-            in langlib.toplevel_cplns(ilk="function"))
+                    in langlib.toplevel_cplns(ilk="function"))
 
         # Test with a prefix.
         self.failUnless(("function", "foo_func")
-            in langlib.toplevel_cplns(prefix="foo"))
+                        in langlib.toplevel_cplns(prefix="foo"))
         self.failUnless(("variable", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo"))
+                        in langlib.toplevel_cplns(prefix="foo"))
         self.failUnless(("variable", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo", ilk="variable"))
+                        in langlib.toplevel_cplns(prefix="foo", ilk="variable"))
         self.failIf(("function", "bar_var")
-            in langlib.toplevel_cplns(prefix="foo"))
+                    in langlib.toplevel_cplns(prefix="foo"))
         self.failIf(("function", "foo_var")
-            in langlib.toplevel_cplns(prefix="foo", ilk="class"))
+                    in langlib.toplevel_cplns(prefix="foo", ilk="class"))
 
     @tag("php", "javascript")
     def test_cataloglib(self):
@@ -556,11 +567,11 @@ class ImportEverythingTestCase(DBTestCase):
                 </file>
             </codeintel>
         """)
-        
+
         catalogs_zone = self.mgr.db.get_catalogs_zone()
         for lang, ext in [("PHP", ".php"), ("JavaScript", ".js")]:
             cix = cix_template % {"lang": lang, "name": name, "ext": ext}
-            cix_path = join(self.test_catalog_dir, name+".cix")
+            cix_path = join(self.test_catalog_dir, name + ".cix")
             writefile(cix_path, cix)
             # HACK to ensure mtime for new catalog changes. Otherwise
             # .update() won't.
@@ -570,50 +581,49 @@ class ImportEverythingTestCase(DBTestCase):
             # Test without a prefix, without a catalog selection.
             catalog_lib = self.mgr.db.get_catalog_lib(lang)
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(),
-                "unexpected contents in %s top-level cplns" % lang)
+                            in catalog_lib.toplevel_cplns(),
+                            "unexpected contents in %s top-level cplns" % lang)
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(ilk="class"))
+                            in catalog_lib.toplevel_cplns(ilk="class"))
             self.failUnless(("function", "sample_func")
-                in catalog_lib.toplevel_cplns(ilk="function"))
+                            in catalog_lib.toplevel_cplns(ilk="function"))
             self.failIf(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(ilk="function"))
+                        in catalog_lib.toplevel_cplns(ilk="function"))
 
             # Test with a prefix, without a catalog selection.
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam"))
+                            in catalog_lib.toplevel_cplns(prefix="Sam"))
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam", ilk="class"))
+                            in catalog_lib.toplevel_cplns(prefix="Sam", ilk="class"))
             self.failIf(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam", ilk="function"))
+                        in catalog_lib.toplevel_cplns(prefix="Sam", ilk="function"))
             self.failIf(("function", "sample_func")
-                in catalog_lib.toplevel_cplns(prefix="Sam"))
+                        in catalog_lib.toplevel_cplns(prefix="Sam"))
 
             # Test without a prefix, with a catalog selection.
             catalog_lib = self.mgr.db.get_catalog_lib(lang, set([name]))
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns())
+                            in catalog_lib.toplevel_cplns())
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(ilk="class"))
+                            in catalog_lib.toplevel_cplns(ilk="class"))
             self.failUnlessEqual([("class", "SampleClass")],
-                catalog_lib.toplevel_cplns(ilk="class"))
+                                 catalog_lib.toplevel_cplns(ilk="class"))
             self.failUnless(("function", "sample_func")
-                in catalog_lib.toplevel_cplns(ilk="function"))
+                            in catalog_lib.toplevel_cplns(ilk="function"))
             self.failIf(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(ilk="function"))
-            
+                        in catalog_lib.toplevel_cplns(ilk="function"))
+
             # Test with a prefix, with a catalog selection.
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam"))
+                            in catalog_lib.toplevel_cplns(prefix="Sam"))
             self.failUnless(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam", ilk="class"))
+                            in catalog_lib.toplevel_cplns(prefix="Sam", ilk="class"))
             self.failIf(("class", "SampleClass")
-                in catalog_lib.toplevel_cplns(prefix="Sam", ilk="function"))
+                        in catalog_lib.toplevel_cplns(prefix="Sam", ilk="function"))
             self.failIf(("function", "sample_func")
-                in catalog_lib.toplevel_cplns(prefix="Sam"))
+                        in catalog_lib.toplevel_cplns(prefix="Sam"))
 
         self._check_db()
-
 
 
 class StdLibTestCase(DBTestCase):
@@ -680,7 +690,7 @@ class StdLibTestCase(DBTestCase):
 
         self.failUnless("Object" in builtin.names)
         self.failUnless("String" in builtin.names)
-        self.failUnlessEqual(builtin.names["String"].tag, "scope") # bug 57037 
+        self.failUnlessEqual(builtin.names["String"].tag, "scope")  # bug 57037
         self.failUnless("RegExp" in builtin.names)
         self.failUnless("window" in builtin.names)
 
@@ -688,11 +698,11 @@ class StdLibTestCase(DBTestCase):
         self.failUnless("alert" in window_class.names)
         self.failUnless("dump" in window_class.names)
 
-        # bug 63217 
+        # bug 63217
         object_class = builtin.names["Object"]
         for name in "toString toLocaleString valueOf".split():
             self.failUnless(name in object_class.names,
-                "JavaScript 'Object' class has no '%s' attribute" % name)
+                            "JavaScript 'Object' class has no '%s' attribute" % name)
 
         self._check_db()
 
@@ -724,7 +734,7 @@ class StdLibTestCase(DBTestCase):
         builtin54 = self.mgr.db.get_stdlib("PHP", "5.4").get_blob("*")
         builtin55 = self.mgr.db.get_stdlib("PHP", "5.5").get_blob("*")
         # builtin should be the latest, i.e. PHP 5.5
-        builtin   = self.mgr.db.get_stdlib("PHP").get_blob("*")
+        builtin = self.mgr.db.get_stdlib("PHP").get_blob("*")
 
         # IMG_BOX constant was added in PHP 5.5
         self.failIf("IMG_BOX" in builtin44.names)
@@ -759,8 +769,8 @@ class StdLibTestCase(DBTestCase):
         self.failIf("define_syslog_variables" in builtin55.names)
         self.failIf("define_syslog_variables" in builtin.names)
 
-        self.failIf("PDO" in builtin44.names) # only in >=5.1
-        self.failIf("simplexml_load_file" in builtin44.names) # only in >=5.0
+        self.failIf("PDO" in builtin44.names)  # only in >=5.1
+        self.failIf("simplexml_load_file" in builtin44.names)  # only in >=5.0
 
         self._check_db()
 
@@ -780,6 +790,7 @@ class MultiLangLibTestCase(DBTestCase):
         # scanning to fail in controlled ways.
         ruby_cile_driver = self.mgr.citadel.cile_driver_from_lang("Ruby")
         orig_scan_multilang = ruby_cile_driver.scan_multilang
+
         def destructo_scan_multilang(buf, csl_cile_driver=None):
             if buf.accessor.text == "go boom":
                 raise CodeIntelError("boom")
@@ -814,22 +825,24 @@ class MultiLangLibTestCase(DBTestCase):
             = self.mgr.db.get_buf_data(buf)
         self.failUnless(scan_time == buf.scan_time)
         self.failUnless(scan_error == buf.scan_error,
-            "scan_error from db doesn't match that from the buffer after "
-            "a buf.load():\n"
-            "  scan_error (from db):\n"
-            "    %s\n"
-            "  buf.scan_error:\n"
-            "    %s"
-            % (scan_error, buf.scan_error))
+                        "scan_error from db doesn't match that from the buffer after "
+                        "a buf.load():\n"
+                        "  scan_error (from db):\n"
+                        "    %s\n"
+                        "  buf.scan_error:\n"
+                        "    %s"
+                        % (scan_error, buf.scan_error))
         self.failUnless("Ruby" in blob_from_lang)
         new_blob = blob_from_lang["Ruby"]
         self.failUnless("spitit" in new_blob.names)
 
         # Test CILE raising some other exception.
         class FilterOutMatches(logging.Filter):
+
             def __init__(self, pattern):
                 self.pattern = pattern
                 self.filtered_out = []
+
             def filter(self, record):
                 if self.pattern in record.msg:
                     self.filtered_out.append(record)
@@ -856,13 +869,13 @@ class MultiLangLibTestCase(DBTestCase):
             = self.mgr.db.get_buf_data(buf)
         self.failUnless(scan_time == buf.scan_time)
         self.failUnless(scan_error == buf.scan_error,
-            "scan_error from db doesn't match that from the buffer after "
-            "a buf.load():\n"
-            "  scan_error (from db):\n"
-            "    %s\n"
-            "  buf.scan_error:\n"
-            "    %s"
-            % (scan_error, buf.scan_error))
+                        "scan_error from db doesn't match that from the buffer after "
+                        "a buf.load():\n"
+                        "  scan_error (from db):\n"
+                        "    %s\n"
+                        "  buf.scan_error:\n"
+                        "    %s"
+                        % (scan_error, buf.scan_error))
         self.failUnless("Ruby" in blob_from_lang)
         new_blob = blob_from_lang["Ruby"]
         self.failUnless("spitit" in new_blob.names)
@@ -901,6 +914,7 @@ class MultiLangLibTestCase(DBTestCase):
                 part = part[key]
         except KeyError:
             self.fail(*args)
+
     def failIfIn(self, indexable, keys, *args):
         """Fail if lookup of the given sequence of keys succeeds."""
         part = indexable
@@ -937,14 +951,15 @@ class MultiLangLibTestCase(DBTestCase):
 
         # Test away...
         # - This will fail if toplevelname_index wasn't created.
-        toplevelname_index = lang_zone.load_index(test_dir, "toplevelname_index")
+        toplevelname_index = lang_zone.load_index(
+            test_dir, "toplevelname_index")
 
         self.failUnless("foo.php" in toplevelname_index._on_deck,
                         "recent 'foo.php' change isn't on-deck in "
                         "toplevelname_index")
         self.failIfIn(toplevelname_index._data,
-            (lang, "variable", "foo_var"),
-            "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
+                      (lang, "variable", "foo_var"),
+                      "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
             lang, "foo_var"))
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
@@ -952,8 +967,8 @@ class MultiLangLibTestCase(DBTestCase):
         self.failIf("foo.php" in toplevelname_index.get_blobnames(
             lang, "foo_var", (), ilk="function"))
         self.failUnlessIn(toplevelname_index.data,
-            (lang, "variable", "foo_var"),
-            "'toplevelname_index.data' property did not merge on-deck")
+                          (lang, "variable", "foo_var"),
+                          "'toplevelname_index.data' property did not merge on-deck")
 
         # - Change foo.php to ensure gets put back on-deck and removed
         #   from '_data'.
@@ -965,8 +980,8 @@ class MultiLangLibTestCase(DBTestCase):
                         "recent 'foo.php' change isn't on-deck in "
                         "toplevelname_index")
         self.failIfIn(toplevelname_index._data,
-            (lang, "variable", "foo_var"),
-            "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
+                      (lang, "variable", "foo_var"),
+                      "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
             lang, "foo_var", ()))
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
@@ -994,8 +1009,8 @@ class MultiLangLibTestCase(DBTestCase):
                         "recent 'foo.php' change isn't on-deck in "
                         "toplevelname_index")
         self.failIfIn(toplevelname_index._data,
-            (lang, "variable", "foo_var"),
-            "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
+                      (lang, "variable", "foo_var"),
+                      "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
             lang, "foo_var", ()))
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
@@ -1018,8 +1033,8 @@ class MultiLangLibTestCase(DBTestCase):
         self.failIf("foo.php" in toplevelname_index._on_deck,
                     "recent 'foo.php' change is still on-deck after merge")
         self.failUnlessIn(toplevelname_index._data,
-            (lang, "variable", "foo_var"),
-            "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
+                          (lang, "variable", "foo_var"),
+                          "'PHP/foo_var' in 'toplevelname_index._data' and shouldn't be")
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
             lang, "foo_var"))
         self.failUnless("foo.php" in toplevelname_index.get_blobnames(
@@ -1035,6 +1050,7 @@ class MultiLangLibTestCase(DBTestCase):
 
 
 class PythonLangLibTestCase(DBTestCase):
+
     """Test the db/$lang/... part of the database."""
     test_dir = join(os.getcwd(), "tmp", "pylanglib")
 
@@ -1057,7 +1073,7 @@ class PythonLangLibTestCase(DBTestCase):
                                        [self.test_dir])
         self.failUnless(lib.has_blob(blobname))
         blob = lib.get_blob(blobname)
-        #ET.dump(blob)
+        # ET.dump(blob)
         self.assertEqual(blob.get("lang"), lang)
         self.assertEqual(blob.get("name"), blobname)
         self.assertEqual(blob.get("ilk"), "blob")
@@ -1079,7 +1095,9 @@ class PythonLangLibTestCase(DBTestCase):
 
         self._check_db()
 
+
 class LangLibTestCase(DBTestCase):
+
     """Test the db/$lang/... part of the database."""
     test_dir = join(os.getcwd(), "tmp")
 
@@ -1116,13 +1134,13 @@ class LangLibTestCase(DBTestCase):
         scan_time, scan_error, blob_from_lang = self.mgr.db.get_buf_data(buf)
         self.failUnless(scan_time == buf.scan_time)
         self.failUnless(scan_error == buf.scan_error,
-            "scan_error from db doesn't match that from the buffer after "
-            "a buf.load():\n"
-            "  scan_error (from db):\n"
-            "    %s\n"
-            "  buf.scan_error:\n"
-            "    %s"
-            % (scan_error, buf.scan_error))
+                        "scan_error from db doesn't match that from the buffer after "
+                        "a buf.load():\n"
+                        "  scan_error (from db):\n"
+                        "    %s\n"
+                        "  buf.scan_error:\n"
+                        "    %s"
+                        % (scan_error, buf.scan_error))
         self.failUnless("Python" in blob_from_lang)
         new_blob = blob_from_lang["Python"]
         self.failUnless("whiz" in new_blob.names)
@@ -1148,7 +1166,7 @@ class LangLibTestCase(DBTestCase):
 
         lib = self.mgr.db.get_lang_lib("Python", "testlib", [dirname(path)])
         # This one may scan it, if not already in the db.
-        self.failIf( lib.has_blob("test_scan_error_rescanning") )
+        self.failIf(lib.has_blob("test_scan_error_rescanning"))
 
         # This `lib.has_blob(...)' call must NOT scan it.
         cile_driver = self.mgr.citadel.cile_driver_from_lang("Python")
@@ -1158,15 +1176,15 @@ class LangLibTestCase(DBTestCase):
         try:
             lib.has_blob("test_scan_error_rescanning")
             self.failIf(hasattr(cile_driver, "scan_count"),
-                "Didn't expected our tweaked CILE driver, %r, to have a "
-                "`scan_count` attribute, but it does!" % cile_driver)
+                        "Didn't expected our tweaked CILE driver, %r, to have a "
+                        "`scan_count` attribute, but it does!" % cile_driver)
         finally:
             cile_driver_class.scan_purelang = cile_driver_class.old_scan_purelang
             if hasattr(cile_driver, "scan_count"):
                 del cile_driver.scan_count
             del cile_driver_class.old_scan_purelang
 
-    #TODO: test this for PHP (i.e. MultiLangLib) as well
+    # TODO: test this for PHP (i.e. MultiLangLib) as well
     @tag("javascript")
     def test_hits_from_lpath(self):
         # A *very* simple test that hits_from_lpath is basically working
@@ -1183,10 +1201,10 @@ class LangLibTestCase(DBTestCase):
 
         langlib = self.mgr.db.get_lang_lib(lang, "test_hits_from_lpath_lib",
                                            [test_dir])
-        self.failUnless( langlib.hits_from_lpath(("bar",)) )
+        self.failUnless(langlib.hits_from_lpath(("bar",)))
 
-    ##TODO
-    #def test_toplevelprefix_index(self):
+    # TODO
+    # def test_toplevelprefix_index(self):
     #    XXX
 
     def test_toplevelname_index(self):
@@ -1214,7 +1232,8 @@ class LangLibTestCase(DBTestCase):
 
         # Test away...
         # - This will fail if toplevelname_index wasn't created.
-        toplevelname_index = lang_zone.load_index(test_dir, "toplevelname_index")
+        toplevelname_index = lang_zone.load_index(
+            test_dir, "toplevelname_index")
 
         self.failUnless("foo.js" in toplevelname_index._on_deck,
                         "recent 'foo.js' change isn't on-deck in "
@@ -1225,9 +1244,9 @@ class LangLibTestCase(DBTestCase):
         self.failIf("foo.js" in toplevelname_index.get_blobnames(
             "foo_var", (), ilk="function"))
         self.failUnless("foo_var" in toplevelname_index.data["variable"],
-                "'toplevelname_index.data' property did not merge on-deck")
+                        "'toplevelname_index.data' property did not merge on-deck")
         self.failUnless("foo_func" in toplevelname_index.data["function"],
-                "'toplevelname_index.data' property did not merge on-deck")
+                        "'toplevelname_index.data' property did not merge on-deck")
 
         # - Change foo.js to ensure gets put back on-deck and removed
         #   from '_data'.
@@ -1265,14 +1284,15 @@ class LangLibTestCase(DBTestCase):
         toplevelname_index.merge()
         self.failIf("foo.js" in toplevelname_index._on_deck,
                     "recent 'foo.js' change is still on-deck after merge")
-        self.failUnless("foo_var" in toplevelname_index._data.get("variable", ()))
+        self.failUnless(
+            "foo_var" in toplevelname_index._data.get("variable", ()))
         self.failUnless("foo.js" in toplevelname_index.get_blobnames(
             "foo_var"))
         self.failUnless("foo.js" in toplevelname_index.get_blobnames(
             "foo_func3"))
         self.failUnless("foo.js" in toplevelname_index.get_blobnames(
             "foo_func3", ilk="function"))
-        
+
         # Check that removal of a buffer results in proper removal from
         # toplevelname_index.
         foo_buf.unload()
@@ -1281,21 +1301,20 @@ class LangLibTestCase(DBTestCase):
         self.failIf("foo_var" in toplevelname_index._data.get("variable", ()))
         self.failIf("foo_var" in toplevelname_index.data.get("variable", ()))
 
-
-    #XXX test: load a file, assert it is there with proper data,
+    # XXX test: load a file, assert it is there with proper data,
     #          change it, rescan it, assert the db was updated
 
-    #XXX test a lot of the above for all languages
+    # XXX test a lot of the above for all languages
 
-    #XXX test: db.{get|remove|update}_buf_data() funcs
+    # XXX test: db.{get|remove|update}_buf_data() funcs
 
-    #XXX test: scan-time skipping should happen when it should
+    # XXX test: scan-time skipping should happen when it should
 
-    #XXX test corruption: db.get_buf_data() when entry in res_index
+    # XXX test corruption: db.get_buf_data() when entry in res_index
     #    but not in dbfile_from_blobname. Or the dbfile doesn't
     #    exist. Must first decide how *want* to react to this.
 
-    #XXX test fs: Want to be able to hook in to fs-log and ensure
+    # XXX test fs: Want to be able to hook in to fs-log and ensure
     #    that no fs writing is done for certain usages.
 
     @tag("knownfailure")
@@ -1310,14 +1329,15 @@ class LangLibTestCase(DBTestCase):
         import compileall
         compileall.compile_dir(self.test_dir)
         os.remove(bin_py)
-        
+
         bin_pyc = bin_py + 'c'
-        
-        import_handler = self.mgr.import_handler_class_from_lang['Python'](self.mgr)
+
+        import_handler = self.mgr.import_handler_class_from_lang[
+            'Python'](self.mgr)
         files = list(import_handler.find_importables_in_dir(self.test_dir))
-        
+
         self.failUnless('binary' in files)
-        
+
         libs = self.mgr.db.get_lang_lib(lang, "curdirlib", [self.test_dir])
         ctrl = LogEvalController()
         blob = import_handler.import_blob_name("binary", [libs], ctrl)
@@ -1332,17 +1352,19 @@ class LangLibTestCase(DBTestCase):
 
     @tag("knownfailure")
     def test_python_so_modules(self):
-        import cmath, shutil
+        import cmath
+        import shutil
         dir = os.path.dirname(cmath.__file__)
         #ext = os.path.splitext(mod_path)[1]
         #path = os.path.join(self.test_dir, 'xmath' + ext)
         #shutil.copyfile(mod_path, path)
-        
-        import_handler = self.mgr.import_handler_class_from_lang['Python'](self.mgr)
+
+        import_handler = self.mgr.import_handler_class_from_lang[
+            'Python'](self.mgr)
         files = list(import_handler.find_importables_in_dir(dir))
-        
+
         self.failUnless('cmath' in files)
-        
+
         libs = self.mgr.db.get_lang_lib("Python", "curdirlib", [dir])
         ctrl = LogEvalController()
         blob = import_handler.import_blob_name("cmath", [libs], ctrl)
@@ -1383,7 +1405,7 @@ class LangLibTestCase(DBTestCase):
         lib = self.mgr.db.get_lang_lib(lang, "testdirlib",
                                        [self.test_dir])
         # This should discover that "son.py" exists in the test dir
-        # and hence must be scanned and loaded, if not already. 
+        # and hence must be scanned and loaded, if not already.
         log.info("assert that 'son' and 'dad' blobs in %s", lib)
         self.failUnless(lib.has_blob("son"))
         self.failUnless(lib.has_blob("dad"))
@@ -1460,22 +1482,21 @@ class LangLibTestCase(DBTestCase):
         buf = self.mgr.buf_from_path(rpath)
         curdirlib = [lib for lib in buf.libs if lib.name == "curdirlib"][0]
         self.failUnless(isabs(curdirlib.dirs[0]),
-            "the dir for %s's 'curdirlib' is not absolute: %s"
-            % (buf, curdirlib.dirs[0]))
+                        "the dir for %s's 'curdirlib' is not absolute: %s"
+                        % (buf, curdirlib.dirs[0]))
 
-
-    #XXX Multi-thread test:
+    # XXX Multi-thread test:
     #    Updating a langlib can happen in a separate thread. Need a
     #    test that has one (or more) thread getting results from
     #    the lib and one (or more) thread updating the db (add,
     #    remove, delete). Hit is hard and make sure all updates are
     #    as expected.
     #
-    #XXX Do this for other langs as well (e.g. Perl: "Foo::Bar"). Do
+    # XXX Do this for other langs as well (e.g. Perl: "Foo::Bar"). Do
     #    we want to force the langs to convert to use '.'? Would
     #    be nice to adjust per-lang. Import handlers should know
     #    how to deal with this and should abstract the details.
-    #XXX Add a test where it *looks* like the lib should have
+    # XXX Add a test where it *looks* like the lib should have
     #    a blob but when the file, e.g. son.py, is actually scanned
     #    it cannot be loaded because it had bogus content. Should
     #    fail gracefully for that case. Cpln *eval* should fail
@@ -1483,17 +1504,18 @@ class LangLibTestCase(DBTestCase):
 
 
 class ProjTestCase(DBTestCase):
+
     """Test the db/proj/... part of the database."""
     test_dir = join(os.getcwd(), "tmp")
 
     def test_onedir(self):
         proj_dir = "proj-onedir"
         manifest = [
-            (proj_dir+"/foo.py", dedent("""
+            (proj_dir + "/foo.py", dedent("""
                 import bar
                 bar.Bar
              """)),
-            (proj_dir+"/bar.py", dedent("""
+            (proj_dir + "/bar.py", dedent("""
                 class Bar: pass
              """)),
         ]
@@ -1514,15 +1536,15 @@ class ProjTestCase(DBTestCase):
         self.failUnlessEqual((bar[0].get("ilk"), bar[0].get("name")),
                              ("class",           "Bar"))
         self._check_db()
-    
+
     def test_twodirs(self):
         proj_dir = "proj-twodirs"
         manifest = [
-            (proj_dir+"/f/foo.py", dedent("""
+            (proj_dir + "/f/foo.py", dedent("""
                 import bar
                 bar.Bar
              """)),
-            (proj_dir+"/b/bar.py", dedent("""
+            (proj_dir + "/b/bar.py", dedent("""
                 class Bar: pass
              """)),
         ]
@@ -1546,6 +1568,7 @@ class ProjTestCase(DBTestCase):
 
 
 class MockProject(object):
+
     def __init__(self, path, base_dir=None):
         self.path = path
         self._base_dir = base_dir
@@ -1561,10 +1584,7 @@ class MockProject(object):
 #---- internal support stuff
 
 
-
 #---- mainline
 
 if __name__ == "__main__":
     unittest.main()
-
-

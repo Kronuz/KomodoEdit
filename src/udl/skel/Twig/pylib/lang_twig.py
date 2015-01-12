@@ -72,7 +72,7 @@ twig_tags = [
     "set",
     "spaceless",
     "use",
-    
+
     # end tags
     "endautoescape",
     "endblock",
@@ -122,6 +122,7 @@ twig_default_filter_names = [
 class TwigLexer(UDLLexer):
     lang = lang
 
+
 class TwigBuffer(UDLBuffer, XMLParsingBufferMixin):
     lang = lang
     tpl_lang = lang
@@ -155,7 +156,7 @@ class TwigLangIntel(LangIntel):
             '{<|>'     anywhere     tag names, i.e. {% if %}
             'foo|<|>'  filters      filter names, i.e. {{ foo|capfirst }}
         """
-        #DEBUG = True # not using 'logging' system, because want to be fast
+        # DEBUG = True # not using 'logging' system, because want to be fast
         if DEBUG:
             print "\n----- Twig trg_from_pos(pos=%r, implicit=%r) -----"\
                   % (pos, implicit)
@@ -168,10 +169,10 @@ class TwigLangIntel(LangIntel):
         if DEBUG:
             print "  last_pos: %s" % last_pos
             print "  last_char: %r" % last_char
-            print 'accessor.text_range(last_pos-2, last_pos): %r' % (accessor.text_range(last_pos-2, last_pos), )
+            print 'accessor.text_range(last_pos-2, last_pos): %r' % (accessor.text_range(last_pos - 2, last_pos), )
 
         if last_char == " " and \
-           accessor.text_range(last_pos-2, last_pos) == "{%":
+           accessor.text_range(last_pos - 2, last_pos) == "{%":
             if DEBUG:
                 print "  triggered: 'complete-tags'"
             return Trigger(lang, TRG_FORM_CPLN,
@@ -183,9 +184,9 @@ class TwigLangIntel(LangIntel):
             return Trigger(lang, TRG_FORM_CPLN,
                            "complete-filters", pos, implicit)
 
-
-    _twigtag_cplns =    [ ("element", t) for t in sorted(twig_tags) ]
-    _twigfilter_cplns = [ ("function", t) for t in sorted(twig_default_filter_names) ]
+    _twigtag_cplns = [("element", t) for t in sorted(twig_tags)]
+    _twigfilter_cplns = [("function", t)
+                         for t in sorted(twig_default_filter_names)]
 
     def async_eval_at_trg(self, buf, trg, ctlr):
         if _xpcom_:
@@ -213,7 +214,6 @@ class TwigCILEDriver(UDLCILEDriver):
     tpl_lang = "Twig"
 
 
-
 #---- registration
 
 def register(mgr):
@@ -225,4 +225,3 @@ def register(mgr):
                       import_handler_class=None,
                       cile_driver_class=TwigCILEDriver,
                       is_cpln_lang=True)
-

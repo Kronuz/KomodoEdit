@@ -6,6 +6,7 @@ delete just yet.
 
 
 class _PriorityQueue:
+
     """A specialized priority queue for holding items with an 'id' attribute.
 
     The queue is specialized in the following ways:
@@ -21,11 +22,12 @@ class _PriorityQueue:
     #   - drop maxsize related stuff
     #   - calls are always blocking
     #   - add .prepend() and .remove_id() methods and re-ordering sematics
+
     def __init__(self):
         import thread
         self._init()
         self.mutex = thread.allocate_lock()
-        self.esema = thread.allocate_lock() # if acquired, then queue is empty
+        self.esema = thread.allocate_lock()  # if acquired, then queue is empty
         self.esema.acquire()
 
     def put(self, priority, item):
@@ -79,7 +81,7 @@ class _PriorityQueue:
         Does not return anything.
         """
         log.debug("in _PriorityQueue.remove_id, acquiring esema")
-        if not self.esema.acquire(0): # do not block to acquire lock
+        if not self.esema.acquire(0):  # do not block to acquire lock
             # return if could not acquire: means queue is empty and
             # therefore do not have any items to remove
             log.debug("in _PriorityQueue.remove_id, did not acquire esema")

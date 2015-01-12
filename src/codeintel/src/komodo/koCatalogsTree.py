@@ -1,26 +1,26 @@
 #!python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """The nsITreeView/koICodeIntelCatalogsTreeView implementation for the
@@ -57,12 +57,10 @@ from xpcom.server import UnwrapObject
 from koTreeView import TreeView
 
 
-
 #---- globals
 
 log = logging.getLogger("koCatalogsTree")
-#log.setLevel(logging.DEBUG)
-
+# log.setLevel(logging.DEBUG)
 
 
 #---- components
@@ -75,20 +73,20 @@ class KoCodeIntelCatalogsTreeView(TreeView):
     _reg_desc_ = "Komodo Code Intelligence Catalogs list tree view"
 
     def __init__(self):
-        TreeView.__init__(self) # for debug logging: , debug="catalogs")
+        TreeView.__init__(self)  # for debug logging: , debug="catalogs")
         self._rows = []
         self.selections = []
         """The current selection; the name (or full path) of the relevant
         catalogs"""
 
         koDirSvc = components.classes["@activestate.com/koDirs;1"].\
-                   getService(components.interfaces.koIDirs)
+            getService(components.interfaces.koIDirs)
         self.norm_user_apicatalogs_dir \
             = normpath(normcase(join(koDirSvc.userDataDir, "apicatalogs")))
 
         # Atoms for styling the checkboxes.
         self.atomSvc = components.classes["@mozilla.org/atom-service;1"].\
-                  getService(components.interfaces.nsIAtomService)
+            getService(components.interfaces.nsIAtomService)
         self._sortColAtom = self.atomSvc.getAtom("sort-column")
 
     def init(self, ciSvc, prefSet, prefName):
@@ -125,7 +123,7 @@ class KoCodeIntelCatalogsTreeView(TreeView):
 
         if self._tree:
             self._tree.beginUpdateBatch()
-            self._tree.rowCountChanged(0, len(self._rows)-old_row_count)
+            self._tree.rowCountChanged(0, len(self._rows) - old_row_count)
             self._tree.invalidate()
             self._tree.endUpdateBatch()
 
@@ -133,7 +131,8 @@ class KoCodeIntelCatalogsTreeView(TreeView):
         if not self._wasChanged:
             return
 
-        selections = sorted(r["selection"] for r in self._rows if r["selected"])
+        selections = sorted(r["selection"]
+                            for r in self._rows if r["selected"])
         # This should probably use JSON, but that involves pref migration...
         self.prefSet.setStringPref(self.prefName, repr(selections))
 
@@ -173,7 +172,6 @@ class KoCodeIntelCatalogsTreeView(TreeView):
 
         self.ciSvc.update_catalogs(post_refresh)
 
-
     def addPaths(self, paths):
         return KoCodeIntelCatalogAdder(paths, self.ciSvc, self.post_add)
 
@@ -188,7 +186,7 @@ class KoCodeIntelCatalogsTreeView(TreeView):
         paths = []
         for i in range(self.selection.getRangeCount()):
             start, end = self.selection.getRangeAt(i)
-            for row_idx in range(start, end+1):
+            for row_idx in range(start, end + 1):
                 paths.append(self._rows[row_idx]["cix_path"])
         return KoCodeIntelCatalogRemover(paths, self.ciSvc, self.post_remove)
 
@@ -198,7 +196,7 @@ class KoCodeIntelCatalogsTreeView(TreeView):
             return False
         for i in range(num_sel_ranges):
             start, end = self.selection.getRangeAt(i)
-            for row_idx in range(start, end+1):
+            for row_idx in range(start, end + 1):
                 try:
                     row = self._rows[row_idx]
                 except IndexError, ex:
@@ -215,19 +213,22 @@ class KoCodeIntelCatalogsTreeView(TreeView):
             return None
         else:
             return "catalogs-" + sort_key
+
     def get_sortDirection(self):
         return self._sortData[1] and "descending" or "ascending"
 
-
     #---- nsITreeView methods
-    if False: # set this to True when have debug logging to silence some methods
+    # set this to True when have debug logging to silence some methods
+    if False:
         def getImageSrc(self, row, col):
             return ''
+
         def isContainer(self, index):
             return False
+
         def getRowProperties(self, col, properties=None):
             pass
-        
+
     def get_rowCount(self):
         return len(self._rows)
 
@@ -299,6 +300,7 @@ class KoCodeIntelCatalogsTreeView(TreeView):
 
 
 class KoCodeIntelCatalogAdder(threading.Thread):
+
     """Add the given .cix paths to the catalogs zone."""
     _com_interfaces_ = [components.interfaces.koIShowsProgress]
 
@@ -321,21 +323,25 @@ class KoCodeIntelCatalogAdder(threading.Thread):
     def set_controller(self, controller):
         # All controller calls must be done sync on the main thread.
         class ControllerProxy:
+
             def __init__(self, obj):
                 self.obj = obj
+
             @components.ProxyToMainThread
             def set_progress_mode(self, *args):
                 return self.obj.set_progress_mode(*args)
+
             @components.ProxyToMainThread
             def set_stage(self, *args):
                 return self.obj.set_stage(*args)
+
             @components.ProxyToMainThread
             def done(self, *args):
                 return self.obj.done(*args)
         self.controller = ControllerProxy(controller)
         self.controller.set_progress_mode("undetermined")
         self.start()
-    
+
     def cancel(self):
         self.cancelling = True
 
@@ -344,7 +350,7 @@ class KoCodeIntelCatalogAdder(threading.Thread):
         errtext = None
         try:
             koDirSvc = components.classes["@activestate.com/koDirs;1"].\
-                       getService(components.interfaces.koIDirs)
+                getService(components.interfaces.koIDirs)
 
             errors = []
             added_cix_paths = []
@@ -352,14 +358,14 @@ class KoCodeIntelCatalogAdder(threading.Thread):
                 if self.cancelling:
                     break
                 self.controller.set_stage("Loading '%s'..." % src_path)
-                #TODO: use progress_cb to give progress feedback
+                # TODO: use progress_cb to give progress feedback
                 try:
                     # Copy to user apicatalogs dir.
                     user_apicatalogs_dir = join(koDirSvc.userDataDir,
                                                 "apicatalogs")
                     if not exists(user_apicatalogs_dir):
                         os.makedirs(user_apicatalogs_dir)
-                    #TODO: what about possibly overwriting existing file?
+                    # TODO: what about possibly overwriting existing file?
                     dst_path = join(user_apicatalogs_dir, basename(src_path))
                     shutil.copy(src_path, dst_path)
 
@@ -371,7 +377,8 @@ class KoCodeIntelCatalogAdder(threading.Thread):
                     ))
 
             # Load it into CatalogsZone.
-            # No need to send any directories over, the user catalog dir is listed
+            # No need to send any directories over, the user catalog dir is
+            # listed
             self.driver.send(command="add-dirs",
                              callback=lambda request, response: None,
                              **{"catalog-dirs": []})
@@ -390,6 +397,7 @@ class KoCodeIntelCatalogAdder(threading.Thread):
 
 
 class KoCodeIntelCatalogRemover(threading.Thread):
+
     """Remove the given .cix paths from the catalogs zone."""
     _com_interfaces_ = [components.interfaces.koIShowsProgress]
 
@@ -409,21 +417,25 @@ class KoCodeIntelCatalogRemover(threading.Thread):
     def set_controller(self, controller):
         # All controller calls must be done sync on the main thread.
         class ControllerProxy:
+
             def __init__(self, obj):
                 self.obj = obj
+
             @components.ProxyToMainThread
             def set_progress_mode(self, *args):
                 return self.obj.set_progress_mode(*args)
+
             @components.ProxyToMainThread
             def set_stage(self, *args):
                 return self.obj.set_stage(*args)
+
             @components.ProxyToMainThread
             def done(self, *args):
                 return self.obj.done(*args)
         self.controller = ControllerProxy(controller)
         self.controller.set_progress_mode("undetermined")
         self.start()
-    
+
     def cancel(self):
         self.cancelling = True
 
@@ -432,7 +444,7 @@ class KoCodeIntelCatalogRemover(threading.Thread):
         errtext = None
         try:
             koDirSvc = components.classes["@activestate.com/koDirs;1"].\
-                       getService(components.interfaces.koIDirs)
+                getService(components.interfaces.koIDirs)
             norm_user_apicatalogs_dir \
                 = normpath(normcase(join(koDirSvc.userDataDir, "apicatalogs")))
 
@@ -442,7 +454,7 @@ class KoCodeIntelCatalogRemover(threading.Thread):
                 if self.cancelling:
                     break
                 self.controller.set_stage("Removing '%s'..." % cix_path)
-                #TODO: use progress_cb to give progress feedback
+                # TODO: use progress_cb to give progress feedback
                 try:
                     # Assert that we are only removing files we should.
                     norm_cix_path = normpath(normcase(cix_path))
@@ -461,7 +473,8 @@ class KoCodeIntelCatalogRemover(threading.Thread):
                     ))
 
             # Update CatalogsZone accordingly
-            # No need to send any directories over, the user catalog dir is listed
+            # No need to send any directories over, the user catalog dir is
+            # listed
             self.driver.send(command="add-dirs",
                              callback=lambda request, response: None,
                              **{"catalog-dirs": []})
@@ -486,4 +499,3 @@ def safe_lower(o):
         return o.lower()
     except AttributeError:
         return o
-

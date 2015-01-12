@@ -10,8 +10,12 @@ import logging
 import random
 from ctypes import POINTER as PTR
 from ctypes.wintypes import (BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPCVOID)
+
+
 class OVERLAPPED(ctypes.Structure):
+
     class PointerUnion(ctypes.Union):
+
         class OffsetStruct(ctypes.Structure):
             _fields_ = [("Offset", DWORD),
                         ("OffsetHigh", DWORD)]
@@ -23,6 +27,7 @@ class OVERLAPPED(ctypes.Structure):
                 ("InternalHigh", LPVOID),
                 ("u", PointerUnion),
                 ("hEvent", HANDLE)]
+
     def __init__(self):
         super(OVERLAPPED, self).__init__(Offset=0, OffsetHigh=0,
                                          Pointer=0, Internal=0,
@@ -33,6 +38,8 @@ LPOVERLAPPED = ctypes.POINTER(OVERLAPPED)
 log = logging.getLogger("py.win32_named_pipe")
 
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+
 def _decl(name, ret=None, args=()):
     fn = getattr(kernel32, name)
     fn.restype = ret
@@ -68,7 +75,9 @@ PIPE_TYPE_BYTE = 0x00000000
 
 del _decl
 
+
 class Win32Pipe(object):
+
     """This class implements a Win32 named pipe; it has a file-like API.  It is
     oriented towards byte streams.
 
@@ -78,10 +87,11 @@ class Win32Pipe(object):
         pipe = Win32Pipe("name", client=True) # Connect to an existing pipe
     """
 
-    name = None ###< The name of the pipe
-    _has_stream = False ###< Whether we have connected to the other end yet
-    _pipe = None ###< The underlying Win32 handle
-    pipe_prefix = None ###< Prefix to place before randomly generated pipe names
+    name = None  # < The name of the pipe
+    _has_stream = False  # < Whether we have connected to the other end yet
+    _pipe = None  # < The underlying Win32 handle
+    # < Prefix to place before randomly generated pipe names
+    pipe_prefix = None
 
     def __init__(self, name=None, client=False):
         if client:
@@ -218,4 +228,3 @@ class Win32Pipe(object):
     def close(self):
         CloseHandle(self._pipe)
         self._pipe = None
-

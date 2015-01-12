@@ -18,11 +18,15 @@ import threading
 
 log = None
 
+
 class DummyStream(object):
+
     def write(self, message):
         pass
+
     def flush(self):
         pass
+
 
 def main(argv=[]):
     global log
@@ -125,12 +129,13 @@ def main(argv=[]):
                     fd_in=fd_in, fd_out=fd_out)
     driver.start()
 
+
 def set_idle_priority():
     """Attempt to set the process priority to idle"""
     try:
         os.nice(5)
     except AttributeError:
-        pass # No os.nice on Windows
+        pass  # No os.nice on Windows
     if sys.platform.startswith("win"):
         import ctypes
         from ctypes import wintypes
@@ -140,6 +145,7 @@ def set_idle_priority():
         HANDLE_CURRENT_PROCESS = -1
         BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
         SetPriorityClass(HANDLE_CURRENT_PROCESS, BELOW_NORMAL_PRIORITY_CLASS)
+
 
 def set_process_limits():
     if sys.platform.startswith("win"):
@@ -152,14 +158,16 @@ def set_process_limits():
         from ctypes import wintypes
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         VirtualAlloc = kernel32.VirtualAlloc
-        VirtualAlloc.argtypes = [wintypes.LPVOID, wintypes.ULONG, wintypes.DWORD, wintypes.DWORD]
+        VirtualAlloc.argtypes = [
+            wintypes.LPVOID, wintypes.ULONG, wintypes.DWORD, wintypes.DWORD]
         VirtualAlloc.restype = wintypes.LPVOID
         MEM_RESERVE = 0x00002000
         MEM_TOP_DOWN = 0x00100000
         PAGE_NOACCESS = 0x01
         # we can only eat about 1GB; trying for 2GB causes the allocation to
         # (harmlessly) fail, which doesn't accomplish our goals
-        waste = VirtualAlloc(None, 1<<30, MEM_RESERVE|MEM_TOP_DOWN, PAGE_NOACCESS)
+        waste = VirtualAlloc(
+            None, 1 << 30, MEM_RESERVE | MEM_TOP_DOWN, PAGE_NOACCESS)
         if waste:
             log.debug("Successfullly allocated: %r", waste)
         else:
@@ -172,7 +180,7 @@ def set_process_limits():
         # Note that setting to 1GB of memory cause "bk test" failures, showing
         # this error:
         #   Fatal Python error: Couldn't create autoTLSkey mapping
-        GB = 1<<30
+        GB = 1 << 30
         resource.setrlimit(resource.RLIMIT_AS, (2 * GB, -1L))
     else:
         # TODO: What to do on the Mac?

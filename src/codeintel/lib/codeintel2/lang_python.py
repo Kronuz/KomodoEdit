@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Python support for CodeIntel"""
@@ -75,14 +75,13 @@ if _xpcom_:
     from xpcom.server import UnwrapObject
 
 
-
 #---- globals
 
 _SCAN_BINARY_FILES = False
 
 lang = "Python"
 log = logging.getLogger("codeintel.python")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 makePerformantLogger(log)
 
 # See http://effbot.org/zone/pythondoc.htm
@@ -185,14 +184,17 @@ _g_python_magic_method_names = sorted([
 
 #---- language support
 
+
 class PythonLexer(Lexer):
     lang = lang
+
     def __init__(self):
         self._properties = SilverCity.PropertySet()
-        self._lexer = SilverCity.find_lexer_module_by_id(ScintillaConstants.SCLEX_PYTHON)
+        self._lexer = SilverCity.find_lexer_module_by_id(
+            ScintillaConstants.SCLEX_PYTHON)
         self._keyword_lists = [
             SilverCity.WordList(python_keywords),
-            SilverCity.WordList(""), # hilighted identifiers
+            SilverCity.WordList(""),  # hilighted identifiers
         ]
 
 
@@ -201,6 +203,7 @@ class PythonImportsEvaluator(Evaluator):
 
     def __str__(self):
         return "Python imports"
+
     def eval(self, mgr):
         try:
             imp_prefix = tuple(self.trg.extra["imp_prefix"])
@@ -215,7 +218,7 @@ class PythonImportsEvaluator(Evaluator):
                         lookuppath = dirname(lookuppath)
                         imp_prefix = imp_prefix[1:]
                     libs = [mgr.db.get_lang_lib(self.lang, "curdirlib",
-                                                  [lookuppath])]
+                                                [lookuppath])]
                 else:
                     # We use a special lib generator - that will lazily load
                     # additional directory libs when there are no matches found.
@@ -235,7 +238,7 @@ class PythonImportsEvaluator(Evaluator):
                             ((is_dir_import and "directory" or "module"), name)
                             for name, is_dir_import in imports
                         )
-                        
+
                     if self.trg.type == "module-members":
                         # Also add top-level members of the specified module.
                         dotted_prefix = '.'.join(imp_prefix)
@@ -243,18 +246,20 @@ class PythonImportsEvaluator(Evaluator):
                             blob = lib.get_blob(dotted_prefix)
                             for name in blob.names:
                                 elem = blob.names[name]
-                                cplns.append((elem.get("ilk") or elem.tag, name))
-                            
-                            #TODO: Consider using the value of __all__
+                                cplns.append(
+                                    (elem.get("ilk") or elem.tag, name))
+
+                            # TODO: Consider using the value of __all__
                             #      if defined.
                             for e in blob:
                                 attrs = e.get("attributes", "").split()
                                 if "__hidden__" not in attrs:
                                     try:
-                                        cplns += self._members_from_elem(e, mgr)
+                                        cplns += self._members_from_elem(
+                                            e, mgr)
                                     except CodeIntelError, ex:
                                         log.warn("%s (skipping members for %s)",
-                                                  ex, e)
+                                                 ex, e)
                     if cplns:
                         break
                 if cplns:
@@ -272,9 +277,9 @@ class PythonImportsEvaluator(Evaluator):
         finally:
             self.ctlr.done("success")
 
-    #XXX: This function is shamelessly copy/pasted from
+    # XXX: This function is shamelessly copy/pasted from
     #     tree_python.py:PythonTreeEvaluator because there was no clear
-    #     way to reuse this shared functionality. See another XXX below, though.
+    # way to reuse this shared functionality. See another XXX below, though.
     def _members_from_elem(self, elem, mgr):
         """Return the appropriate set of autocomplete completions for
         the given element. Typically this is just one, but can be more for
@@ -286,22 +291,24 @@ class PythonImportsEvaluator(Evaluator):
             symbol_name = elem.get("symbol")
             module_name = elem.get("module")
             if symbol_name:
-                import_handler = mgr.citadel.import_handler_from_lang(self.trg.lang)
+                import_handler = mgr.citadel.import_handler_from_lang(
+                    self.trg.lang)
                 try:
                     blob = import_handler.import_blob_name(
-                                module_name, self.buf.libs, self.ctlr)
+                        module_name, self.buf.libs, self.ctlr)
                 except:
-                    log.warn("limitation in handling imports in imported modules")
+                    log.warn(
+                        "limitation in handling imports in imported modules")
                     raise
 
-                if symbol_name == "*": # can it be so?
+                if symbol_name == "*":  # can it be so?
                     for m_name, m_elem in blob.names.items():
                         m_type = m_elem.get("ilk") or m_elem.tag
-                        members.add( (m_type, m_name) )
+                        members.add((m_type, m_name))
                 elif symbol_name in blob.names:
                     symbol = blob.names[symbol_name]
                     member_type = (symbol.get("ilk") or symbol.tag)
-                    members.add( (member_type, alias or symbol_name) )
+                    members.add((member_type, alias or symbol_name))
                 else:
                     # To correctly determine the type, we'd need to
                     # examine all the imports of this blob, and then see
@@ -309,14 +316,14 @@ class PythonImportsEvaluator(Evaluator):
                     # better left to the tree evaluator (tree_python).
                     #
                     # For now, we just add it as an unknown type.
-                    members.add( ('unknown', alias or symbol_name))
+                    members.add(('unknown', alias or symbol_name))
                     log.info("could not resolve symbol %r on %r, added as 'unknown'",
                              symbol_name, module_name)
             else:
                 cpln_name = alias or module_name.split('.', 1)[0]
-                members.add( ("module", cpln_name) )
+                members.add(("module", cpln_name))
         else:
-            members.add((elem.get("ilk") or elem.tag, elem.get("name")) )
+            members.add((elem.get("ilk") or elem.tag, elem.get("name")))
         return members
 
 
@@ -329,7 +336,7 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
 
     # Used by ProgLangTriggerIntelMixin.preceding_trg_from_pos().
     trg_chars = tuple(" (.")
-    
+
     citdl_from_literal_type = {"string": "str"}
 
     @LazyClassAttribute
@@ -373,20 +380,24 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                 posttext = trg.extra.get("posttext", "")
                 posttext = posttext.split("\n", 1)[0]
                 if posttext and "(" in posttext:
-                    cplns = [("function", t) for t in _g_python_magic_method_names]
+                    cplns = [("function", t)
+                             for t in _g_python_magic_method_names]
                 else:
-                    cplns = [("function", t + "(self") for t in _g_python_magic_method_names]
+                    cplns = [("function", t + "(self")
+                             for t in _g_python_magic_method_names]
             elif symbolstype == "global":
                 text = trg.extra.get("text")
                 if text.endswith("if"):
                     # Add the extended name version.
-                    cplns = [("variable", t) for t in ("__file__", "__loader__", "__name__ == '__main__':", "__package__")]
+                    cplns = [("variable", t) for t in (
+                        "__file__", "__loader__", "__name__ == '__main__':", "__package__")]
                 else:
-                    cplns = [("variable", t) for t in ("__file__", "__loader__", "__name__", "__package__")]
+                    cplns = [("variable", t) for t in (
+                        "__file__", "__loader__", "__name__", "__package__")]
             ctlr.set_cplns(cplns)
             ctlr.done("success")
         elif trg.id == (self.lang, TRG_FORM_CPLN, "pythondoc-tags"):
-            #TODO: Would like a "tag" completion image name.
+            # TODO: Would like a "tag" completion image name.
             cplns = [("variable", t) for t in _g_pythondoc_tags]
             ctlr.set_cplns(cplns)
             ctlr.done("success")
@@ -439,18 +450,18 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         if sys.platform == "win32":
             libdir = join(prefix, "Lib")
         else:
-            libdir = join(prefix, "lib", "python"+ver)
+            libdir = join(prefix, "lib", "python" + ver)
         sitelibdir = join(libdir, "site-packages")
         sys_path = stdout_lines[2:]
         return ver, prefix, libdir, sitelibdir, sys_path
 
     def _gen_python_import_paths_from_dirs(self, dirs):
         """Generate all Python import paths from a given list of dirs.
-        
+
         This involves handling .pth files on the given dirs. It generates
         import "paths" rather than "dirs" because Python .egg files can be
         returned.
-        
+
         Dev Notes:
         - Python's .pth files can have *executable* Python code. This
           currently is not handled (those kinds of lines are skipped).
@@ -470,7 +481,7 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         pth_dir = dirname(pth_path)
         for line in open(pth_path, 'r'):
             line = line.strip()
-            if line.startswith("#"): # comment line
+            if line.startswith("#"):  # comment line
                 continue
             path = join(pth_dir, line)
             if exists(path):
@@ -479,13 +490,14 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
     def _extra_dirs_from_env(self, env):
         extra_dirs = set()
         for pref in env.get_all_prefs(self.extraPathsPrefName):
-            if not pref: continue
+            if not pref:
+                continue
             extra_dirs.update(d.strip() for d in pref.split(os.pathsep)
                               if exists(d.strip()))
         if extra_dirs:
             extra_dirs = set(
                 self._gen_python_import_paths_from_dirs(extra_dirs)
-            )                
+            )
             log.debug("Python extra lib dirs: %r", extra_dirs)
         return tuple(extra_dirs)
 
@@ -499,7 +511,7 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         python = None
         if env.has_pref(self.interpreterPrefName):
             python = env.get_pref(self.interpreterPrefName).strip() or None
-        
+
         if not python or not exists(python):
             import which
             # Prefer the version-specific name, but we might need to use the
@@ -555,7 +567,8 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         cache_key = self.lang + "-libs"
         libs = env.cache.get(cache_key)
         if libs is None:
-            env.add_pref_observer(self.interpreterPrefName, self._invalidate_cache)
+            env.add_pref_observer(
+                self.interpreterPrefName, self._invalidate_cache)
             env.add_pref_observer(self.extraPathsPrefName,
                                   self._invalidate_cache_and_rescan_extra_dirs)
             env.add_pref_observer("codeintel_selected_catalogs",
@@ -569,35 +582,37 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
             # - extradirslib
             extra_dirs = self._extra_dirs_from_env(env)
             if extra_dirs:
-                libs.append( db.get_lang_lib(self.lang, "extradirslib",
-                                extra_dirs) )
+                libs.append(db.get_lang_lib(self.lang, "extradirslib",
+                                            extra_dirs))
 
             # Figure out which sys.path dirs belong to which lib.
             paths_from_libname = {"sitelib": [], "envlib": [], "stdlib": []}
             canon_sitelibdir = sitelibdir and normcase(sitelibdir) or None
             canon_prefix = prefix and normcase(prefix) or None
             canon_libdir = libdir and normcase(libdir) or None
-            canon_libdir_plat_prefix = libdir and normcase(join(libdir, "plat-")) or None
-            canon_libdir_lib_prefix = libdir and normcase(join(libdir, "lib-")) or None
+            canon_libdir_plat_prefix = libdir and normcase(
+                join(libdir, "plat-")) or None
+            canon_libdir_lib_prefix = libdir and normcase(
+                join(libdir, "lib-")) or None
             for dir in sys_path:
                 STATE = "envlib"
                 canon_dir = normcase(dir)
-                if dir == "": # -> curdirlib (already handled)
+                if dir == "":  # -> curdirlib (already handled)
                     continue
                 elif canon_dir.endswith(".zip") and isfile(dir):
                     log.warn("`%s': not handling .zip file on Python sys.path",
                              dir)
                     continue
                 elif canon_dir.endswith(".egg") and isfile(dir):
-                    #log.warn("`%s': not handling .egg file on Python sys.path",
+                    # log.warn("`%s': not handling .egg file on Python sys.path",
                     #         dir)
                     continue
                 elif canon_dir.startswith(canon_sitelibdir):
                     STATE = "sitelib"
                 # Check against the known list of standard library locations.
                 elif canon_dir == canon_libdir or \
-                     canon_dir.startswith(canon_libdir_plat_prefix) or \
-                     canon_dir.startswith(canon_libdir_lib_prefix):
+                        canon_dir.startswith(canon_libdir_plat_prefix) or \
+                        canon_dir.startswith(canon_libdir_lib_prefix):
                     STATE = "stdlib"
                 if not exists(dir):
                     continue
@@ -607,11 +622,11 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
 
             # - envlib, sitelib, cataloglib, stdlib
             if paths_from_libname["envlib"]:
-                libs.append( db.get_lang_lib(self.lang, "envlib", 
-                                paths_from_libname["envlib"]) )
+                libs.append(db.get_lang_lib(self.lang, "envlib",
+                                            paths_from_libname["envlib"]))
             if paths_from_libname["sitelib"]:
-                libs.append( db.get_lang_lib(self.lang, "sitelib", 
-                                paths_from_libname["sitelib"]) )
+                libs.append(db.get_lang_lib(self.lang, "sitelib",
+                                            paths_from_libname["sitelib"]))
             catalog_selections = env.get_pref("codeintel_selected_catalogs")
             libs += [
                 db.get_catalog_lib(self.lang, catalog_selections),
@@ -627,7 +642,7 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         # A buffer's libs depend on its env and the buf itself so
         # we cache it on the env and key off the buffer.
         cache_key = self.lang + "-buf-libs"
-        cache = env.cache.get(cache_key) # <buf-weak-ref> -> <libs>
+        cache = env.cache.get(cache_key)  # <buf-weak-ref> -> <libs>
         if cache is None:
             cache = weakref.WeakKeyDictionary()
             env.cache[cache_key] = cache
@@ -640,7 +655,8 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
             if buf.path:
                 cwd = dirname(buf.path)
                 if cwd != "<Unsaved>":
-                    libs = [ self.mgr.db.get_lang_lib(self.lang, "curdirlib", [cwd]) ]
+                    libs = [
+                        self.mgr.db.get_lang_lib(self.lang, "curdirlib", [cwd])]
 
             libs += self._buf_indep_libs_from_env(env)
             cache[buf] = libs
@@ -662,13 +678,13 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
             self.mgr.idxr.stage_request(request, 1.0)
 
 
-#class PythonCitadelEvaluator(CitadelEvaluator):
+# class PythonCitadelEvaluator(CitadelEvaluator):
 #    def post_process_cplns(self, cplns):
 #        """Drop special __FOO__ methods.
-#        
+#
 #        Note: Eventually for some Python completions we might want to leave
 #        these in. For example:
-#        
+#
 #            class Bar(Foo):
 #                def __init__(self):
 #                    Foo.<|>    # completions should include "__init__" here
@@ -682,6 +698,7 @@ class PythonLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
 
 # "from", "from .", "from .."
 _dotted_from_rx = re.compile(r'from($|\s+\.+)')
+
 
 class PythonBuffer(CitadelBuffer):
     lang = lang
@@ -708,12 +725,12 @@ class PythonBuffer(CitadelBuffer):
         python-complete-pythondoc-tags
         complete-available-imports
         complete-module-members
-        
+
         Not yet implemented:
             complete-available-classes
             calltip-base-signature
         """
-        DEBUG = False # not using 'logging' system, because want to be fast
+        DEBUG = False  # not using 'logging' system, because want to be fast
         if DEBUG:
             print "\n----- Python trg_from_pos(pos=%r, implicit=%r) -----"\
                   % (pos, implicit)
@@ -729,7 +746,7 @@ class PythonBuffer(CitadelBuffer):
 
         # Quick out if the preceding char isn't a trigger char.
         # Note: Cannot use this now that we have a 2-char locals trigger.
-        #if last_char not in " .(@_":
+        # if last_char not in " .(@_":
         #    if DEBUG:
         #        print "trg_from_pos: no: %r is not in ' .(@'_" % last_char
         #    return None
@@ -753,8 +770,8 @@ class PythonBuffer(CitadelBuffer):
                 # Only trigger at start of comment line.
                 WHITESPACE = tuple(" \t")
                 SENTINEL = 20
-                i = last_pos-1
-                while i >= max(0, last_pos-SENTINEL):
+                i = last_pos - 1
+                while i >= max(0, last_pos - SENTINEL):
                     ch = accessor.char_at_pos(i)
                     if ch == "#":
                         return Trigger(self.lang, TRG_FORM_CPLN,
@@ -768,7 +785,7 @@ class PythonBuffer(CitadelBuffer):
 
         # Remaing triggers should never trigger in some styles.
         if (implicit and style in self.implicit_completion_skip_styles and last_char != '_'
-            or style in self.completion_skip_styles):
+                or style in self.completion_skip_styles):
             if DEBUG:
                 print "trg_from_pos: no: completion is suppressed "\
                       "in style at %s: %s (%s)"\
@@ -790,13 +807,14 @@ class PythonBuffer(CitadelBuffer):
 
             # Typing a space is very common so lets have a quick out before
             # doing the more correct processing:
-            if last_pos-1 < 0 or accessor.char_at_pos(last_pos-1) not in "tm,":
+            if last_pos - 1 < 0 or accessor.char_at_pos(last_pos - 1) not in "tm,":
                 return None
 
-            working_text = accessor.text_range(max(0,last_pos-200),
+            working_text = accessor.text_range(max(0, last_pos - 200),
                                                last_pos)
             line = self._last_logical_line(working_text).strip()
-            if not line: return None
+            if not line:
+                return None
             ch = line[-1]
             line = line.replace('\t', ' ')
 
@@ -810,10 +828,11 @@ class PythonBuffer(CitadelBuffer):
             # is it "from FOO import <|>" ?
             if line.endswith(" import"):
                 if line.startswith('from '):
-                    imp_prefix = tuple(line[len('from '):-len(' import')].strip().split('.'))
+                    imp_prefix = tuple(
+                        line[len('from '):-len(' import')].strip().split('.'))
                     return Trigger(self.lang, TRG_FORM_CPLN,
-                               "module-members", pos, implicit,
-                               imp_prefix=imp_prefix)
+                                   "module-members", pos, implicit,
+                                   imp_prefix=imp_prefix)
 
             if line == "except" or line.endswith(" except"):
                 return Trigger(self.lang, TRG_FORM_CPLN,
@@ -822,13 +841,14 @@ class PythonBuffer(CitadelBuffer):
             if ch == ',':
                 # is it "from FOO import BAR, <|>" ?
                 if line.startswith('from ') and ' import ' in line:
-                    imp_prefix = tuple(line[len('from '):line.index(' import')].strip().split('.'))
+                    imp_prefix = tuple(
+                        line[len('from '):line.index(' import')].strip().split('.'))
                     # Need better checks
                     return Trigger(self.lang, TRG_FORM_CPLN,
-                               "module-members", pos, implicit,
-                               imp_prefix=imp_prefix)
+                                   "module-members", pos, implicit,
+                                   imp_prefix=imp_prefix)
 
-        elif last_char == '.': # must be "complete-object-members" or None
+        elif last_char == '.':  # must be "complete-object-members" or None
             # If the first non-whitespace character preceding the '.' in the
             # same statement is an identifer character then trigger, if it
             # is a ')', then _maybe_ we should trigger (yes if this is
@@ -843,11 +863,11 @@ class PythonBuffer(CitadelBuffer):
             # Non-triggering examples:
             #   FOO..
             #   FOO[1].         too hard to determine sequence element types
-            #   from FOO import (BAR.         
+            #   from FOO import (BAR.
             # Not sure if want to support:
             #   "foo".          do we want to support literals? what about
             #                   lists? tuples? dicts?
-            working_text = accessor.text_range(max(0,last_pos-200),
+            working_text = accessor.text_range(max(0, last_pos - 200),
                                                last_pos)
             line = self._last_logical_line(working_text).strip()
             if line:
@@ -858,7 +878,7 @@ class PythonBuffer(CitadelBuffer):
                     if m:
                         dots = len(m.group(1).strip())
                         # magic value for imp_prefix, means "from .<|>"
-                        imp_prefix = tuple('' for i in xrange(dots+2))
+                        imp_prefix = tuple('' for i in xrange(dots + 2))
                         return Trigger(self.lang, TRG_FORM_CPLN,
                                        "available-imports", pos, implicit,
                                        imp_prefix=imp_prefix)
@@ -868,14 +888,16 @@ class PythonBuffer(CitadelBuffer):
                             # which is not a trigger
                             return None
                         # from FOO.
-                        imp_prefix = tuple(line[len('from '):].strip().split('.'))
+                        imp_prefix = tuple(
+                            line[len('from '):].strip().split('.'))
                         return Trigger(self.lang, TRG_FORM_CPLN,
                                        "available-imports", pos, implicit,
                                        imp_prefix=imp_prefix)
                     elif line.startswith('import '):
                         # import FOO.
                         # figure out the dotted parts of "FOO" above
-                        imp_prefix = tuple(line[len('import '):].strip().split('.'))
+                        imp_prefix = tuple(
+                            line[len('import '):].strip().split('.'))
                         return Trigger(self.lang, TRG_FORM_CPLN,
                                        "available-imports", pos, implicit,
                                        imp_prefix=imp_prefix)
@@ -903,14 +925,14 @@ class PythonBuffer(CitadelBuffer):
             #   __<|>file__
 
             # Ensure double "__".
-            if last_pos-1 < 0 or accessor.char_at_pos(last_pos-1) != "_":
+            if last_pos - 1 < 0 or accessor.char_at_pos(last_pos - 1) != "_":
                 return None
 
             beforeChar = None
             beforeStyle = None
-            if last_pos-2 >= 0:
-                beforeChar = accessor.char_at_pos(last_pos-2)
-                beforeStyle = accessor.style_at_pos(last_pos-2)
+            if last_pos - 2 >= 0:
+                beforeChar = accessor.char_at_pos(last_pos - 2)
+                beforeStyle = accessor.style_at_pos(last_pos - 2)
 
             if DEBUG:
                 print "trg_from_pos:: checking magic symbol, beforeChar: %r" % (beforeChar)
@@ -918,7 +940,7 @@ class PythonBuffer(CitadelBuffer):
                 if DEBUG:
                     print "trg_from_pos:: magic-symbols - string"
                 return Trigger(self.lang, TRG_FORM_CPLN,
-                               "magic-symbols", last_pos-1, implicit,
+                               "magic-symbols", last_pos - 1, implicit,
                                symbolstype="string")
 
             elif beforeChar == "." and beforeStyle != style:
@@ -930,22 +952,24 @@ class PythonBuffer(CitadelBuffer):
                 # No change in styles between the characters -- abort.
                 return None
 
-            text = accessor.text_range(max(0,last_pos-20), last_pos-1).strip()
+            text = accessor.text_range(
+                max(0, last_pos - 20), last_pos - 1).strip()
             if beforeChar and beforeChar in " \t":
                 if text.endswith("def"):
                     posttext = accessor.text_range(pos,
-                                                   min(accessor.length, pos+20)
-                                                  ).replace(" ", "")
+                                                   min(accessor.length,
+                                                       pos + 20)
+                                                   ).replace(" ", "")
                     if DEBUG:
                         print "trg_from_pos:: magic-symbols - def"
                     return Trigger(self.lang, TRG_FORM_CPLN,
-                                   "magic-symbols", last_pos-1, implicit,
+                                   "magic-symbols", last_pos - 1, implicit,
                                    symbolstype="def",
                                    posttext=posttext)
             if DEBUG:
                 print "trg_from_pos:: magic-symbols - global"
             return Trigger(self.lang, TRG_FORM_CPLN,
-                           "magic-symbols", last_pos-1, implicit,
+                           "magic-symbols", last_pos - 1, implicit,
                            symbolstype="global", text=text)
 
         elif last_char == '(':
@@ -965,7 +989,8 @@ class PythonBuffer(CitadelBuffer):
             #   import (    will be handled by complete_members
             #   class Foo(  is an "complete-available-classes" trigger,
             #               but this is not yet implemented
-            working_text = accessor.text_range(max(0,last_pos-200), last_pos)
+            working_text = accessor.text_range(
+                max(0, last_pos - 200), last_pos)
             line = self._last_logical_line(working_text).rstrip()
             if line:
                 ch = line[-1]
@@ -983,19 +1008,23 @@ class PythonBuffer(CitadelBuffer):
                     line = line.replace('\t', ' ')
                     lstripped = line.lstrip()
                     if lstripped.startswith("def"):
-                        if DEBUG: print "trg_from_pos: no: point is function declaration"
+                        if DEBUG:
+                            print "trg_from_pos: no: point is function declaration"
                     elif lstripped.startswith("class") and '(' not in lstripped:
                         # Second test is necessary to not exclude:
                         #   class Foo(bar(<|>
-                        if DEBUG: print "trg_from_pos: no: point is class declaration"
+                        if DEBUG:
+                            print "trg_from_pos: no: point is class declaration"
                     elif lstripped.startswith('from ') and ' import' in lstripped:
                         # Need better checks
                         # is it "from FOO import (<|>" ?
-                        imp_prefix = tuple(lstripped[len('from '):lstripped.index(' import')].split('.'))
-                        if DEBUG: print "trg_from_pos: from FOO import ("
+                        imp_prefix = tuple(
+                            lstripped[len('from '):lstripped.index(' import')].split('.'))
+                        if DEBUG:
+                            print "trg_from_pos: from FOO import ("
                         return Trigger(self.lang, TRG_FORM_CPLN,
-                                   "module-members", pos, implicit,
-                                   imp_prefix=imp_prefix)
+                                       "module-members", pos, implicit,
+                                       imp_prefix=imp_prefix)
                     else:
                         return Trigger(self.lang, TRG_FORM_CALLTIP,
                                        "call-signature", pos, implicit)
@@ -1004,7 +1033,8 @@ class PythonBuffer(CitadelBuffer):
                         print "trg_from_pos: no: non-ws char preceding "\
                               "'(' is not an identifier char: %r" % ch
             else:
-                if DEBUG: print "trg_from_pos: no: no chars preceding '('"
+                if DEBUG:
+                    print "trg_from_pos: no: no chars preceding '('"
             return None
 
         elif pos >= 2 and style in (self.identifier_style, self.keyword_style):
@@ -1016,12 +1046,12 @@ class PythonBuffer(CitadelBuffer):
                     print "Identifier keyword style"
             # Previous char also need to be an identifier/word, then the one
             # before that needs to be something different (operator/space).
-            if (accessor.style_at_pos(last_pos-1) != style or
-                (pos > 2 and accessor.style_at_pos(last_pos-2) == style)):
+            if (accessor.style_at_pos(last_pos - 1) != style or
+                    (pos > 2 and accessor.style_at_pos(last_pos - 2) == style)):
                 if DEBUG:
                     print "Not a block of two ident/word chars"
                 return None
-            if pos > 2 and accessor.char_at_pos(last_pos-2) == ".":
+            if pos > 2 and accessor.char_at_pos(last_pos - 2) == ".":
                 if DEBUG:
                     print "  preceeded by '.' operator - not a trigger"
                 return None
@@ -1030,7 +1060,7 @@ class PythonBuffer(CitadelBuffer):
             # a class name, or function name, you don't want to see completions.
             # Also, do not override another completion type (e.g. imports).
             start = accessor.line_start_pos_from_pos(pos)
-            preceeding_text = accessor.text_range(start, last_pos-2).strip()
+            preceeding_text = accessor.text_range(start, last_pos - 2).strip()
             if preceeding_text:
                 first_word = preceeding_text.split(" ")[0]
                 if first_word in ("class", "def", "import", "from", "except"):
@@ -1042,14 +1072,13 @@ class PythonBuffer(CitadelBuffer):
                     #   complete-available-exceptions
                     return None
 
-            citdl_expr = accessor.text_range(last_pos-1, last_pos+1)
+            citdl_expr = accessor.text_range(last_pos - 1, last_pos + 1)
             if DEBUG:
                 print "  triggered 2 char symbol trigger: %r" % (citdl_expr, )
             return Trigger(self.lang, TRG_FORM_CPLN, "local-symbols",
-                           last_pos-1, implicit,
+                           last_pos - 1, implicit,
                            citdl_expr=citdl_expr,
                            preceeding_text=preceeding_text)
-
 
     def _last_logical_line(self, text):
         lines = text.splitlines(0) or ['']
@@ -1059,9 +1088,8 @@ class PythonBuffer(CitadelBuffer):
         return logicalline
 
 
-
 class PythonImportHandler(ImportHandler):
-    lang = lang #XXX do this for other langs as well
+    lang = lang  # XXX do this for other langs as well
     PATH_ENV_VAR = "PYTHONPATH"
     sep = '.'
 
@@ -1085,12 +1113,13 @@ class PythonImportHandler(ImportHandler):
             searchedDirs[cpath] = 1
         if skipRareImports:
             if (basename(dirname) == "encodings"
-                and "undefined.py" in names):
+                    and "undefined.py" in names):
                 # Skip most of the specific encoding definitions (saves
                 # about 50 files).
                 names = [n for n in names if n == "__init__.py"
                          or os.path.splitext(n)[0].endswith("_codec")]
-        for i in range(len(names)-1, -1, -1): # backward so can del from list
+        # backward so can del from list
+        for i in range(len(names) - 1, -1, -1):
             path = os.path.join(dirname, names[i])
             if os.path.isdir(path):
                 if skipRareImports:
@@ -1107,16 +1136,16 @@ class PythonImportHandler(ImportHandler):
                         if os.path.isfile(possible):
                             break
                     else:
-                        del names[i] # don't traverse non-package dirs
+                        del names[i]  # don't traverse non-package dirs
                         continue
                 if path.endswith(os.path.join("win32com", "gen_py")):
                     del names[i]
                     continue
             elif os.path.splitext(names[i])[1] in self._gen_suffixes():
-                #XXX The list of Python extensions should be settable on
+                # XXX The list of Python extensions should be settable on
                 #    the ImportHandler and Komodo should set whatever is
                 #    set in prefs.
-                #XXX This check for "Python" files should probably include
+                # XXX This check for "Python" files should probably include
                 #    python scripts, which might likely not have the
                 #    extension: need to grow filetype-from-content smarts.
                 files.append(path)
@@ -1127,12 +1156,12 @@ class PythonImportHandler(ImportHandler):
         """
         yield ".py"
         yield ".pyw"
-        
+
         if _SCAN_BINARY_FILES:
             yield ".pyc"
             yield ".pyo"
             for suffix, mode, mod_type in imp.get_suffixes():
-                if suffix[0] == '.' and mod_type  == imp.C_EXTENSION:
+                if suffix[0] == '.' and mod_type == imp.C_EXTENSION:
                     yield suffix
 
     def find_importables_in_dir(self, imp_dir):
@@ -1148,41 +1177,41 @@ class PythonImportHandler(ImportHandler):
              "qooz":   ("qooz.so",            None,       False),
 
         Note: .pyd are .so handling depends on the platform.
-        
+
         If several files happen to have the same name but different
         suffixes, the one with preferred suffix wins. The suffixe preference
         is defined by the order of elements in the sequence generated
         by _gen_suffixes().
-        
+
         This particularly means that sources always win over binaries.
         """
         if imp_dir == "<Unsaved>":
-            #TODO: stop these getting in here.
+            # TODO: stop these getting in here.
             return {}
-        
+
         importables = {}
-        
+
         if os.path.isdir(imp_dir):
             suffixes = dict((s, i) for i, s
-                                   in enumerate(self._gen_suffixes(), 1))
+                            in enumerate(self._gen_suffixes(), 1))
             modules = []
             for name in os.listdir(imp_dir):
                 mod, suffix = os.path.splitext(name)
                 if mod != '__init__':
                     init = os.path.join(name, '__init__.py')
                     if os.path.exists(os.path.join(imp_dir, init)):
-                            modules.append((0, name, (init, '__init__', False)))
+                        modules.append((0, name, (init, '__init__', False)))
                     else:
                         if suffix in suffixes:
                             modules.append((suffixes[suffix], mod,
                                             (name, None, False)))
-            
+
             modules.sort(key=lambda mod: mod[0])
-            
+
             for _, mod, importable in modules:
                 if mod not in importables:
                     importables[mod] = importable
-        
+
         return importables
 
 
@@ -1220,8 +1249,6 @@ class PythonCILEDriver(CILEDriver):
 #---- internal support stuff
 
 
-
-
 #---- registration
 
 def register(mgr):
@@ -1233,4 +1260,3 @@ def register(mgr):
                       import_handler_class=PythonImportHandler,
                       cile_driver_class=PythonCILEDriver,
                       is_cpln_lang=True)
-

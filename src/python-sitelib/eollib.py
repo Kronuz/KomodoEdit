@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """End-of-line constants, detection and manipulation."""
@@ -56,7 +56,7 @@ elif sys.platform.startswith('mac'):
     EOL_PLATFORM = EOL_CR
 else:
     EOL_PLATFORM = EOL_LF
-    
+
 
 # EOL conversion mappings
 #
@@ -97,30 +97,29 @@ eolPref2eol = {
 eol2eolPref = {EOL_CR: "CR",
                EOL_CRLF: "CRLF",
                EOL_LF: "LF"}
-eolMappings = eol2eolStr  #XXX For backwards compat.
+eolMappings = eol2eolStr  # XXX For backwards compat.
 
 # 'newl' is the current newline delimiter for the current platform
-#XXX 'newl' should die, currently being used in koPrefs.py, koProject.py,
+# XXX 'newl' should die, currently being used in koPrefs.py, koProject.py,
 #    koXMLPrefs.py
 newl = eol2eolStr[EOL_PLATFORM]
 
 
-
 def detectEOLFormat(buffer):
     r"""detectEOLFormat('test\r\n\n\n') => (EOL_MIXED, EOL_LF)
-    
+
     Return a 2-tuple containing a code for the detected end-of-line format and
     a code for the suggested end-of-line format to use for the given buffer,
     which may be different if the end-of-line terminator was ambiguous. If the
     buffer does not contain any end-of-lines, the return value will be
     (EOL_NOEOL, -1).
-    
+
     XXX Should change that last to (EOL_NOEOL, None).
     """
-    
+
     numCRLFs = buffer.count("\r\n")
-    numCRs   = buffer.count("\r") - numCRLFs
-    numLFs   = buffer.count("\n") - numCRLFs
+    numCRs = buffer.count("\r") - numCRLFs
+    numLFs = buffer.count("\n") - numCRLFs
 
     if numCRLFs == numLFs == numCRs == 0:
         return (EOL_NOEOL, -1)
@@ -136,23 +135,28 @@ def detectEOLFormat(buffer):
 
 def getMixedEOLLineNumbers(buffer, expectedEOL=None):
     r"""getMixedEOLLineNumbers('a\nb\r\nc\nd\n') => [1]
-    
+
         "buffer" is the buffer to analyze
         "expectedEOL" indicates the expected EOL for each line, it is one of
             the EOL_LF, EOL_CR, EOL_CRLF constants. It may also be left out
             (or None) to indicate that the most common EOL in the buffer
             is the expected one.
-    
+
     Return a list of line numbers (0-based) with an EOL that does not match
     the expected EOL.
     """
     lines = buffer.splitlines(1)
-    lfs = []; crs = []; crlfs = []
+    lfs = []
+    crs = []
+    crlfs = []
     for i in range(len(lines)):
         line = lines[i]
-        if line.endswith("\r\n"): crlfs.append(i)
-        elif line.endswith("\n"): lfs.append(i)
-        elif line.endswith("\r"): crs.append(i)
+        if line.endswith("\r\n"):
+            crlfs.append(i)
+        elif line.endswith("\n"):
+            lfs.append(i)
+        elif line.endswith("\r"):
+            crs.append(i)
 
     # Determine the expected EOL.
     if expectedEOL is None:
@@ -161,7 +165,7 @@ def getMixedEOLLineNumbers(buffer, expectedEOL=None):
                 (len(lfs), EOL_LF)]
         eols.sort()   # last in the list is the most common
         expectedEOL = eols[-1][1]
-    
+
     # Get the list of lines with unexpected EOLs.
     if expectedEOL == EOL_LF:
         mixedEOLs = crs + crlfs
@@ -173,6 +177,7 @@ def getMixedEOLLineNumbers(buffer, expectedEOL=None):
         raise ValueError("illegal 'expected EOL' value: %r")
     mixedEOLs.sort()
     return mixedEOLs
+
 
 def convertToEOLFormat(buffer, format):
     r"""convertToEOLFormat("Test\r\n", EOL_LF) => "Test\n"
@@ -190,8 +195,10 @@ def test():
     assert detectEOLFormat('') == (EOL_NOEOL, -1)
     assert detectEOLFormat('\rTest\r\n\r') == (EOL_MIXED, EOL_CR)
 
-    assert convertToEOLFormat('\rTest\r\nTest2\nTest\n\r\n',EOL_LF) == '\nTest\nTest2\nTest\n\n'
-    assert convertToEOLFormat('\r\r\r\nTest\n\nTest2\nTest\n\n\n',EOL_CRLF) == '\r\n\r\n\r\nTest\r\n\r\nTest2\r\nTest\r\n\r\n\r\n'
+    assert convertToEOLFormat(
+        '\rTest\r\nTest2\nTest\n\r\n', EOL_LF) == '\nTest\nTest2\nTest\n\n'
+    assert convertToEOLFormat('\r\r\r\nTest\n\nTest2\nTest\n\n\n',
+                              EOL_CRLF) == '\r\n\r\n\r\nTest\r\n\r\nTest2\r\nTest\r\n\r\n\r\n'
 
 if __name__ == '__main__':
     test()

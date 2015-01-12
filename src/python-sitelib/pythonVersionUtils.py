@@ -21,15 +21,17 @@ import tokenize
 
 import logging
 log = logging.getLogger("pythonVersionUtils")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
-class _FileWrapper(object):            
+
+class _FileWrapper(object):
+
     def set_file(self, filename):
         self.f = open(filename, 'r')
-        
+
     def set_stdin(self):
         self.f = sys.stdin
-        
+
     def set_text(self, text):
         from cStringIO import StringIO
         self.f = StringIO(text)
@@ -40,6 +42,7 @@ class _FileWrapper(object):
     def close(self):
         self.f.close()
 
+
 def _match_tokens(tok_gen, list):
     for item in list:
         res = safe_get_next_token(tok_gen)
@@ -47,11 +50,13 @@ def _match_tokens(tok_gen, list):
             return False
     return True
 
+
 class _Scorekeeper(object):
+
     def __init__(self):
         self.py2 = 0
         self.py3 = 0
-        
+
     def is_definitive(self):
         diff = abs(self.py2 - self.py3)
         if diff < 5:
@@ -60,19 +65,19 @@ class _Scorekeeper(object):
         if diff >= 5:
             return self.py2 <= half_diff or self.py3 <= half_diff
         return False
-    
+
     def inc_2(self):
         self.py2 += 1
         if self.is_definitive():
             raise StopIteration
         return self.is_definitive()
-    
+
     def inc_3(self):
         self.py3 += 1
         if self.is_definitive():
             raise StopIteration
         return self.is_definitive()
-        
+
     def score(self):
         return (self.py2, self.py3)
 
@@ -80,17 +85,20 @@ _octal_pattern = re.compile(r'0\d')
 _terminators = (":", ";")
 _ws_tokens = (tokenize.N_TOKENS, tokenize.INDENT, tokenize.DEDENT)
 
+
 def at_stmt_end(token_type, token_string):
     return (token_type in (tokenize.NL, tokenize.NEWLINE)
             or (token_type == tokenize.OP and token_string in _terminators))
-    
+
+
 def safe_get_next_token(tokenizer):
     try:
         return tokenizer.next()
     except (tokenize.TokenError, IndentationError):
         log.debug("problem getting next token")
         raise StopIteration
-    
+
+
 def _calc_py2_py3_scores(textWrapper):
     sk = _Scorekeeper()
     pseudo_keywords = ('print', 'exec')
@@ -101,8 +109,9 @@ def _calc_py2_py3_scores(textWrapper):
         try:
             curr_token = safe_get_next_token(tok_gen)
             token_type, token_string, start_tup, end_tup, line = curr_token
-            #log.debug("token_type:%d, token_string:%s, start_tup:[%d,%d], end_tup:[%d,%d], line:%s",
-            #          token_type, token_string, start_tup[0], start_tup[1], end_tup[0], end_tup[1], line)
+            # log.debug("token_type:%d, token_string:%s, start_tup:[%d,%d], end_tup:[%d,%d], line:%s",
+            # token_type, token_string, start_tup[0], start_tup[1], end_tup[0],
+            # end_tup[1], line)
             if token_type in _ws_tokens:
                 pass
             elif at_stmt_end(token_type, token_string):
@@ -117,18 +126,19 @@ def _calc_py2_py3_scores(textWrapper):
                         token_type, token_string, start_tup, end_tup, line = curr_token
                         if token_type == tokenize.OP:
                             if token_string == '=':
-                                sk.inc_3() # using print as a variable, assignment
+                                # using print as a variable, assignment
+                                sk.inc_3()
                             elif curr_keyword == "print" and token_string in ("<<", ">>"):
                                 sk.inc_2()
                         else:
-                            sk.inc_2() # print/exec without open paren
+                            sk.inc_2()  # print/exec without open paren
                             if at_stmt_end(token_type, token_string):
                                 at_line_start = True
                     elif token_string == "except":
                         curr_token = safe_get_next_token(tok_gen)
                         if curr_token[0] == tokenize.OP:
                             if curr_token[1] == ":":
-                                continue # Common to both
+                                continue  # Common to both
                             elif curr_token[1] == "(":
                                 paren_count = 1
                                 while True:
@@ -141,17 +151,19 @@ def _calc_py2_py3_scores(textWrapper):
                                             if paren_count == 0:
                                                 break
                             else:
-                                log.debug("In except(1), can't deal with token %s", curr_token)
+                                log.debug(
+                                    "In except(1), can't deal with token %s", curr_token)
                                 continue
                         elif curr_token[0] == tokenize.NAME:
                             pass
                         else:
-                            log.debug("In except(2), can't deal with token %s", curr_token)
+                            log.debug(
+                                "In except(2), can't deal with token %s", curr_token)
                             continue
                         curr_token = safe_get_next_token(tok_gen)
                         if curr_token[0] == tokenize.OP:
                             if curr_token[1] == ":":
-                                continue # Common to both
+                                continue  # Common to both
                             elif curr_token[1] == ",":
                                 #log.debug("2-2: except at line %d", curr_token[2][0])
                                 sk.inc_2()
@@ -161,7 +173,8 @@ def _calc_py2_py3_scores(textWrapper):
                             pass
                             #log.debug("3-3: except at line %d", curr_token[2][0])
                         else:
-                            log.debug("In except(3), can't deal with token %s", curr_token[4])
+                            log.debug(
+                                "In except(3), can't deal with token %s", curr_token[4])
                         continue
                     elif token_string == "raise":
                         curr_token = safe_get_next_token(tok_gen)
@@ -169,19 +182,20 @@ def _calc_py2_py3_scores(textWrapper):
                             sk.inc_2()
                             #log.debug("2-4: except at line %d", curr_token[2][0])
                         elif curr_token[0] != tokenize.NAME:
-                            log.debug("In except(4), can't deal with token %s", curr_token[4])
+                            log.debug(
+                                "In except(4), can't deal with token %s", curr_token[4])
                         else:
                             curr_token = safe_get_next_token(tok_gen)
                             if curr_token[0] == tokenize.NEWLINE:
-                                pass # common
+                                pass  # common
                             elif curr_token[0] != tokenize.OP:
-                                pass # broken in both
+                                pass  # broken in both
                             elif curr_token[1] == ',':
                                 sk.inc_2()
                                 #log.debug("2-5: except at line %d", curr_token[2][0])
                     elif token_string == 'from':
                         if _match_tokens(tok_gen, ((tokenize.NAME, 'sys'),
-                                          (tokenize.NAME, 'import'))):
+                                                   (tokenize.NAME, 'import'))):
                             curr_token = safe_get_next_token(tok_gen)
                             if curr_token[0] == tokenize.NAME:
                                 if curr_token[1] == 'maxint':
@@ -204,7 +218,7 @@ def _calc_py2_py3_scores(textWrapper):
                             #log.debug("2-9: except at line %d", curr_token[2][0])
                 elif token_string == 'os':
                     if (_match_tokens(tok_gen, ((tokenize.OP, '.'),
-                                               (tokenize.NAME, 'getcwdu'),))):
+                                                (tokenize.NAME, 'getcwdu'),))):
                         sk.inc_2()
                         #log.debug("2-10: except at line %d", curr_token[2][0])
             elif token_type == tokenize.NUMBER:
@@ -223,10 +237,12 @@ def _calc_py2_py3_scores(textWrapper):
             break
     textWrapper.close()
     return sk.score()
-    
+
+
 def isPython3(buffer):
     scores = getScores(buffer)
     return scores[1] > scores[0]
+
 
 def _stringify(buffer):
     from koUnicodeEncoding import autoDetectEncoding
@@ -239,11 +255,12 @@ def _stringify(buffer):
         return -1
     return text
 
+
 def getScores(buffer):
     """Return a 2-tuple (python-2-score, python-3-score) indicating hits of
     constructs for that particular language in the given buffer. If there is
     an error calculating this returns (0, 0).
-    
+
     TODO: This should take an encoding arg, rather than guessing again.
     """
     text = _stringify(buffer)
@@ -254,6 +271,7 @@ def getScores(buffer):
     scores = _calc_py2_py3_scores(f)
     log.debug("Python2: %d, Python3: %d", scores[0], scores[1])
     return scores
+
 
 class JavaScriptDistinguisher(object):
     # lexing states:
@@ -268,14 +286,14 @@ class JavaScriptDistinguisher(object):
     # Things that indicate JS:
     # document....(...)
     # alert....(...)
-    
+
     # Things that indicate node.js:
     # hashbang: #!/usr/bin/env node
     # hashbang: #!/...node\b
     # require(...)
     # module.exports
     # <name>.on(string, )
-    
+
     # If a transition goes to state -1, accept it.  True => JS, False => Node
     _stateMachine = {
         0: [
@@ -285,28 +303,28 @@ class JavaScriptDistinguisher(object):
             (ST_IN_NAME, 'module', 401),
             (ST_IN_NAME, None, 501),
         ],
-        101: [(ST_IN_OPERATOR, ".", 102),],
-        102: [(ST_IN_NAME, None, -1, True),],
-            
-        201: [(ST_IN_OPERATOR, "(", 202),],
+        101: [(ST_IN_OPERATOR, ".", 102), ],
+        102: [(ST_IN_NAME, None, -1, True), ],
+
+        201: [(ST_IN_OPERATOR, "(", 202), ],
         202: [(ST_IN_NAME, None, -1, True),
               (ST_IN_STRING, None, -1, True),
-            ],
-        301: [(ST_IN_OPERATOR, "(", 302),],
-        302: [(ST_IN_STRING, None, -1, False),],
-            
-        401: [(ST_IN_OPERATOR, ".", 402),],
-        402: [(ST_IN_NAME, 'exports', -1, False),],
-            
-        501: [(ST_IN_OPERATOR, ".", 502),],
-        502: [(ST_IN_NAME, 'on', 503),],
-        503: [(ST_IN_OPERATOR, "(", 504),],
-        504: [(ST_IN_STRING, None, 505),],
-        505: [(ST_IN_OPERATOR, ",", -1, False),],
+              ],
+        301: [(ST_IN_OPERATOR, "(", 302), ],
+        302: [(ST_IN_STRING, None, -1, False), ],
+
+        401: [(ST_IN_OPERATOR, ".", 402), ],
+        402: [(ST_IN_NAME, 'exports', -1, False), ],
+
+        501: [(ST_IN_OPERATOR, ".", 502), ],
+        502: [(ST_IN_NAME, 'on', 503), ],
+        503: [(ST_IN_OPERATOR, "(", 504), ],
+        504: [(ST_IN_STRING, None, 505), ],
+        505: [(ST_IN_OPERATOR, ",", -1, False), ],
     }
     _type_str = type("")
     _type_re = type(re.compile(""))
-    
+
     def _transitionState(self, tokState, tokString):
         try:
             matches = self._stateMachine[self.parseState]
@@ -320,8 +338,8 @@ class JavaScriptDistinguisher(object):
             if matchState == tokState:
                 matchArg = matcher[1]
                 if (matchArg is None
-                    or (type(matchArg) == self._type_str and matchArg == tokString)
-                    or (type(matchArg) == self._type_re and matchArg.match(tokString))):
+                        or (type(matchArg) == self._type_str and matchArg == tokString)
+                        or (type(matchArg) == self._type_re and matchArg.match(tokString))):
                     newState = matcher[2]
                     if newState == -1:
                         # Found a match, update scores, state, return
@@ -335,10 +353,11 @@ class JavaScriptDistinguisher(object):
                         self.parseState = newState
                     return
         if initState != 0:
-            # We rejected this token, but check to see if it can start a new sequence.
+            # We rejected this token, but check to see if it can start a new
+            # sequence.
             self.parseState = 0
             self._transitionState(tokState, tokString)
-    
+
     def isNodeJS(self, buffer):
         if len(buffer) < 4:
             return False
@@ -372,9 +391,11 @@ class JavaScriptDistinguisher(object):
                 elif c == '/' and c_next == '*':
                     state = self.ST_IN_COMMENTBLOCK
                     bufStart = i
-                    i += 1; c_next = c_next2; c_next2 = buffer[i + 3]
+                    i += 1
+                    c_next = c_next2
+                    c_next2 = buffer[i + 3]
                 elif c == '#' and c_next == '!' and lineNo <= 2:
-                    state = self.ST_IN_COMMENT # Fake
+                    state = self.ST_IN_COMMENT  # Fake
                     bufStart = i
                 elif c in ('\'', '"'):
                     state = self.ST_IN_STRING
@@ -412,7 +433,7 @@ class JavaScriptDistinguisher(object):
                     # c_next == buffer[i + 2] = c_next2
                     # c_next2 == buffer[i + 3]
                     # i < lim3 == len(buffer) - 3, so we're ok
-                    c_next = c_next2;
+                    c_next = c_next2
                     c_next2 = buffer[i + 3]
                     i += 1
                 elif c == strStart:
@@ -433,17 +454,19 @@ class JavaScriptDistinguisher(object):
                     currToken = buffer[bufStart: i + 2]
                     self._transitionState(self.ST_IN_COMMENTBLOCK, currToken)
                     state = self.ST_DEFAULT
-                    i += 1; c_next = c_next2; c_next2 = buffer[i + 1]
+                    i += 1
+                    c_next = c_next2
+                    c_next2 = buffer[i + 1]
             elif state == self.ST_IN_NAME and not c_next.isalnum():
-                    currToken = buffer[bufStart: i + 1]
-                    self._transitionState(self.ST_IN_NAME, currToken)
-                    state = self.ST_DEFAULT
+                currToken = buffer[bufStart: i + 1]
+                self._transitionState(self.ST_IN_NAME, currToken)
+                state = self.ST_DEFAULT
             elif state == self.ST_IN_NUMBER and not c_next.isdigit():
-                    currToken = buffer[bufStart: i + 1]
-                    self._transitionState(self.ST_IN_NUMBER, currToken)
-                    state = self.ST_DEFAULT
+                currToken = buffer[bufStart: i + 1]
+                self._transitionState(self.ST_IN_NUMBER, currToken)
+                state = self.ST_DEFAULT
             i += 1
-        return self.scores[0] < self.scores[1] # js wins ties
+        return self.scores[0] < self.scores[1]  # js wins ties
 
 
 if __name__ == '__main__':

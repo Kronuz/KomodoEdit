@@ -6,7 +6,8 @@ import argparse
 import logging
 import json
 import re
-import os, subprocess
+import os
+import subprocess
 import textwrap
 from pprint import pformat
 
@@ -16,14 +17,16 @@ logging.basicConfig()
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
+
 def striphtml(string, tags=["pre"]):
     for tag in tags:
         string = re.sub("<%s[^>]*>.*?</%s>" % (tag, tag),
                         "",
                         string,
-                        flags=(re.IGNORECASE|re.DOTALL))
+                        flags=(re.IGNORECASE | re.DOTALL))
     string = re.sub("<[^>]*?>", "", string)
     return string.replace("&apos;", "'").replace("&quot;", '"')
+
 
 def default_get(dictionary, *args):
     """ Helper to chain dict.get(arg, {}) since we can't make yaml use defaultdict """
@@ -32,7 +35,9 @@ def default_get(dictionary, *args):
         result = result.get(arg, {})
     return result
 
+
 class Processor(object):
+
     def __init__(self, version=DEFAULT_NODE_VERSION, cache=False):
         self.version = version
         self.cache = cache
@@ -56,11 +61,14 @@ class Processor(object):
         if not os.path.exists(cache_name):
             import urllib
             if filename.endswith(".markdown"):
-                url = "https://raw.github.com/joyent/node/v%s/doc/api/%s" % (self.version, filename)
+                url = "https://raw.github.com/joyent/node/v%s/doc/api/%s" % (
+                    self.version, filename)
             else:
-                url = "http://nodejs.org/docs/v%s/api/%s" % (self.version, filename)
+                url = "http://nodejs.org/docs/v%s/api/%s" % (
+                    self.version, filename)
             if self.cache:
-                log.info("Downloading from %s and saving to %s", url, cache_name)
+                log.info(
+                    "Downloading from %s and saving to %s", url, cache_name)
                 urllib.urlretrieve(url, cache_name)
             else:
                 log.info("Downloading from %s (not saving)", url)
@@ -120,9 +128,11 @@ class Processor(object):
 
                 for module in data.get("modules", []):
                     mod_name = module.get("name")
-                    module_overrides = default_get(section_overrides, "modules", mod_name)
+                    module_overrides = default_get(
+                        section_overrides, "modules", mod_name)
                     if not module_overrides:
-                        module_overrides = default_get(self.overrides, section, "module")
+                        module_overrides = default_get(
+                            self.overrides, section, "module")
                     for kind in ("properties", "classes", "methods", "modules"):
                         for name, mapping in default_get(module_overrides, kind).items():
                             new_kind = mapping.get("kind")
@@ -179,12 +189,15 @@ class Processor(object):
             with open(filename, "w") as f:
                 for module_data in data.get("modules", []):
                     module = Module(module_data, section)
-                    module_overrides = default_get(overrides, "modules", module.name)
+                    module_overrides = default_get(
+                        overrides, "modules", module.name)
                     if not module_overrides:
                         module_overrides = default_get(overrides, "module")
                     module.write(f, module_overrides)
-                props = [GlobalProperty(d, section) for d in data.get("globals", [])]
-                methods = [GlobalMethod(d, section) for d in data.get("methods", [])]
+                props = [GlobalProperty(d, section)
+                         for d in data.get("globals", [])]
+                methods = [GlobalMethod(d, section)
+                           for d in data.get("methods", [])]
                 toplevels = order(props + methods, section.name)
                 for item in order(props + methods, section.name):
                     item.write(f, default_get(overrides, "globals", item.name))
@@ -197,7 +210,9 @@ class Processor(object):
             sections_written += 1
         log.warn("Wrote docs for %r sections", sections_written)
 
+
 class Node(object):
+
     def __init__(self, data=None):
         self.overrides = {}
         self.data = data
@@ -244,7 +259,7 @@ class Node(object):
                 if i != 0:
                     if u in ("Mn", "Mc", "Nd", "Pc"):
                         continue
-                    if c in u"\u200c\u200d": # ZWNJ, ZWJ
+                    if c in u"\u200c\u200d":  # ZWNJ, ZWJ
                         continue
                 return False
             finally:
@@ -285,17 +300,23 @@ class Node(object):
     def parentName(self):
         return self.parent.name
 
+
 class Section(Node):
+
     def __init__(self, section):
         super(type(self), self).__init__()
         self.section = section
+
     def __repr__(self):
         return "<Section %r>" % (self.section,)
+
     @property
     def name(self):
         return self.section
 
+
 class Module(Node):
+
     def __init__(self, data, parent):
         super(Module, self).__init__(data=data)
         self.parent = parent
@@ -307,7 +328,8 @@ class Module(Node):
         if self._name is not None:
             return self._name
         # look in the module description; strip out all the examples, first
-        desc = re.sub("<pre>.*?</pre>", "", self.data.get("desc", ""), flags=re.DOTALL)
+        desc = re.sub(
+            "<pre>.*?</pre>", "", self.data.get("desc", ""), flags=re.DOTALL)
         # un-HTML-escape bits we care about
         desc = desc.replace("&apos;", "'").replace("&quot;", '"')
         # grab it from the description
@@ -332,7 +354,9 @@ class Module(Node):
         for child in order(self.methods + self.classes + self.properties, self.name):
             child.write(f, overrides=overrides.get(child.name, {}))
 
+
 class Method(Node):
+
     def __init__(self, data, parent):
         super(Method, self).__init__(data=data)
         self.parent = parent
@@ -349,13 +373,15 @@ class Method(Node):
             f.write(" * %s\n" % (line.rstrip(),))
         for param in self.params:
             if param.name:
-                param.overrides = self.overrides.get("params", {}).get(param.name, {})
+                param.overrides = self.overrides.get(
+                    "params", {}).get(param.name, {})
                 f.write(" * @param %s\n" % (param.desc,))
         if self.returnDescription:
             f.write(" * @returns %s\n" % (self.returnDescription,))
         f.write(" */\n")
         param_names = [p.name for p in self.params if p.name]
-        f.write("%s = function(%s) {}\n" % (self.declaration, ", ".join(param_names)))
+        f.write("%s = function(%s) {}\n" %
+                (self.declaration, ", ".join(param_names)))
         for child in order(self.methods + self.properties, self.name):
             child.write(f, overrides=overrides.get(child.name, {}))
 
@@ -402,7 +428,8 @@ class Method(Node):
             if not match:
                 match = re.search("(?:^|\.)\s*Creates (.*)", doc, re.MULTILINE)
             if match:
-                desc = match.group(1).split(". ")[0].strip().rstrip(".").rstrip()
+                desc = match.group(1).split(
+                    ". ")[0].strip().rstrip(".").rstrip()
                 log.debug("desc: %s", desc)
 
         if desc:
@@ -437,17 +464,23 @@ class Method(Node):
 
         return None
 
+
 class GlobalMethod(Method):
+
     @property
     def declaration(self):
         return "%s" % (self.name,)
 
+
 class InstanceMethod(Method):
+
     @property
     def parentName(self):
         return "%s.prototype" % (self.parent.name,)
 
+
 class Param(object):
+
     def __init__(self, data, method=None, overrides={}):
         self.data = data
         self.method = method
@@ -463,7 +496,8 @@ class Param(object):
     def desc(self):
         value = self.overrides.get("default")
         typeDesc = self.overrides.get("type")
-        log.debug("Param.desc: %s: %s (%r)", self.name, pformat(self.overrides), value)
+        log.debug("Param.desc: %s: %s (%r)", self.name,
+                  pformat(self.overrides), value)
 
         if not value and self.method and self.method.doc:
             doc = " ".join(self.method.doc.splitlines())
@@ -487,7 +521,8 @@ class Param(object):
             doc = " ".join(self.method.doc.splitlines())
             match = re.search("%s defaults to ([^\s)]+)" % (self.name,), doc)
             if match:
-                value = match.group(1).rstrip(".") # strip sentence-ending periods
+                # strip sentence-ending periods
+                value = match.group(1).rstrip(".")
 
         if not typeDesc:
             typeDesc = self.data.get("type")
@@ -512,7 +547,9 @@ class Param(object):
             result += " {%s}" % (typeDesc,)
         return result
 
+
 class Event(Node):
+
     def __init__(self, data, parent):
         super(Event, self).__init__(data=data)
         self.parent = parent
@@ -542,7 +579,7 @@ class Event(Node):
                 if isinstance(param, dict):
                     name = param.keys()[0]
                     value = param[name]
-                    data = {"name": name }
+                    data = {"name": name}
                     if isinstance(value, dict):
                         if "default" in value:
                             data["desc"] = "Default: %s" % (value["default"],)
@@ -582,7 +619,9 @@ class Event(Node):
                                                            self.name,
                                                            param_names))
 
+
 class Class(Node):
+
     def __init__(self, data, module):
         super(type(self), self).__init__(data=data)
         self.parent = module
@@ -616,7 +655,8 @@ class Class(Node):
         if self.events:
             f.write("\n/** @__local__ */ %s.__events__ = {};\n" % (self.name,))
             for child in self.events:
-                child.write(f, overrides=default_get(overrides, "__events__", child.name))
+                child.write(
+                    f, overrides=default_get(overrides, "__events__", child.name))
 
     @property
     def methods(self):
@@ -631,11 +671,13 @@ class Class(Node):
         results = []
         for data in self.data.get("properties", []):
             if data.get("name").startswith("["):
-                continue # skip array accessors
+                continue  # skip array accessors
             results.append(InstanceProperty(data, self))
         return results
 
+
 class Property(Node):
+
     def __init__(self, data, parent):
         super(Property, self).__init__(data=data)
         self.parent = parent
@@ -690,7 +732,8 @@ class Property(Node):
             f.write("%s = %s;\n" % (self.declaration, self.defaultValue))
 
         if "__proto__" in overrides:
-            f.write("%s.__proto__ = %s;\n" % (self.name, overrides["__proto__"]))
+            f.write("%s.__proto__ = %s;\n" %
+                    (self.name, overrides["__proto__"]))
 
         for child in order(self.methods + self.classes + self.properties, self.name):
             child.write(f, overrides.get(child.name, {}))
@@ -698,7 +741,8 @@ class Property(Node):
         if self.events:
             f.write("\n/** @__local__ */ %s.__events__ = {};\n" % (self.name,))
             for child in self.events:
-                child.write(f, overrides=default_get(overrides, "__events__", child.name))
+                child.write(
+                    f, overrides=default_get(overrides, "__events__", child.name))
 
     @property
     def declaration(self):
@@ -708,7 +752,9 @@ class Property(Node):
     def defaultValue(self):
         return "0"
 
+
 class GlobalProperty(Property):
+
     @property
     def declaration(self):
         return "var %s" % (self.name,)
@@ -718,10 +764,13 @@ class GlobalProperty(Property):
         # not sure why global props (or, to be specific, |process|) is weird...
         return "{}"
 
+
 class InstanceProperty(Property):
+
     @property
     def parentName(self):
         return "%s.prototype" % (self.parent.name,)
+
 
 def order(items, parent_name):
     """Order the given names for easier comparision
@@ -740,6 +789,7 @@ def order(items, parent_name):
     if parent_name in sort_data:
         order = sort_data[parent_name]
         log.debug("using ordering for %s: %r", parent_name, order)
+
         def c(a, b):
             if a.name in order and b.name in order:
                 return cmp(order.index(a.name), order.index(b.name))
@@ -750,8 +800,10 @@ def order(items, parent_name):
     log.debug("order result: %r", [c.name for c in items])
     return items
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Node.js documentation to Komodo CIX parser.')
+    parser = argparse.ArgumentParser(
+        description='Node.js documentation to Komodo CIX parser.')
     parser.add_argument("--cache", dest="cache", action="store_true",
                         help="save downloaded JSON source if missing")
     parser.add_argument("--version", "-V", dest="version", action="store",

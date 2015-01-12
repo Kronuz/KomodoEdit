@@ -15,10 +15,10 @@ if sys.platform.startswith("win"):
                 ("dwThreadID", wintypes.DWORD),
                 ("dwFlags", wintypes.DWORD),
             ]
+
             def __init__(self):
                 self.dwType = 0x1000
                 self.dwFlags = 0
-
 
         def debugChecker():
             kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -37,15 +37,16 @@ if sys.platform.startswith("win"):
                 if IsDebuggerPresent():
                     for thread in threading.enumerate():
                         if thread.ident is None:
-                            continue # not started
+                            continue  # not started
                         if hasattr(threading, "_MainThread"):
                             if isinstance(thread, threading._MainThread):
-                                continue # don't name the main thread
+                                continue  # don't name the main thread
                         info.szName = "%s (Python)" % (thread.name,)
                         info.dwThreadID = thread.ident
                         try:
                             RaiseException(MS_VC_EXCEPTION, 0,
-                                           ctypes.sizeof(info) / ctypes.sizeof(ctypes.c_void_p),
+                                           ctypes.sizeof(
+                                               info) / ctypes.sizeof(ctypes.c_void_p),
                                            ctypes.addressof(info))
                         except:
                             pass
@@ -58,7 +59,9 @@ if sys.platform.startswith("win"):
     del namer
 elif sys.platform.startswith("linux"):
     def namer():
-        import ctypes, ctypes.util, threading
+        import ctypes
+        import ctypes.util
+        import threading
         libpthread_path = ctypes.util.find_library("pthread")
         if not libpthread_path:
             return
@@ -70,6 +73,7 @@ elif sys.platform.startswith("linux"):
         pthread_setname_np.restype = ctypes.c_int
 
         orig_setter = threading.Thread.__setattr__
+
         def attr_setter(self, name, value):
             orig_setter(self, name, value)
             if name == "name":
@@ -78,15 +82,15 @@ elif sys.platform.startswith("linux"):
                     try:
                         pthread_setname_np(ident, str(value))
                     except:
-                        pass # Don't care about failure to set name
+                        pass  # Don't care about failure to set name
         threading.Thread.__setattr__ = attr_setter
 
-        #set the thread name to itself to trigger the new logic
+        # set the thread name to itself to trigger the new logic
         for thread in threading.enumerate():
             if thread.name:
                 if hasattr(threading, "_MainThread"):
                     if isinstance(thread, threading._MainThread):
-                        continue # don't name the main thread
+                        continue  # don't name the main thread
                 thread.name = thread.name
 
     namer()

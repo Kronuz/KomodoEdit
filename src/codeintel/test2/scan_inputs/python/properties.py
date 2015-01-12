@@ -1,4 +1,5 @@
 class C(object):
+
     @property
     def x(self):
         foo = bar
@@ -12,7 +13,9 @@ class C(object):
     def x(self):
         del self._x
 
+
 class D(C):
+
     @C.x.getter
     def x(self):
         return self._x * 2

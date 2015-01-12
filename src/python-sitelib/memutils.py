@@ -13,6 +13,7 @@ log = logging.getLogger("memutils")
 #
 _ignored_object_ids = set()
 
+
 def _memusage(obj, seen=None, getsizeof=sys.getsizeof):
     obj_id = id(obj)
     if obj_id in seen:
@@ -35,16 +36,19 @@ def _memusage(obj, seen=None, getsizeof=sys.getsizeof):
                 _ignored_object_ids.add(obj_id)
     return size
 
+
 def memusage(obj):
     """Return the memory usage (in bytes) for the given object."""
     seen = set()
     seen.add(id(seen))
     return _memusage(obj, seen)
 
+
 def totalusage():
     seen = set()
     seen.add(id(seen))
     return sum(_memusage(obj, seen) for obj in gc.get_objects())
+
 
 def object_memory_summary(obj):
     """Print out child attributes and their memory consumption."""

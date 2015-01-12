@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """difflibex -- some diff-related additions to difflib
@@ -57,7 +57,7 @@ import time
 import logging
 import optparse
 import difflib
-from difflib import SequenceMatcher # For getUnsavedChangeInstructions
+from difflib import SequenceMatcher  # For getUnsavedChangeInstructions
 from hashlib import md5
 
 from zope.cachedescriptors.property import LazyClassAttribute
@@ -71,11 +71,10 @@ class DiffLibExError(Exception):
     pass
 
 
-
 #---- globals
 
 log = logging.getLogger("difflibex")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 
 #---- main functions and classes
@@ -87,10 +86,10 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
     end of the file and the diff including those lines.
     """
     for line in difflib.unified_diff(
-                    a, b,
-                    fromfile=fromfile, tofile=tofile,
-                    fromfiledate=fromfiledate, tofiledate=tofiledate,
-                    n=n, lineterm=lineterm):
+            a, b,
+            fromfile=fromfile, tofile=tofile,
+            fromfiledate=fromfiledate, tofiledate=tofiledate,
+            n=n, lineterm=lineterm):
         if not line.endswith(lineterm):
             # Handle not having an EOL at end of file
             # (see Komodo Bug 74398).
@@ -168,7 +167,7 @@ def diff_local_directories(left_dirpath, right_dirpath):
     # Make one sorted list of the paths and their respective change types.
     change_list = [(relpath, "common") for relpath in common_relpaths ] + \
                   [(relpath, "removed") for relpath in removed_relpaths ] + \
-                  [(relpath, "added") for relpath in added_relpaths ]
+                  [(relpath, "added") for relpath in added_relpaths]
     change_list.sort()
 
     result = []
@@ -205,7 +204,7 @@ def diff_local_directories(left_dirpath, right_dirpath):
 
         # See if the files differ.
         if (changetype == "common" and
-            md5(left_filedata).hexdigest() == md5(right_filedata).hexdigest()):
+                md5(left_filedata).hexdigest() == md5(right_filedata).hexdigest()):
             # The files are the same.
             continue
 
@@ -243,14 +242,14 @@ def diff_multiple_local_filepaths(left_filepaths, right_filepaths,
 
         if isfile(left_path):
             ti = textinfo.TextInfo.init_from_path(left_path,
-                    follow_symlinks=True)
+                                                  follow_symlinks=True)
             if ti.is_text:
                 left_filedata = ti.text
             else:
                 hasBinaryContent = True
         if isfile(right_path):
             ti = textinfo.TextInfo.init_from_path(right_path,
-                    follow_symlinks=True)
+                                                  follow_symlinks=True)
             if ti.is_text:
                 right_filedata = ti.text
             else:
@@ -273,18 +272,23 @@ def diff_multiple_local_filepaths(left_filepaths, right_filepaths,
                                left_display, right_display)
     return "".join(result)
 
+
 class Hunk:
+
     def __init__(self, start_line, lines):
         end_line = start_line + len(lines)
         log.debug("lines %d-%d: hunk", start_line, end_line)
         self.start_line = start_line
         self.end_line = end_line
         self.lines = lines
-    def pprint(self, indent=' '*8):
+
+    def pprint(self, indent=' ' * 8):
         print "%shunk: lines %d-%d"\
               % (indent, self.start_line, self.end_line)
 
+
 class FileDiff:
+
     """A FileDiff represents diff content for one file. It is made up of one
     or more chunks."""
 
@@ -312,7 +316,7 @@ class FileDiff:
         )
 
     def best_path(self, cwd=None):
-        #XXX How to pick the best path?
+        # XXX How to pick the best path?
         if "p4 diff header" in self.paths:
             path = self.paths["p4 diff header"]
         elif "index" in self.paths:
@@ -341,7 +345,7 @@ class FileDiff:
             all_paths.append(path)
         return all_paths
 
-    def pprint(self, indent=' '*4):
+    def pprint(self, indent=' ' * 4):
         best_path = self.best_path()
         if best_path is None:
             best_path = "???"
@@ -351,9 +355,11 @@ class FileDiff:
                  best_path,
                  len(self.hunks))
         for hunk in self.hunks:
-            hunk.pprint(indent*2)
+            hunk.pprint(indent * 2)
+
 
 class Diff:
+
     """A Diff represents some diff/patch content. At its most generic it is made
     up of multiple FileDiff's.
     """
@@ -367,22 +373,24 @@ class Diff:
                 # ==== //depot/foo.css#42 - c:\clientview\foo.css ====
                 # ==== //depot/foo.js#22 (xtext) ====
                 re.compile(r"^==== (?P<depotpath>.*?)#\d+ "
-                            "(- (?P<path>.*?)|\(.*?\)) ====$"),
+                           "(- (?P<path>.*?)|\(.*?\)) ====$"),
             "---":
-                re.compile(r"(\+\+\+|---|\*\*\*)(\s+(?P<path>.*?)(\t.*?)?)?\s*$"),
+                re.compile(
+                    r"(\+\+\+|---|\*\*\*)(\s+(?P<path>.*?)(\t.*?)?)?\s*$"),
             "plain hunk header":
                 # E.g., '9c9', '185,187c185'
                 re.compile(r"^(?P<beforestartline>\d+)(,\d+)?"
-                            "(?P<type>[acd])"
-                            "(?P<afterstartline>\d+)(,\d+)?$"),
+                           "(?P<type>[acd])"
+                           "(?P<afterstartline>\d+)(,\d+)?$"),
             "context hunk header":
                 # E.g., '*** 32,37 ****', '--- 32,39 ----', '*** 1 ****'
-                re.compile(r"^([\*-]){3} (?P<startline>\d+)(,(?P<endline>\d+))? \1{4}$"),
+                re.compile(
+                    r"^([\*-]){3} (?P<startline>\d+)(,(?P<endline>\d+))? \1{4}$"),
             "unified hunk header":
                 # E.g., '@@ -296,7 +296,8 @@'
                 # E.g., '@@ -1 +0,0 @@'
                 re.compile(r"^@@\s-(?P<beforestartline>\d+)(,(\d+))?\s"
-                            "\+(?P<afterstartline>\d+)(,(\d+))?\s@@"),
+                           "\+(?P<afterstartline>\d+)(,(\d+))?\s@@"),
         }
 
     def __init__(self, content):
@@ -397,7 +405,7 @@ class Diff:
     def pprint(self):
         print "diff (%s files)" % (len(self.file_diffs))
         for file_diff in self.file_diffs:
-            file_diff.pprint(indent=' '*4)
+            file_diff.pprint(indent=' ' * 4)
 
     def parse(self, content):
         r"""
@@ -470,9 +478,9 @@ class Diff:
         idx = 0
         while idx < len(lines):
             line = lines[idx]
-            #print "%3d: %r" % (idx, line)
+            # print "%3d: %r" % (idx, line)
 
-            if state is None: # looking for diff header lines
+            if state is None:  # looking for diff header lines
                 first_tokens = line.split(None, 1)
                 if first_tokens:
                     first_token = first_tokens[0]
@@ -496,9 +504,9 @@ class Diff:
                     log.debug("line %d: 'diff ' line", idx)
                     if file_diff is None:
                         file_diff = FileDiff(paths, idx)
-                    if idx+1 < len(lines) \
+                    if idx + 1 < len(lines) \
                        and self._patterns["plain hunk header"]\
-                            .match(lines[idx+1].rstrip()):
+                            .match(lines[idx + 1].rstrip()):
                         state = "plain"
                 elif line.startswith("==== "):
                     # Likely a 'p4 diff ...' header line.
@@ -512,16 +520,16 @@ class Diff:
                             file_diff = FileDiff(paths, idx)
                         # You can always tell the diff type from the
                         # line after the p4 diff header.
-                        #XXX This is wrong. Sometimes there is *no*
+                        # XXX This is wrong. Sometimes there is *no*
                         #    subsequent diff content.
-                        if idx+1 < len(lines) and not lines[idx+1].strip():
+                        if idx + 1 < len(lines) and not lines[idx + 1].strip():
                             # 'p4 describe' output includes an extra
                             # blank separation line here.
                             idx += 1
-                        if idx+1 < len(lines):
-                            if lines[idx+1].rstrip() == "*"*15:
+                        if idx + 1 < len(lines):
+                            if lines[idx + 1].rstrip() == "*" * 15:
                                 state = "context"
-                            elif lines[idx+1].startswith("@@"):
+                            elif lines[idx + 1].startswith("@@"):
                                 state = "unified"
                             else:
                                 state = "plain"
@@ -536,23 +544,24 @@ class Diff:
                         if first_token == "+++":
                             state = "unified"
                         elif first_token == "---" \
-                             and idx > 0 \
-                             and lines[idx-1].strip() \
-                             and lines[idx-1].split(None, 1)[0] == "***":
+                                and idx > 0 \
+                                and lines[idx - 1].strip() \
+                                and lines[idx - 1].split(None, 1)[0] == "***":
                             state = "context"
                 elif self._patterns["plain hunk header"].match(line.rstrip()):
                     if file_diff is None:
                         file_diff = FileDiff(paths, None)
                     state = "plain"
-                    idx -= 1 # compensation for the subsequent increment
+                    idx -= 1  # compensation for the subsequent increment
                 idx += 1
 
             elif state == "plain":
                 log.debug("line %s: 'plain' file diff", idx)
                 file_diff.diff_type = "plain"
 
-                while idx < len(lines): # read in plain hunks
-                    match = self._patterns["plain hunk header"].match(lines[idx])
+                while idx < len(lines):  # read in plain hunks
+                    match = self._patterns[
+                        "plain hunk header"].match(lines[idx])
                     if not match:
                         break
                     hunk_start_line = idx
@@ -591,7 +600,8 @@ class Diff:
                     else:
                         raise DiffLibExError("unexpected plain hunk header "
                                              "type: '%s'" % hunk_type)
-                    file_diff.add_hunk(hunk_start_line, lines[hunk_start_line:idx])
+                    file_diff.add_hunk(
+                        hunk_start_line, lines[hunk_start_line:idx])
 
                 file_diff.lines = lines[file_diff.header_start_line:idx]
                 self.file_diffs.append(file_diff)
@@ -603,22 +613,24 @@ class Diff:
                 log.debug("line %d: 'unified' file diff", idx)
                 file_diff.diff_type = "unified"
 
-                while idx < len(lines): # read in unified hunks
-                    if not lines[idx].startswith("@@ "): break
+                while idx < len(lines):  # read in unified hunks
+                    if not lines[idx].startswith("@@ "):
+                        break
                     hunk_start_line = idx
                     idx += 1
 
                     while idx < len(lines) \
-                          and (lines[idx].startswith("+")
-                               or lines[idx].startswith("-")
-                               or lines[idx].startswith(" ")
-                               # Guard against "empty diff hunk line" + Komodo's
-                               # "remove trailing whitespace on save" causing
-                               # the leading ' ' to have been removed.
-                               or not lines[idx]):
+                        and (lines[idx].startswith("+")
+                             or lines[idx].startswith("-")
+                             or lines[idx].startswith(" ")
+                             # Guard against "empty diff hunk line" + Komodo's
+                             # "remove trailing whitespace on save" causing
+                             # the leading ' ' to have been removed.
+                             or not lines[idx]):
                         idx += 1
 
-                    file_diff.add_hunk(hunk_start_line, lines[hunk_start_line:idx])
+                    file_diff.add_hunk(
+                        hunk_start_line, lines[hunk_start_line:idx])
 
                 file_diff.lines = lines[file_diff.header_start_line:idx]
                 self.file_diffs.append(file_diff)
@@ -630,8 +642,8 @@ class Diff:
                 log.debug("line %d: 'context' file diff", idx)
                 file_diff.diff_type = "context"
 
-                while idx < len(lines): # read in context hunks
-                    if not lines[idx].rstrip() == "*"*15:
+                while idx < len(lines):  # read in context hunks
+                    if not lines[idx].rstrip() == "*" * 15:
                         break
                     hunk_start_line = idx
                     idx += 1
@@ -643,14 +655,14 @@ class Diff:
                     idx += 1
 
                     while idx < len(lines) \
-                          and (lines[idx].startswith("! ")
-                               or lines[idx].startswith("+ ")
-                               or lines[idx].startswith("- ")
-                               or lines[idx].startswith("  ")
-                               # Guard against "empty diff hunk line" + Komodo's
-                               # "remove trailing whitespace on save" causing
-                               # the leading '  ' to have been removed.
-                               or not lines[idx]):
+                        and (lines[idx].startswith("! ")
+                             or lines[idx].startswith("+ ")
+                             or lines[idx].startswith("- ")
+                             or lines[idx].startswith("  ")
+                             # Guard against "empty diff hunk line" + Komodo's
+                             # "remove trailing whitespace on save" causing
+                             # the leading '  ' to have been removed.
+                             or not lines[idx]):
                         idx += 1
 
                     if idx >= len(lines) \
@@ -659,17 +671,18 @@ class Diff:
                     idx += 1
 
                     while idx < len(lines) \
-                          and (lines[idx].startswith("! ")
-                               or lines[idx].startswith("+ ")
-                               or lines[idx].startswith("- ")
-                               or lines[idx].startswith("  ")
-                               # Guard against "empty diff hunk line" + Komodo's
-                               # "remove trailing whitespace on save" causing
-                               # the leading '  ' to have been removed.
-                               or not lines[idx]):
+                        and (lines[idx].startswith("! ")
+                             or lines[idx].startswith("+ ")
+                             or lines[idx].startswith("- ")
+                             or lines[idx].startswith("  ")
+                             # Guard against "empty diff hunk line" + Komodo's
+                             # "remove trailing whitespace on save" causing
+                             # the leading '  ' to have been removed.
+                             or not lines[idx]):
                         idx += 1
 
-                    file_diff.add_hunk(hunk_start_line, lines[hunk_start_line:idx])
+                    file_diff.add_hunk(
+                        hunk_start_line, lines[hunk_start_line:idx])
 
                 file_diff.lines = lines[file_diff.header_start_line:idx]
                 self.file_diffs.append(file_diff)
@@ -701,14 +714,14 @@ class Diff:
             # This technically place the cursor out of range.
             if (diff_col == 0 and self.file_diffs and self.file_diffs[-1].hunks
                 and diff_line == self.file_diffs[-1].hunks[-1].end_line
-               ):
+                ):
                 file_diff = self.file_diffs[-1]
                 hunk = file_diff.hunks[-1]
                 diff_line -= 1
                 diff_col = len(self.lines[diff_line])
             else:
                 raise DiffLibExError("(this one) line %s is not in a diff hunk"
-                                     % (diff_line+1))
+                                     % (diff_line + 1))
         return file_diff, hunk
 
     def file_pos_from_diff_pos(self, diff_line, diff_col):
@@ -741,13 +754,13 @@ class Diff:
             #   B is the file_after_line_start (1-based)
             # Subtract 1 to convert to 0-based line nums.
             m = self._patterns["unified hunk header"].match(
-                    self.lines[hunk.start_line])
+                self.lines[hunk.start_line])
             # -1 to convert to 0-based
             file_before_line = int(m.group("beforestartline")) - 1
             file_after_line = int(m.group("afterstartline")) - 1
             # range start:  +1 to skip header
             # range end:    +1 to include diff_line bound
-            if diff_line < hunk.start_line+1:
+            if diff_line < hunk.start_line + 1:
                 # Not in the diff hunk content, just default to the first
                 # diff hunk line.
                 file_line = file_after_line
@@ -756,7 +769,7 @@ class Diff:
                 # -1 because the counting will add it back on the first line
                 file_before_line -= 1
                 file_after_line -= 1
-                for i in range(hunk.start_line+1, diff_line+1):
+                for i in range(hunk.start_line + 1, diff_line + 1):
                     line = self.lines[i]
                     if not line or line[0] == ' ':
                         # 'not line' because Komodo's "remove trailing whitespace
@@ -770,16 +783,17 @@ class Diff:
                     else:
                         # This is junk lines after the diff hunk.
                         raise DiffLibExError("line %s is not in a diff hunk"
-                                             % (diff_line+1))
+                                             % (diff_line + 1))
                 if line and line[0] == '-':
                     file_line = file_before_line
                 else:
                     file_line = file_after_line
-                file_col = max(diff_col - 1, 0) # unified-diff prefix is 1 char
+                # unified-diff prefix is 1 char
+                file_col = max(diff_col - 1, 0)
 
         elif file_diff.diff_type == "context":
             hunk_header_pat = self._patterns["context hunk header"]
-            file_col = max(diff_col - 2, 0) # context-diff prefix is 2 chars
+            file_col = max(diff_col - 2, 0)  # context-diff prefix is 2 chars
 
             state = "all stars"
             i = hunk.start_line
@@ -790,7 +804,7 @@ class Diff:
                     # First line of hunk header: '***************'
                     if i >= diff_line:
                         # Use the file_before start line.
-                        m = hunk_header_pat.match(self.lines[i+1])
+                        m = hunk_header_pat.match(self.lines[i + 1])
                         file_line = int(m.group("startline")) - 1
                         file_col = 0
                         break
@@ -802,7 +816,8 @@ class Diff:
                         file_col = 0
                         break
                     else:
-                        file_line -= 1 # will be added back on first content line
+                        # will be added back on first content line
+                        file_line -= 1
                         state = "before content"
                 elif state == "before content":
                     if line[:2] in ("  ", "! ", "- "):
@@ -822,7 +837,8 @@ class Diff:
                         file_col = 0
                         break
                     else:
-                        file_line -= 1 # will be added back on first content line
+                        # will be added back on first content line
+                        file_line -= 1
                         state = "after content"
                 elif state == "after content":
                     if line[:2] in ("  ", "! ", "+ "):
@@ -836,7 +852,7 @@ class Diff:
 
         elif file_diff.diff_type == "plain":
             hunk_header_pat = self._patterns["plain hunk header"]
-            file_col = max(diff_col - 2, 0) # plain-diff prefix is 2 chars
+            file_col = max(diff_col - 2, 0)  # plain-diff prefix is 2 chars
 
             state = "header"
             i = hunk.start_line
@@ -857,7 +873,7 @@ class Diff:
                         if hunk_type == "a":
                             file_line = file_after_line - 1
                             state = "after content"
-                        else: # hunk_type in ('c', 'd')
+                        else:  # hunk_type in ('c', 'd')
                             file_line = file_before_line - 1
                             state = "before content"
                 elif state == "before content":
@@ -902,7 +918,8 @@ class Diff:
         for file_diff in self.file_diffs:
             file_path = file_diff.best_path()
             result[file_path] = linenums = []
-            _, file_line, _ = self.file_pos_from_diff_pos(file_diff.header_start_line, 0)
+            _, file_line, _ = self.file_pos_from_diff_pos(
+                file_diff.header_start_line, 0)
             for hunk in file_diff.hunks:
                 for line in hunk.lines:
                     if line.startswith(" "):
@@ -921,13 +938,16 @@ class Diff:
         file_diff, hunk = self.file_diff_and_hunk_from_pos(diff_line, diff_col)
         return file_diff.all_paths()
 
+
 def _max_acceptable_edit_dist(s):
     # Found this value largely by pulling it out of a hat.  Replacements occupy
     # a grey area between equal and replace/delete, so we say that any string
     # with a levenstein value < 1/4 its length qualifies as a replacement.
     return len(s) / 4.0
 
-_split_opcodes_diffs = {} # Map md5(a) + md5(b) => {time:time, opcodes:list of opcodes}
+# Map md5(a) + md5(b) => {time:time, opcodes:list of opcodes}
+_split_opcodes_diffs = {}
+
 
 def _get_hash_for_arrays(a, b):
     key = md5("".join(a)).hexdigest() + md5("".join(b)).hexdigest()
@@ -938,9 +958,10 @@ def _get_hash_for_arrays(a, b):
         return key
     if len(_split_opcodes_diffs) >= 1000:
         # If we have more than 1000 keys, remove the least recently used.
-        oldest_item = min([(x[1]['time'], x[0]) for x in _split_opcodes_diffs.items()])
+        oldest_item = min([(x[1]['time'], x[0])
+                           for x in _split_opcodes_diffs.items()])
         del _split_opcodes_diffs[oldest_item[1]]
-    _split_opcodes_diffs[key] = {'time':currTime, 'opcodes':None}
+    _split_opcodes_diffs[key] = {'time': currTime, 'opcodes': None}
     return key
 
 
@@ -955,62 +976,63 @@ def split_opcodes(opcode, a, b, forceCalc=False):
         unified-diff has decided we're replacing m lines with n != m lines.
         We want to find out which lines are true replacements (similar), and
         which are insertions or deletions.
-        
+
     @param a: list of strings (original values) 
     @param b: list of strings (current values)
     @return: an array of new opcodes
-    
+
     Implement a modified Wagner-Fischer algorithm
     to try to determine how these lines actually match up
-    
+
     References:
     https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm
-    
+
     If Wikipedia dies:
     R.A. Wagner and M.J. Fischer. 1974. The String-to-String Correction Problem. Journal of the ACM, 21(1):168-173.
-    
+
     Overview:
     Build a matrix of edit_distance levenshtein values from all possible paths
     from line[i] in a to line[j] to b.  a is the starting text, b is the
     final text, and we want to determine a sequence of transformations from a
     to b.
-    
+
     Given m = len(a) and n = len(b),
     this is an m x n matrix, D.  We want to find a path through the matrix
     moving through the first dimension (corresponding to lines in a),
     starting at D[0][0].  We also never backtrack on j.
-    
+
     If we find an entry d[i][j] = 0, this means lines a[i] and b[j] match.
     Advance both i and j.
-    
+
     If d[i][j] <= some max value X (which normally depends on a[i]), it means
     b[j] is a replacement for a[j].
-    
+
     If d[i][j] > X, then is there a value d[i][j'] <= X for j' > j?
     If yes, treat b[j:j'] as inserted lines relative to a[i], and process d[i][j'] as above.
     Otherwise, treat a[i] as a deleted line relative to b[j].
-    
+
     Remember to look for a run of inserted or deleted text at the end as well.
-    
+
     Now we could use a dynamic programming algorithm to determine the minimum
     cost for going from a to b, but let's assume this result will be good enough,
     since its main purpose is to show diffs visually in the editor.
-    
+
     """
     m = len(a)
     n = len(b)
     if (not forceCalc) and m * n > 500:
         # Don't waste time trying to split up big hunks
         return [opcode]
-    
+
     _split_opcodes_diffs_key = _get_hash_for_arrays(a, b)
     if _split_opcodes_diffs[_split_opcodes_diffs_key]['opcodes']:
         return _split_opcodes_diffs[_split_opcodes_diffs_key]['opcodes']
     # We don't need all possible edit-distances from a[i] to b[j],
     # because once we advance j at row i, we never look at any entries
-    # in d[ix][jx] for ix > i, jx < j.  So just initialize the matrix with None's.
+    # in d[ix][jx] for ix > i, jx < j.  So just initialize the matrix with
+    # None's.
     d = [[None for j in range(n)] for i in range(m)]
-    tag, i1, i2, j1, j2 = opcode # assert tag == 'replace'
+    tag, i1, i2, j1, j2 = opcode  # assert tag == 'replace'
     opcodes = []
     j = 0
     for i in range(m):
@@ -1020,14 +1042,15 @@ def split_opcodes(opcode, a, b, forceCalc=False):
             dval = edit_distance(a[i], b[j_idx])
             d[i][j_idx] = dval
             if dval <= max_lev:
-                # Once we find something suitable there's no need to look further.
+                # Once we find something suitable there's no need to look
+                # further.
                 break
         curr_slice = d[i][j:]
         if 0 in curr_slice:
             next_zero = curr_slice.index(0)
         else:
             next_zero = -1
-            
+
         if next_zero == 0:
             next_posn = next_zero
             match_type = "equal"
@@ -1037,7 +1060,7 @@ def split_opcodes(opcode, a, b, forceCalc=False):
                     break
             else:
                 next_low_idx = -1
-            
+
             if next_low_idx < 0:
                 if next_zero < 0:
                     # It's a deletion
@@ -1059,9 +1082,11 @@ def split_opcodes(opcode, a, b, forceCalc=False):
         # Now advance through the distance matrix
         if next_posn is not None:
             if next_posn > 0:
-                opcodes.append(('insert', i + i1, i + i1, j + j1, j + j1 + next_posn))
+                opcodes.append(
+                    ('insert', i + i1, i + i1, j + j1, j + j1 + next_posn))
                 j += next_posn
-            opcodes.append((match_type, i + i1, i + i1 + 1, j + j1, j + j1 + 1))
+            opcodes.append(
+                (match_type, i + i1, i + i1 + 1, j + j1, j + j1 + 1))
             j += 1
         else:
             # We have a deletion - don't advance j
@@ -1073,17 +1098,19 @@ def split_opcodes(opcode, a, b, forceCalc=False):
             break
     if j < n:
         opcodes.append(('insert', m + i1, m + i1, j + j1, n + j1))
-    
+
     _split_opcodes_diffs[_split_opcodes_diffs_key]['opcodes'] = opcodes
     return opcodes
-        
+
+
 def edit_distance(s, t):
     """ Levenshtein distance: http://en.wikipedia.org/wiki/Levenshtein_distance
            or:
         Navarro, Gonzalo (March 2001). "A guided tour to approximate string matching".
         ACM Computing Surveys 33 (1): 31-88. doi:10.1145/375360.375365.
     """
-    edDict = {} # For memoizing costs between s[i:] and t[j:]
+    edDict = {}  # For memoizing costs between s[i:] and t[j:]
+
     def _edit_distance_aux(spos, tpos):
         k = (spos, tpos)
         if k in edDict:
@@ -1093,14 +1120,15 @@ def edit_distance(s, t):
         if tpos == 0:
             return spos
         cost = s[spos - 1] != t[tpos - 1] and 1 or 0
-        v = min(_edit_distance_aux(spos - 1, tpos    ) + 1,
-                _edit_distance_aux(spos    , tpos - 1) + 1,
+        v = min(_edit_distance_aux(spos - 1, tpos) + 1,
+                _edit_distance_aux(spos, tpos - 1) + 1,
                 _edit_distance_aux(spos - 1, tpos - 1) + cost)
         edDict[k] = v
         return v
     return _edit_distance_aux(len(s), len(t))
 
 #---- internal support stuff
+
 
 def _unique(s):
     """Return a list of the elements in s, in arbitrary order, but without
@@ -1121,6 +1149,7 @@ def _unique(s):
     else:
         return u.keys()
 
+
 def _splitall(path):
     """Split the given path into all its directory parts and return the list
     of those parts (see Python Cookbook recipe for test suite).
@@ -1131,7 +1160,7 @@ def _splitall(path):
         if parts[0] == path:  # sentinel for absolute paths
             allparts.insert(0, parts[0])
             break
-        elif parts[1] == path: # sentinel for relative paths
+        elif parts[1] == path:  # sentinel for relative paths
             allparts.insert(0, parts[1])
             break
         else:
@@ -1139,7 +1168,9 @@ def _splitall(path):
             allparts.insert(0, parts[1])
     return allparts
 
-#XXX Add this to recipes.
+# XXX Add this to recipes.
+
+
 def _commonsuffix(paths):
     """Return the common path suffix (if any) for the given paths.
 
@@ -1176,16 +1207,20 @@ def _commonsuffix(paths):
         retval = os.path.join(*reversed(commonsuffix))
     else:
         retval = None
-    #print "_commonsuffix(%r) -> %r" % (paths, retval)
+    # print "_commonsuffix(%r) -> %r" % (paths, retval)
     return retval
 
-#XXX Add this to recipes
+# XXX Add this to recipes
+
+
 def _lstrippath(path, n):
     parts = _splitall(path)
     # '' for first arg is to prevent TypeError if n > len(parts).
     return os.path.join('', *parts[n:])
 
-#XXX Add this to recipes
+# XXX Add this to recipes
+
+
 def _rstrippath(path, n):
     if n == 0:
         return path
@@ -1194,27 +1229,27 @@ def _rstrippath(path, n):
     return os.path.join('', *parts[:-n])
 
 
-
 #---- mainline and testsuite
 
 def _test():
     raise "difflibex self-test"
 
+
 def _print_file_position(diff, path, diff_pos):
     diff_line, diff_col = map(int, diff_pos.split(','))
     try:
         file_path, file_line, file_col \
-            = diff.file_pos_from_diff_pos(diff_line-1, diff_col-1)
+            = diff.file_pos_from_diff_pos(diff_line - 1, diff_col - 1)
     except DiffLibExError, ex:
         print "%s:%s -> unknown (%s)" % (path, diff_pos, ex)
     else:
-        print "%s:%s -> %s:%s,%s" % (path, diff_pos, file_path, file_line+1,
-                                     file_col+1)
+        print "%s:%s -> %s:%s,%s" % (path, diff_pos, file_path, file_line + 1,
+                                     file_col + 1)
 
 
 def main(argv):
     usage = "usage: %prog [DIFFS...]"
-    version = "%prog "+__version__
+    version = "%prog " + __version__
     parser = optparse.OptionParser(prog="make", usage=usage, version=version,
                                    description=__doc__)
     parser.add_option("-v", "--verbose", dest="log_level",
@@ -1247,7 +1282,7 @@ def main(argv):
                 print path + ':',
                 d.pprint()
 
-    else: # read from stdin
+    else:  # read from stdin
         d = Diff(sys.stdin.read())
         if diff_pos:
             _print_file_position('<stdin>', diff_pos)

@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Provide to Python code what uriparse.js provides to JavaScript code.
@@ -51,8 +51,7 @@ from xpcom import components
 #---- globals
 
 mutex = threading.Lock()
-_gKoFileEx = None # koFileEx singleton instance
-
+_gKoFileEx = None  # koFileEx singleton instance
 
 
 #---- internal support routines
@@ -62,9 +61,8 @@ def _getKoFileEx():
     if _gKoFileEx is None:
         _gKoFileEx = components.classes["@activestate.com/koFileEx;1"]\
                                .createInstance(components.interfaces.koIFileEx)
-    _gKoFileEx.URI = None # clear the instance data
+    _gKoFileEx.URI = None  # clear the instance data
     return _gKoFileEx
-
 
 
 #---- public interface
@@ -89,7 +87,7 @@ def localPathToURI(localPath):
         koFileEx.path = localPath
         if os.path.normpath(koFileEx.path) != os.path.normpath(localPath):
             raise ValueError("'%s' does not appear to be a proper local path [%s]"
-                             % (localPath,koFileEx.path))
+                             % (localPath, koFileEx.path))
         return _normalizedPathToURI(localPath, koFileEx)
     finally:
         mutex.release()
@@ -105,6 +103,8 @@ def localPathToURI(localPath):
 #  file:///D:/trentm/foo.txt -> file:///D:/trentm/foo.txt
 #  ftp://ftp.activestate.com/ActivePython -> ftp://ftp.activestate.com/ActivePython
 #
+
+
 def pathToURI(path):
     mutex.acquire()
     try:
@@ -113,6 +113,7 @@ def pathToURI(path):
         return _normalizedPathToURI(path, koFileEx)
     finally:
         mutex.release()
+
 
 def _normalizedPathToURI(localPath, koFileEx):
     if koFileEx.scheme != "file" or localPath.startswith("file:/"):
@@ -146,7 +147,7 @@ def URIToPath(uri):
     try:
         koFileEx = _getKoFileEx()
         koFileEx.URI = uri
-        return koFileEx.path;
+        return koFileEx.path
     finally:
         mutex.release()
 
@@ -165,6 +166,8 @@ def URIToPath(uri):
 #  file://planer/d/trentm/tmp/foo.txt -> file://planer/d/trentm/tmp/foo.txt
 #  ftp://ftp.activestate.com/ActivePython -> throws exception
 #
+
+
 def URIToLocalPath(uri):
     mutex.acquire()
     try:
@@ -172,7 +175,7 @@ def URIToLocalPath(uri):
         koFileEx.URI = uri
         if koFileEx.scheme != "file":
             raise ValueError("'%s' does not have a local path" % uri)
-        return koFileEx.path;
+        return koFileEx.path
     finally:
         mutex.release()
 
@@ -191,7 +194,7 @@ def displayPath(uri):
     try:
         koFileEx = _getKoFileEx()
         koFileEx.URI = uri
-        return koFileEx.displayPath;
+        return koFileEx.displayPath
     finally:
         mutex.release()
 
@@ -209,9 +212,9 @@ def fixupURI(uri):
                          .getService(components.interfaces.nsIURIFixup)
     try:
         fixupURI = fixupSvc.createFixupURI(uri,
-                        components.interfaces.nsIURIFixup.FIXUP_FLAG_NONE);
+                                           components.interfaces.nsIURIFixup.FIXUP_FLAG_NONE)
         if fixupURI.spec:
-            uri = fixupURI.spec;
+            uri = fixupURI.spec
             re.sub("^(file:/+\w)|", "\1:", uri)
     except Exception, ex:
         log.debug("nsIURIFixup could not fixup '%s': %s", uri, ex)
@@ -224,7 +227,7 @@ def _cleanfileURL(url):
         if not url.startswith('file:///'):
             url = 'file:///' + url[len('file:/'):]
     return url
-    
+
 
 ##
 # Return a mapped URI if there is a pref setup to match the given uri,
@@ -250,7 +253,7 @@ def getMappedURI(uri, prefs=None):
     paths = mapping.split('::')
     mappeduri = ''
     mappedpath = ''
-    
+
     # we have to look at all the paths, since we could have subdirs mapped
     # to different locations as well.
     # eg.
@@ -281,6 +284,8 @@ def getMappedURI(uri, prefs=None):
 # @param host str  Specific hostname to be mapped to.
 # @return str  URI if mapped, else uri that was passed in
 #
+
+
 def getMappedPath(path, prefs=None, host=None):
     # path         == "file://local/test/b/somedir/file.txt"
     # original uri == "http://test/a/b/somedir/file.txt"
@@ -295,7 +300,7 @@ def getMappedPath(path, prefs=None, host=None):
     #     host:       mymachine
     #          =>     file://mymachine/usr/tmp.php
     # XXX project prefs....
-    #print "getMappedPath: %r" % (path, )
+    # print "getMappedPath: %r" % (path, )
     if not prefs:
         prefs = components.classes["@activestate.com/koPrefService;1"].\
             getService(components.interfaces.koIPrefService).effectivePrefs
@@ -341,13 +346,14 @@ def getMappedPath(path, prefs=None, host=None):
 
 import URIlib
 
+
 def RelativizeURL(origbaseurl, origurl):
     if not origurl or not origbaseurl:
         return origurl
     # ensure the base path ends with a slash
-    if origbaseurl[-1] not in ['/','\\']:
+    if origbaseurl[-1] not in ['/', '\\']:
         origbaseurl += '/'
-        
+
     # verify that both base and full url's are file types, we will
     # not relativize ftp, etc. type url's
     baseURI = URIlib.URIParser(origbaseurl)
@@ -368,7 +374,7 @@ def RelativizeURL(origbaseurl, origurl):
     else:
         baseURI_URI_comparable = baseURI.URI
         fullURI_URI_comparable = fullURI.URI
-        
+
     # handle files with a common prefix.  This handles a full path
     # that is a subdirectory/path of the base path
     baselen = len(baseURI_URI_comparable)
@@ -380,45 +386,48 @@ def RelativizeURL(origbaseurl, origurl):
     # return the original url
     return origurl
 
+
 def _UnRelativizeURL(baseurl, path):
     if not path:
         return URIlib.URIParser(baseurl)
     if path.find("://") > 0:
         # not relative if it's already a URI
         return URIlib.URIParser(path)
-    if len(path) >1 and path[1] == ":":
+    if len(path) > 1 and path[1] == ":":
         # windows path, not relative
         return URIlib.URIParser(path)
-    if path[0] == '/' or path[:2] in [r'\\','//']:
+    if path[0] == '/' or path[:2] in [r'\\', '//']:
         # full path or unc path
         return URIlib.URIParser(path)
-    
+
     # ensure our base ends with a directory slash
-    if baseurl[-1] not in ['/','\\']:
+    if baseurl[-1] not in ['/', '\\']:
         baseurl += '/'
     baseURI = URIlib.URIParser(baseurl)
     # we only handle file base uri's
     if not baseURI.scheme == 'file':
         return URIlib.URIParser(path)
-    
+
     # a simple join
-    path = path.replace("\\","/")
-    path = os.path.join(baseURI.path,path)
+    path = path.replace("\\", "/")
+    path = os.path.join(baseURI.path, path)
     # normpath handles collapsing "../../" paths
     if sys.platform.startswith("win"):
-        path = path.replace("/","\\")
+        path = path.replace("/", "\\")
     path = os.path.normpath(path)
     # return a full URI
     return URIlib.URIParser(path)
 
+
 def UnRelativizeURL(baseurl, path):
     return _UnRelativizeURL(baseurl, path).URI
 
+
 def UnRelativizePath(basepath, path):
     return _UnRelativizeURL(basepath, path).path
+
 
 def UnRelativize(basepath, path, type='url'):
     if type == 'url':
         return UnRelativizeURL(basepath, path)
     return UnRelativizePath(basepath, path)
-

@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,12 +31,13 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 # DOM - Prefs interface code.
 # this is used both in the implementation of the preferences system (koPrefs.py) as well
-# as by code that wishes to parse files and then have them turned into preferences.
+# as by code that wishes to parse files and then have them turned into
+# preferences.
 
 from xml.dom import minidom
 from xml.sax import SAXParseException
@@ -44,7 +45,9 @@ from xpcom import components, ServerException, COMException, nsError
 from xpcom.server.enumerator import SimpleEnumerator
 from xpcom.server import WrapObject, UnwrapObject
 from xpcom.client import WeakReference
-import re, sys, os
+import re
+import sys
+import os
 import codecs
 from eollib import newl
 import logging
@@ -60,14 +63,16 @@ __all__ = ["cgi_escape", "dePercent", "dePickleCache", "deserializeFile",
            "writeXMLHeader"]
 
 log = logging.getLogger('koXMLPrefs')
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 # Copied verbatim from cgi.escape (in order to avoid having to import cgi).
+
+
 def cgi_escape(s, quote=None):
     '''Replace special characters "&", "<" and ">" to HTML-safe sequences.
     If the optional flag quote is true, the quotation mark character (")
     is also translated.'''
-    s = s.replace("&", "&amp;") # Must be done first!
+    s = s.replace("&", "&amp;")  # Must be done first!
     s = s.replace("<", "&lt;")
     s = s.replace(">", "&gt;")
     if quote:
@@ -75,11 +80,14 @@ def cgi_escape(s, quote=None):
     return s
 
 # convert a string containing 0, 1, True, False
+
+
 def _convert_boolean(value):
     try:
         return int(value)
     except:
         return value.lower() == "true"
+
 
 def SmallestVersionFirst(a, b):
     """Compare two version strings and return:
@@ -126,14 +134,15 @@ def pickleCache(prefs, filename):
                 # Could not move, resort to a copy then.
                 shutil.copy(pickleFilename, filename)
 
+
 def pickleCacheOKToLoad(xml_filename):
     """
     Determines if there is a cached filename valid to use inplace of
     the passed XML filename.
-    
+
     Returns the filename IF AND ONLY IF the pref's pickle file is OLDER
     than the pref's XML file.
-    
+
     Return None otherwise.
     """
     pickleFilename = "%s%sc" % os.path.splitext(xml_filename)
@@ -141,17 +150,20 @@ def pickleCacheOKToLoad(xml_filename):
     # Determine whether the pickle file is newer than (or the same age as)
     # the XML file.
     try:
-        (mode,ino,dev,nlink,uid,gid,size,atime,mtime,ctime) = os.stat(xml_filename)
+        (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(
+            xml_filename)
         normal_mtime = mtime
     except:
         log.debug("pickleCacheOKToLoad: Can't stat file %r", xml_filename)
         normal_mtime = None
 
     try:
-        (mode,ino,dev,nlink,uid,gid,size,atime,mtime,ctime) = os.stat(pickleFilename)
+        (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(
+            pickleFilename)
         pickle_mtime = mtime
     except:
-        log.debug("pickleCacheOKToLoad: Can't stat pickle file %r", pickleFilename)
+        log.debug(
+            "pickleCacheOKToLoad: Can't stat pickle file %r", pickleFilename)
         return None
 
     if normal_mtime is not None and pickle_mtime < normal_mtime:
@@ -159,7 +171,7 @@ def pickleCacheOKToLoad(xml_filename):
 
     return pickleFilename
 
-    
+
 def dePickleCache(pickleFilename):
     """
     Return a pref object from a pref pickle file.
@@ -177,15 +189,19 @@ def dePickleCache(pickleFilename):
             log.info("Loading preferences from pickle %r", pickleFilename)
             return cPickle.load(file)
         except:
-            log.exception("dePickleCache: Couldn't depickle %r", pickleFilename)
-            
+            log.exception(
+                "dePickleCache: Couldn't depickle %r", pickleFilename)
+
     finally:
         file.close()
+
 
 def writeXMLHeader(stream):
     # Put in some XML boilerplate.
     stream.write('<?xml version="1.0"?>%s' % newl)
-    stream.write('<!-- Komodo Preferences File - DO NOT EDIT -->%s%s' % (newl, newl));
+    stream.write(
+        '<!-- Komodo Preferences File - DO NOT EDIT -->%s%s' % (newl, newl))
+
 
 def writeXMLFooter(stream):
     pass
@@ -193,10 +209,13 @@ def writeXMLFooter(stream):
 # This could well be in an IDL file - but there is no clear way
 # to register such global preferences - so we just
 # define and register them here.
+
+
 class koGlobalPreferenceDefinition:
-    SAVE_DEFAULT = 0 # Save XML and cached fast version.
-    SAVE_XML_ONLY = 1 # Save only the XML version.
-    SAVE_FAST_ONLY = 2 # Save only fast cache version.
+    SAVE_DEFAULT = 0  # Save XML and cached fast version.
+    SAVE_XML_ONLY = 1  # Save only the XML version.
+    SAVE_FAST_ONLY = 2  # Save only fast cache version.
+
     def __init__(self, **kw):
         self.name = None
         self.user_file_basename = None
@@ -220,6 +239,7 @@ class koGlobalPreferenceDefinition:
         warnings.warn("koGlobalPreferenceDefinition:: user_filename is "
                       "deprecated - use user_file_basename or user_filepath")
         return self.user_filepath
+
     @user_filename.setter
     def user_filename_setter(self, val):
         """Deprecated property"""
@@ -228,46 +248,55 @@ class koGlobalPreferenceDefinition:
                       "deprecated - use user_file_basename or user_filepath")
         self.user_filepath = val
 
+
 def _dispatch_deserializer(ds, node, parentPref, prefFactory, basedir=None, chainNotifications=0):
     """Find out which deserializer function should
     handle deserializing a particular node."""
-    
+
     # Have to convert dsfunname from unicode to
     # ascii in order to use apply().
     dsfunname = u"_ds_" + node.nodeName
     if hasattr(ds, dsfunname):
         getattr(ds, dsfunname)(node, parentPref, basedir)
     else:
-        pref = prefFactory.deserializeNode(node, parentPref, basedir, chainNotifications)
+        pref = prefFactory.deserializeNode(
+            node, parentPref, basedir, chainNotifications)
         return pref
 
 _pct_re = re.compile('%([0-9a-fA-F][0-9a-fA-F])')
+
+
 def dePercent(m):
     return chr(int(m.group(1), 16))
+
+
 def _depercent_unicode(s):
     return unicode(_pct_re.sub(dePercent, s))
 
 
 class koPreferenceSetDeserializer:
+
     """
     Creates preference sets from minidom nodes.
     """
+
     def DOMDeserialize(self, rootElement, parentPref, prefFactory, basedir=None, chainNotifications=0):
         """We know how to deserialize preferent-set elements."""
-        # Create a new preference set and rig it into the preference set hierarchy.
+        # Create a new preference set and rig it into the preference set
+        # hierarchy.
         preftype = rootElement.getAttribute('preftype')
         if preftype == 'project':
             xpPrefSet = components.classes["@activestate.com/koProjectPreferenceSet;1"] \
-                      .createInstance(components.interfaces.koIProjectPreferenceSet)
+                .createInstance(components.interfaces.koIProjectPreferenceSet)
         elif preftype == 'file':
             xpPrefSet = components.classes["@activestate.com/koFilePreferenceSet;1"] \
-                      .createInstance(components.interfaces.koIFilePreferenceSet)
+                .createInstance(components.interfaces.koIFilePreferenceSet)
         elif parentPref is None:
             xpPrefSet = components.classes["@activestate.com/koPreferenceRoot;1"] \
-                      .createInstance(components.interfaces.koIPreferenceSet)
+                .createInstance(components.interfaces.koIPreferenceSet)
         else:
             xpPrefSet = components.classes["@activestate.com/koPreferenceSet;1"] \
-                      .createInstance(components.interfaces.koIPreferenceSet)
+                .createInstance(components.interfaces.koIPreferenceSet)
         newPrefSet = UnwrapObject(xpPrefSet)
         if hasattr(newPrefSet, "chainNotifications"):
             newPrefSet.chainNotifications = chainNotifications
@@ -288,8 +317,10 @@ class koPreferenceSetDeserializer:
         for node in childNodes:
             if node and node.nodeType == minidom.Node.ELEMENT_NODE:
                 if node.hasAttribute('validate'):
-                    newPrefSet.setValidation(node.getAttribute('id'), node.getAttribute('validate'))
-                pref = _dispatch_deserializer(self, node, newPrefSet, prefFactory, basedir, chainNotifications)
+                    newPrefSet.setValidation(
+                        node.getAttribute('id'), node.getAttribute('validate'))
+                pref = _dispatch_deserializer(
+                    self, node, newPrefSet, prefFactory, basedir, chainNotifications)
                 if pref:
                     if pref.id:
                         newPrefSet.setPref(pref.id, pref)
@@ -297,7 +328,7 @@ class koPreferenceSetDeserializer:
                         log.error("Preference has no id - dumping preference:")
                         pref.dump(0)
 
-        return xpPrefSet 
+        return xpPrefSet
 
     def _ds_helper_get_child_text(self, node):
         if node.hasChildNodes():
@@ -324,13 +355,15 @@ class koPreferenceSetDeserializer:
                           node)
         else:
             if basedir and node.nodeName == "string" and node.getAttribute('relative'):
-                childtext = uriparse.UnRelativize(basedir, childtext, node.getAttribute('relative'))
+                childtext = uriparse.UnRelativize(
+                    basedir, childtext, node.getAttribute('relative'))
             if childtext:
                 insertFunction(node.getAttribute('id'),
                                convertFunction(childtext))
 
     def _ds_string(self, node, prefSet, basedir=None):
-        self._ds_helper(node, prefSet.setStringPref, _depercent_unicode, basedir)
+        self._ds_helper(
+            node, prefSet.setStringPref, _depercent_unicode, basedir)
 
     def _ds_long(self, node, prefSet, basedir=None):
         self._ds_helper(node, prefSet.setLongPref, int, basedir)
@@ -339,15 +372,18 @@ class koPreferenceSetDeserializer:
         self._ds_helper(node, prefSet.setDoublePref, float, basedir)
 
     def _ds_boolean(self, node, prefSet, basedir=None):
-        self._ds_helper(node, prefSet.setBooleanPref, _convert_boolean, basedir)
+        self._ds_helper(
+            node, prefSet.setBooleanPref, _convert_boolean, basedir)
+
 
 class koOrderedPreferenceDeserializer:
+
     def DOMDeserialize(self, rootElement, parentPref, prefFactory, basedir=None, chainNotifications=0):
         """We know how to deserialize ordered-preference elements."""
 
         # Create a new ordered preference.
         xpOrderedPref = components.classes["@activestate.com/koOrderedPreference;1"] \
-                  .createInstance(components.interfaces.koIOrderedPreference)
+            .createInstance(components.interfaces.koIOrderedPreference)
         newOrderedPref = UnwrapObject(xpOrderedPref)
         try:
             newOrderedPref.id = rootElement.getAttribute("id") or ""
@@ -361,16 +397,18 @@ class koOrderedPreferenceDeserializer:
 
         for childNode in childNodes:
             if childNode and childNode.nodeType == minidom.Node.ELEMENT_NODE:
-                pref = _dispatch_deserializer(self, childNode, newOrderedPref, prefFactory, basedir)
+                pref = _dispatch_deserializer(
+                    self, childNode, newOrderedPref, prefFactory, basedir)
                 if pref:
                     newOrderedPref.appendPref(pref)
 
-        return xpOrderedPref 
+        return xpOrderedPref
 
     def _ds_helper(self, node, insertFunction, convertFunction, basedir=None):
         childtext = getChildText(node)
         if basedir and node.nodeName == "string" and node.getAttribute('relative'):
-            childtext = uriparse.UnRelativize(basedir, childtext, node.getAttribute('relative'))
+            childtext = uriparse.UnRelativize(
+                basedir, childtext, node.getAttribute('relative'))
         insertFunction(convertFunction(childtext))
 
     def _ds_string(self, node, orderedPref, basedir=None):
@@ -386,13 +424,18 @@ class koOrderedPreferenceDeserializer:
         self._ds_helper(node, orderedPref.appendBooleanPref, _convert_boolean)
 
 _encre = re.compile('([^\x00-\x7f])')
+
+
 def _makeCharRef(m):
     # replace with XML decimal char entity, e.g. '&#7;'
     return '&#%d;' % ord(m.group(1))
 
 pct_chars = re.compile('([\x00-\x08\x0b\x0c\x0e\x0f\x10-\x1f%])')
+
+
 def _pctEscape(m):
     return '%%%02x' % ord(m.group(1))
+
 
 def _xmlencode(s):
     """ Make the input valid XML: entify markup characters,
@@ -402,24 +445,26 @@ def _xmlencode(s):
     return _encre.sub(_makeCharRef,
                       pct_chars.sub(_pctEscape,
                                     cgi_escape(s)))
- 
+
+
 def serializePref(stream, pref, prefType, prefName=None, basedir=None):
     """Serialize one preference to a stream as appropriate for its type.
     Some preferences, e.g. those in ordered preferences, may not have names.
     """
-    log.debug("Serialzing: '%s', with type '%s', value '%s'", prefName, prefType, pref )
+    log.debug("Serialzing: '%s', with type '%s', value '%s'",
+              prefName, prefType, pref)
     if prefType == "string":
         attrs = {}
         if prefName:
-            attrs['id'] = cgi_escape(prefName,1)
+            attrs['id'] = cgi_escape(prefName, 1)
         if basedir:
             try:
                 relative = uriparse.RelativizeURL(basedir, pref)
                 if relative != pref:
                     if pref.find("://") > -1:
-                        attrs['relative']='url'
+                        attrs['relative'] = 'url'
                     else:
-                        attrs['relative']='path'
+                        attrs['relative'] = 'path'
                     if not pref.endswith(relative):
                         # The problem with relativizing is that it also %-encodes
                         # the usual characters, but that will happen later in
@@ -431,20 +476,20 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
                             log.warn(("Possible problem in serializePref: "
                                       + "RelativizeURL(pref:%s) => %s not "
                                       + "found at end of pref, unquoted to %s"),
-                                      pref, relative, relative2)
+                                     pref, relative, relative2)
                             pref = relative
                     else:
                         pref = relative
             except Exception, e:
                 # XXX quick fix bug 65913
                 log.exception(e)
-                pass # pass and use original value
+                pass  # pass and use original value
         # This line causes multiple-entification, as _xmlencode
         # will also call cgi_escape
         #pref = cgi_escape(pref)
         data = u'  <string'
-        for a,v in attrs.items():
-            data += ' %s="%s"' % (a,v)
+        for a, v in attrs.items():
+            data += ' %s="%s"' % (a, v)
         data += u'>%s</string>%s' % (_xmlencode(pref), newl)
         stream.write(data)
     elif prefType in ("boolean"):
@@ -452,16 +497,16 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
             stream.write('  <%s>%d</%s>%s' % (prefType, pref,
                                               prefType, newl))
         else:
-            stream.write('  <%s id="%s">%d</%s>%s'\
-                         % (prefType, cgi_escape(prefName,1),
+            stream.write('  <%s id="%s">%d</%s>%s'
+                         % (prefType, cgi_escape(prefName, 1),
                             pref, prefType, newl))
     elif prefType in ("long", "double"):
         if prefName is None:
             stream.write('  <%s>%s</%s>%s' % (prefType, cgi_escape(str(pref)),
                                               prefType, newl))
         else:
-            stream.write('  <%s id="%s">%s</%s>%s'\
-                         % (prefType, cgi_escape(prefName,1),
+            stream.write('  <%s id="%s">%s</%s>%s'
+                         % (prefType, cgi_escape(prefName, 1),
                             cgi_escape(str(pref)), prefType, newl))
     else:
         try:
@@ -477,27 +522,29 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
 
 if sys.version_info[0] == 2 and sys.version_info[1] < 3:
     def getChildText(node):
-        return "".join([child.nodeValue for child in node.childNodes 
+        return "".join([child.nodeValue for child in node.childNodes
                         if child.nodeType == node.TEXT_NODE])
 else:
     def getChildText(node):
-        return "".join([child.nodeValue for child in node.childNodes 
+        return "".join([child.nodeValue for child in node.childNodes
                         if child.nodeType in [node.TEXT_NODE, node.CDATA_SECTION_NODE]])
 
 # XXX we need to make the XMLPreferenceSetObjectFactory into a service
 
+
 class koXMLPreferenceSetObjectFactory:
+
     """
     Creates new preference set objects from an input stream
     via a registry of deserialization objects.
     Could be instantiated as a singleton (i.e. service).
-    """ 
-    
+    """
+
     def __init__(self):
         self._deserializers = {'preference-set': koPreferenceSetDeserializer(),
                                'ordered-preference': koOrderedPreferenceDeserializer(),
                                'preference-cache': koPreferenceCacheDeserializer(),
-        }
+                               }
 
     def deserializeFile(self, filename):
         """Adds preferences to this preference set from a filename."""
@@ -521,13 +568,13 @@ class koXMLPreferenceSetObjectFactory:
         else:
             log.info("cacheFilename for %r is None, so doing it the slow way",
                      filename)
-        
+
         # Okay, so we have to actually parse XML.
         # Open the file (we're assuming that prefs are all local
         # files for now)
         if os.path.isfile(filename):
             with codecs.open(filename, "rb", "utf-8") as stream:
-                #XXX need to handle exceptions from minidom to be robust
+                # XXX need to handle exceptions from minidom to be robust
                 try:
                     rootNode = minidom.parse(stream)
                 except:
@@ -535,10 +582,10 @@ class koXMLPreferenceSetObjectFactory:
                     # If we haven't tried to load the picked version, try that
                     # now as a fallback - bug 105385.
                     if cacheFilename is None and os.path.exists(filename + "c"):
-                            log.warn("falling back to the cached pref file")
-                            prefObject = dePickleCache(filename + "c")
-                            if prefObject is not None:
-                                return prefObject
+                        log.warn("falling back to the cached pref file")
+                        prefObject = dePickleCache(filename + "c")
+                        if prefObject is not None:
+                            return prefObject
                     return None
         else:
             #log.debug("No prefs file %r - returning None...", filename)
@@ -558,7 +605,8 @@ class koXMLPreferenceSetObjectFactory:
         ds = self._getDeserializer(element.nodeName)
         if ds:
             deserializer_name = ds.__class__.__name__
-            retval = ds.DOMDeserialize(element, parentPref, self, basedir, chainNotifications)
+            retval = ds.DOMDeserialize(
+                element, parentPref, self, basedir, chainNotifications)
             return retval
         else:
             log.debug("No handler for node type %s", element.nodeName)
@@ -581,12 +629,11 @@ class koXMLPreferenceSetObjectFactory:
             return None
 
 
-
-
 class koPreferenceCacheDeserializer:
+
     def DOMDeserialize(self, rootElement, parentPref, prefFactory, basedir=None, chainNotifications=0):
         xpPref = components.classes["@activestate.com/koPreferenceCache;1"] \
-                  .createInstance(components.interfaces.koIPreferenceCache)
+            .createInstance(components.interfaces.koIPreferenceCache)
         newPref = UnwrapObject(xpPref)
         newPref.id = rootElement.getAttribute('id') or ""
         newPref.idref = rootElement.getAttribute('idref') or ""
@@ -607,7 +654,8 @@ class koPreferenceCacheDeserializer:
         sub_prefs = []
         for node in childNodes:
             if node and node.nodeType == minidom.Node.ELEMENT_NODE:
-                pref = _dispatch_deserializer(self, node, newPref, prefFactory, basedir, chainNotifications)
+                pref = _dispatch_deserializer(
+                    self, node, newPref, prefFactory, basedir, chainNotifications)
                 if pref:
                     if pref.id:
                         sub_prefs.append(pref)
@@ -619,13 +667,15 @@ class koPreferenceCacheDeserializer:
         for pref in sub_prefs:
             newPref.setPref(pref)
 
-        return xpPref 
+        return xpPref
 
 
 prefsetobjectfactory = koXMLPreferenceSetObjectFactory()
 
+
 def deserializeFile(filename):
     return prefsetobjectfactory.deserializeFile(filename)
+
 
 def NodeToPrefset(node, basedir=None, chainNotifications=0):
     return prefsetobjectfactory.deserializeNode(node, None, basedir, chainNotifications)

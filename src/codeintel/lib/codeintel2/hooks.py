@@ -29,6 +29,7 @@ from codeintel2.common import *
 
 
 class HookHandler(object):
+
     """Virtual base class for all hook handlers."""
     name = None     # sub-classes must define a meaningful name (a string)
 
@@ -38,7 +39,7 @@ class HookHandler(object):
     #   langs = ["HTML", "XML"]
     #   langs = ["*"]   # Means operate on all languages. Use sparingly!
     langs = None
-    
+
     def __init__(self, mgr):
         self.mgr = mgr
 
@@ -61,5 +62,3 @@ class HookHandler(object):
     # controller file.
     def post_db_load_blob(self, blob):
         pass
-
-

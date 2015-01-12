@@ -11,7 +11,9 @@ from collections import namedtuple
 
 log = logging.getLogger("test.codeintel.xpcom")
 
+
 class _CodeIntelTestCaseBase(unittest.TestCase):
+
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
         #self.log = log.getChild(self.__class__.__name__)
@@ -26,8 +28,10 @@ class _CodeIntelTestCaseBase(unittest.TestCase):
         if _CodeIntelTestCaseBase.__has_codeintel_db_been_setup:
             return
         sys.stdout.write("Setting up codeintel database...\n")
-        _CodeIntelTestCaseBase.svc = svc = Cc["@activestate.com/koCodeIntelService;1"].getService()
-        tm = Cc["@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager)
+        _CodeIntelTestCaseBase.svc = svc = Cc[
+            "@activestate.com/koCodeIntelService;1"].getService()
+        tm = Cc[
+            "@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager)
         start = time.time()
         ready = set()
         callback = lambda status, data: ready.add(True)
@@ -50,6 +54,7 @@ class _CodeIntelTestCaseBase(unittest.TestCase):
 class _BufferTestCaseBase(_CodeIntelTestCaseBase):
     language = None
     trg = None
+
     def setUp(self):
         _CodeIntelTestCaseBase.setUp(self)
         # get a document to work with
@@ -64,17 +69,22 @@ class _BufferTestCaseBase(_CodeIntelTestCaseBase):
         self.buf = None
         _CodeIntelTestCaseBase.tearDown(self)
 
+
 class AsyncSpinner(object):
+
     def __init__(self, testcase, timeout=30, callback=None):
         self.testcase = testcase
         self.timeout = timeout
         self.callback = callback
+
     def __enter__(self):
         self._done = False
+
     def __exit__(self, *args):
         if any(args):
-            return # Exception was raised
-        tm = Cc["@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager)
+            return  # Exception was raised
+        tm = Cc[
+            "@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager)
         t = tm.currentThread
         start = time.time()
         while not self._done:
@@ -85,17 +95,19 @@ class AsyncSpinner(object):
                                           "(%s seconds elapsed)") %
                                          (self.testcase, self.callback,
                                           now - start))
-            time.sleep(0.1) # Rest a bit, let other things happen
+            time.sleep(0.1)  # Rest a bit, let other things happen
             while t.hasPendingEvents():
                 t.processNextEvent(True)
+
     def __call__(self, *args, **kwargs):
         log.debug("callback! %r %r %r", self.callback, args, kwargs)
         if self.callback:
             self.callback(*args, **kwargs)
         self._done = True
 
+
 class UIHandler(object):
-    _com_interfaces_ = [ Ci.koICodeIntelCompletionUIHandler ]
+    _com_interfaces_ = [Ci.koICodeIntelCompletionUIHandler]
     _done = False
     AutoCompleteInfo = namedtuple("AutoCompleteInfo", "completion type")
 

@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2011
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Test some Node.js-specific codeintel handling."""
@@ -58,6 +58,7 @@ from distutils.version import LooseVersion
 
 log = logging.getLogger("test")
 
+
 def write_files(test_case, manifest={}, name="unnamed"):
     """
     Wrapper to write out the files for testing
@@ -79,11 +80,12 @@ def write_files(test_case, manifest={}, name="unnamed"):
             content, positions = unmark_text(content)
             test_js = path
         writefile(path, content)
-    buf = test_case.mgr.buf_from_path(test_js, lang="Node.js", encoding="utf-8")
+    buf = test_case.mgr.buf_from_path(
+        test_js, lang="Node.js", encoding="utf-8")
     # Our files may include subdirectories, which won't get scanned by
     # default (because curdirlib doesn't want to be recursive).  Manually
     # ensure everything is scanned here.
-    curdirlib = buf.libs[0] # XXX: make this not so fragile
+    curdirlib = buf.libs[0]  # XXX: make this not so fragile
     dirs = set(curdirlib.dirs)
     for name in manifest.keys():
         dirname, basename = os.path.split(name)
@@ -130,9 +132,9 @@ class CplnTestCase(CodeIntelTestCase):
         }
         buf, positions = write_files(self, manifest=manifest, name="require")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("class", "Server"), ])
+                                       [("class", "Server"), ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "rename"), ])
+                                       [("function", "rename"), ])
 
     def test_require_nonvar(self):
         """
@@ -148,9 +150,10 @@ class CplnTestCase(CodeIntelTestCase):
                 };
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="require_nonvar")
+        buf, positions = write_files(
+            self, manifest=manifest, name="require_nonvar")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "method"), ])
+                                       [("function", "method"), ])
 
     def test_require_module_exports(self):
         """
@@ -166,9 +169,10 @@ class CplnTestCase(CodeIntelTestCase):
                 };
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="require_module_exports")
+        buf, positions = write_files(
+            self, manifest=manifest, name="require_module_exports")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "method"), ])
+                                       [("function", "method"), ])
 
     def test_require_not_buf_path(self):
         """
@@ -187,9 +191,10 @@ class CplnTestCase(CodeIntelTestCase):
                 };
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="require_not_buf_path")
+        buf, positions = write_files(
+            self, manifest=manifest, name="require_not_buf_path")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "method"), ])
+                                       [("function", "method"), ])
 
     def test_module_simple(self):
         """
@@ -205,9 +210,10 @@ class CplnTestCase(CodeIntelTestCase):
                 };
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="module_simple")
+        buf, positions = write_files(
+            self, manifest=manifest, name="module_simple")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "simpleMethod"), ])
+                                       [("function", "simpleMethod"), ])
 
     def test_module_package_manifest(self):
         """
@@ -230,9 +236,10 @@ class CplnTestCase(CodeIntelTestCase):
                 };
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="module_package_manifest")
+        buf, positions = write_files(
+            self, manifest=manifest, name="module_package_manifest")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "method"), ])
+                                       [("function", "method"), ])
 
     def test_require_prefer_core(self):
         """
@@ -246,9 +253,10 @@ class CplnTestCase(CodeIntelTestCase):
                 exports = {}
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="require_prefer_core")
+        buf, positions = write_files(
+            self, manifest=manifest, name="require_prefer_core")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createServer"), ])
+                                       [("function", "createServer"), ])
 
     def test_modules_no_repeat_subdir(self):
         """
@@ -274,11 +282,12 @@ class CplnTestCase(CodeIntelTestCase):
                 }
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="modules_no_repeat_subdir")
+        buf, positions = write_files(
+            self, manifest=manifest, name="modules_no_repeat_subdir")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "other"), ])
+                                       [("function", "other"), ])
         self.assertCompletionsDoNotInclude2(buf, positions[2],
-            [("function", "method"), ])
+                                            [("function", "method"), ])
 
     def test_modules_updir(self):
         """
@@ -304,9 +313,10 @@ class CplnTestCase(CodeIntelTestCase):
                 }
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="modules_updir")
+        buf, positions = write_files(
+            self, manifest=manifest, name="modules_updir")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "method"), ])
+                                       [("function", "method"), ])
 
     @tag("bug90331")
     def test_require_extras(self):
@@ -314,24 +324,25 @@ class CplnTestCase(CodeIntelTestCase):
         Check that we can tack extra properties onto require()d objects
         """
         manifest = {
-                "test.js": """
+            "test.js": """
                     require('./foo').<1>;
                     """,
-                "foo.js": """
+            "foo.js": """
                     exports = require('./bar');
                     exports.foo = function() {};
                     """,
-                "bar.js": """
+            "bar.js": """
                     exports = {
                         bar: function() {}
                     }
                     """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="require_extras")
+        buf, positions = write_files(
+            self, manifest=manifest, name="require_extras")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "foo"),
-             ("function", "bar"),
-            ])
+                                       [("function", "foo"),
+                                        ("function", "bar"),
+                                        ])
 
     def test_globals(self):
         """
@@ -354,40 +365,40 @@ class CplnTestCase(CodeIntelTestCase):
         }
         buf, positions = write_files(self, manifest=manifest, name="globals")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("variable", "console"),
-            ])
+                                       [("variable", "console"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("variable", "process"),
-            ])
+                                       [("variable", "process"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "require"),
-            ])
+                                       [("function", "require"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("variable", "__filename"),
-            ])
+                                       [("variable", "__filename"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("variable", "clearTimeout"),
-             ("variable", "clearInterval"),
-            ])
+                                       [("variable", "clearTimeout"),
+                                        ("variable", "clearInterval"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[6],
-            [("variable", "setTimeout"),
-             ("variable", "setInterval"),
-            ])
+                                       [("variable", "setTimeout"),
+                                        ("variable", "setInterval"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[7],
-            [("variable", "__dirname"),
-            ])
+                                       [("variable", "__dirname"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[8],
-            [("variable", "global"),
-            ])
+                                       [("variable", "global"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[9],
-            [("variable", "Buffer"),
-            ])
+                                       [("variable", "Buffer"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[10],
-            [("namespace", "module"),
-            ])
+                                       [("namespace", "module"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[11],
-            [("variable", "exports"),
-            ])
+                                       [("variable", "exports"),
+                                        ])
 
     def test_globals_props(self):
         """
@@ -404,30 +415,33 @@ class CplnTestCase(CodeIntelTestCase):
         }
         buf, positions = write_files(self, manifest=manifest, name="globals")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "resolve"),
-             ("variable", "cache"),
-            ])
+                                       [("function", "resolve"),
+                                        ("variable", "cache"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("variable", "stdout"),
-             ("variable", "stderr"),
-             ("variable", "stdin"),
-             ("function", "exit"),
-             # the rest are tested in test_nodejs_process
-            ])
+                                       [("variable", "stdout"),
+                                        ("variable", "stderr"),
+                                        ("variable", "stdin"),
+                                        ("function", "exit"),
+                                        # the rest are tested in
+                                        # test_nodejs_process
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "log"),
-             ("function", "info"),
-             ("function", "warn"),
-             # the rest are tested in test_nodejs_console
-            ])
+                                       [("function", "log"),
+                                        ("function", "info"),
+                                        ("function", "warn"),
+                                        # the rest are tested in
+                                        # test_nodejs_console
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "isBuffer"),
-             ("function", "byteLength"),
-             # the rest are tested in test_nodejs_buffer
-            ])
+                                       [("function", "isBuffer"),
+                                        ("function", "byteLength"),
+                                        # the rest are tested in
+                                        # test_nodejs_buffer
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("namespace", "exports"),
-            ])
+                                       [("namespace", "exports"),
+                                        ])
 
     def test_global_accessor(self):
         """
@@ -439,10 +453,11 @@ class CplnTestCase(CodeIntelTestCase):
                 foo.<1>;
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="global_accessor")
+        buf, positions = write_files(
+            self, manifest=manifest, name="global_accessor")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "concat"),
-            ])
+                                       [("function", "concat"),
+                                        ])
 
     def test_globals_no_pollute(self):
         """
@@ -453,10 +468,11 @@ class CplnTestCase(CodeIntelTestCase):
                 tim<1>;
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="globals_no_pollute")
+        buf, positions = write_files(
+            self, manifest=manifest, name="globals_no_pollute")
         self.assertCompletionsDoNotInclude2(buf, positions[1],
-            [("variable", "timers"),
-            ])
+                                            [("variable", "timers"),
+                                             ])
 
     @tag("bug90485")
     def test_callback_types(self):
@@ -472,19 +488,22 @@ class CplnTestCase(CodeIntelTestCase):
                 })
                 """,
         }
-        buf, positions = write_files(self, manifest=manifest, name="callback_types")
+        buf, positions = write_files(
+            self, manifest=manifest, name="callback_types")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "pause"),
-            ])
+                                       [("function", "pause"),
+                                        ])
         self.assertCompletionsDoNotInclude2(buf, positions[1],
-            [("function", "writeHead"),
-            ])
+                                            [("function", "writeHead"),
+                                             ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "writeContinue"),
-             ("function", "writeHead"),
-            ])
+                                       [("function", "writeContinue"),
+                                        ("function", "writeHead"),
+                                        ])
+
 
 class StdLibTestCase(CodeIntelTestCase):
+
     """ Code Completion test cases for the Node.js standard library"""
     lang = "Node.js"
     test_dir = join(os.getcwd(), "tmp")
@@ -516,7 +535,7 @@ class StdLibTestCase(CodeIntelTestCase):
                         ">=": operator.ge,
                         "==": operator.eq,
                         "!=": operator.ne,
-                       }
+                        }
                 i = 0
                 match = True
                 while i < len(tokens):
@@ -525,7 +544,7 @@ class StdLibTestCase(CodeIntelTestCase):
                             if not comp.get(tokens[i])(self.version, tokens[i + 1]):
                                 match = False
                                 break
-                            i += 1 # skip the version
+                            i += 1  # skip the version
                             continue
                         assert tokens[i] == "and", \
                             "Can't parse condition %s" % (condition,)
@@ -553,16 +572,16 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="console")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "log"),
-             ("function", "info"),
-             ("function", "warn"),
-             ("function", "error"),
-             ("function", "dir"),
-             ("function", "time"),
-             ("function", "timeEnd"),
-             ("function", "trace"),
-             ("function", "assert"),
-            ])
+                                       [("function", "log"),
+                                        ("function", "info"),
+                                        ("function", "warn"),
+                                        ("function", "error"),
+                                        ("function", "dir"),
+                                        ("function", "time"),
+                                        ("function", "timeEnd"),
+                                        ("function", "trace"),
+                                        ("function", "assert"),
+                                        ])
 
     def test_timers(self):
         """
@@ -571,11 +590,11 @@ class StdLibTestCase(CodeIntelTestCase):
         manifest = {"test.js": "require('timers').<1>;"}
         buf, positions = write_files(self, manifest=manifest, name="timers")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "setTimeout"),
-             ("function", "clearTimeout"),
-             ("function", "setInterval"),
-             ("function", "clearInterval"),
-            ])
+                                       [("function", "setTimeout"),
+                                        ("function", "clearTimeout"),
+                                        ("function", "setInterval"),
+                                        ("function", "clearInterval"),
+                                        ])
 
     def test_process(self):
         """
@@ -589,52 +608,61 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="process")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("variable", "stdout"),
-             ("variable", "stderr"),
-             ("variable", "stdin"),
-             ("variable", "argv"),
-             ("variable", "execPath"),
-             ("function", "abort", ">= 0.8"),
-             ("function", "chdir"),
-             ("function", "cwd"),
-             ("variable", "env"),
-             ("function", "exit"),
-             ("function", "getgid"),
-             ("function", "setgid"),
-             ("function", "getuid"),
-             ("function", "setuid"),
-             ("variable", "version"),
-             ("variable", "versions"),
-             ("variable", "installPrefix", ">= 0.6 and < 0.7"),
-             ("variable", "config", ">= 0.8"),
-             ("function", "kill"),
-             ("variable", "pid"),
-             ("variable", "title"),
-             ("variable", "arch"),
-             ("variable", "platform"),
-             ("function", "memoryUsage"),
-             ("function", "nextTick"),
-             ("function", "umask"),
-             ("function", "uptime"),
-             ("function", "hrtime", ">= 0.8"),
-            ])
+                                       [("variable", "stdout"),
+                                        ("variable", "stderr"),
+                                        ("variable", "stdin"),
+                                        ("variable", "argv"),
+                                        ("variable", "execPath"),
+                                        ("function", "abort", ">= 0.8"),
+                                        ("function", "chdir"),
+                                        ("function", "cwd"),
+                                        ("variable", "env"),
+                                        ("function", "exit"),
+                                        ("function", "getgid"),
+                                        ("function", "setgid"),
+                                        ("function", "getuid"),
+                                        ("function", "setuid"),
+                                        ("variable", "version"),
+                                        ("variable", "versions"),
+                                        ("variable", "installPrefix",
+                                         ">= 0.6 and < 0.7"),
+                                        ("variable", "config", ">= 0.8"),
+                                        ("function", "kill"),
+                                        ("variable", "pid"),
+                                        ("variable", "title"),
+                                        ("variable", "arch"),
+                                        ("variable", "platform"),
+                                        ("function", "memoryUsage"),
+                                        ("function", "nextTick"),
+                                        ("function", "umask"),
+                                        ("function", "uptime"),
+                                        ("function", "hrtime", ">= 0.8"),
+                                        ])
 
         self.assertCompletionsInclude2(buf, positions[2],
-            [("variable", "isRaw", ">= 0.8"),        # tty.ReadStream
-             ("function", "setRawMode", ">= 0.8"),   # tty.ReadStream
-             ("function", "setKeepAlive", ">= 0.8"), # net.Socket
-             ("function", "pipe"),                   # stream.ReadStream
-             ("function", "on"),                     # EventEmitter
-            ])
+                                       [("variable", "isRaw", ">= 0.8"),        # tty.ReadStream
+                                        # tty.ReadStream
+                                        ("function", "setRawMode", ">= 0.8"),
+                                        # net.Socket
+                                        ("function", "setKeepAlive", ">= 0.8"),
+                                        # stream.ReadStream
+                                        ("function", "pipe"),
+                                        # EventEmitter
+                                        ("function", "on"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("variable", "columns", ">= 0.8"),      # tty.WriteStream
-             ("variable", "rows", ">= 0.8"),         # tty.WriteStream
-             ("function", "setKeepAlive", ">= 0.8"), # net.Socket
-             ("function", "write"),                  # stream.WriteStream
-             ("function", "on"),                     # EventEmitter
-            ])
+                                       [("variable", "columns", ">= 0.8"),      # tty.WriteStream
+                                        # tty.WriteStream
+                                        ("variable", "rows", ">= 0.8"),
+                                        # net.Socket
+                                        ("function", "setKeepAlive", ">= 0.8"),
+                                        # stream.WriteStream
+                                        ("function", "write"),
+                                        # EventEmitter
+                                        ("function", "on"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "write")])
+                                       [("function", "write")])
 
     def test_util(self):
         """
@@ -643,20 +671,20 @@ class StdLibTestCase(CodeIntelTestCase):
         manifest = {"test.js": "require('util').<1>;"}
         buf, positions = write_files(self, manifest=manifest, name="util")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "format"),
-             ("function", "debug"),
-             ("function", "error", ">= 0.8"),
-             ("function", "puts", ">= 0.8"),
-             ("function", "print", ">= 0.8"),
-             ("function", "log"),
-             ("function", "inspect"),
-             ("function", "isArray"),
-             ("function", "isRegExp"),
-             ("function", "isDate"),
-             ("function", "isError"),
-             ("function", "pump"),
-             ("function", "inherits"),
-            ])
+                                       [("function", "format"),
+                                        ("function", "debug"),
+                                        ("function", "error", ">= 0.8"),
+                                        ("function", "puts", ">= 0.8"),
+                                        ("function", "print", ">= 0.8"),
+                                        ("function", "log"),
+                                        ("function", "inspect"),
+                                        ("function", "isArray"),
+                                        ("function", "isRegExp"),
+                                        ("function", "isDate"),
+                                        ("function", "isError"),
+                                        ("function", "pump"),
+                                        ("function", "inherits"),
+                                        ])
 
     def test_events(self):
         """
@@ -670,17 +698,17 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="events")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("class", "EventEmitter")])
+                                       [("class", "EventEmitter")])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "addListener"),
-             ("function", "on"),
-             ("function", "once"),
-             ("function", "removeListener"),
-             ("function", "removeAllListeners"),
-             ("function", "setMaxListeners"),
-             ("function", "listeners"),
-             ("function", "emit"),
-            ])
+                                       [("function", "addListener"),
+                                        ("function", "on"),
+                                        ("function", "once"),
+                                        ("function", "removeListener"),
+                                        ("function", "removeAllListeners"),
+                                        ("function", "setMaxListeners"),
+                                        ("function", "listeners"),
+                                        ("function", "emit"),
+                                        ])
 
     def test_buffer(self):
         """
@@ -695,51 +723,51 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="buffer")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("class", "Buffer"),
-             ("variable", "INSPECT_MAX_BYTES"),
-            ])
+                                       [("class", "Buffer"),
+                                        ("variable", "INSPECT_MAX_BYTES"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "isBuffer"),
-             ("function", "byteLength"),
-             ("function", "concat", ">= 0.8"),
-            ])
+                                       [("function", "isBuffer"),
+                                        ("function", "byteLength"),
+                                        ("function", "concat", ">= 0.8"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "write"),
-             ("function", "toString"),
-             # can't test array accessor []
-             ("variable", "length"),
-             ("function", "copy"),
-             ("function", "slice"),
-             ("function", "readUInt8"),
-             ("function", "readUInt16LE"),
-             ("function", "readUInt16BE"),
-             ("function", "readUInt32LE"),
-             ("function", "readUInt32BE"),
-             ("function", "readInt8"),
-             ("function", "readInt16LE"),
-             ("function", "readInt16BE"),
-             ("function", "readInt32LE"),
-             ("function", "readInt32BE"),
-             ("function", "readFloatLE"),
-             ("function", "readFloatBE"),
-             ("function", "readDoubleLE"),
-             ("function", "readDoubleBE"),
-             ("function", "writeUInt8"),
-             ("function", "writeUInt16LE"),
-             ("function", "writeUInt16BE"),
-             ("function", "writeUInt32LE"),
-             ("function", "writeUInt32BE"),
-             ("function", "writeInt8"),
-             ("function", "writeInt16LE"),
-             ("function", "writeInt16BE"),
-             ("function", "writeInt32LE"),
-             ("function", "writeInt32BE"),
-             ("function", "writeFloatLE"),
-             ("function", "writeFloatBE"),
-             ("function", "writeDoubleLE"),
-             ("function", "writeDoubleBE"),
-             ("function", "fill"),
-            ])
+                                       [("function", "write"),
+                                        ("function", "toString"),
+                                        # can't test array accessor []
+                                        ("variable", "length"),
+                                        ("function", "copy"),
+                                        ("function", "slice"),
+                                        ("function", "readUInt8"),
+                                        ("function", "readUInt16LE"),
+                                        ("function", "readUInt16BE"),
+                                        ("function", "readUInt32LE"),
+                                        ("function", "readUInt32BE"),
+                                        ("function", "readInt8"),
+                                        ("function", "readInt16LE"),
+                                        ("function", "readInt16BE"),
+                                        ("function", "readInt32LE"),
+                                        ("function", "readInt32BE"),
+                                        ("function", "readFloatLE"),
+                                        ("function", "readFloatBE"),
+                                        ("function", "readDoubleLE"),
+                                        ("function", "readDoubleBE"),
+                                        ("function", "writeUInt8"),
+                                        ("function", "writeUInt16LE"),
+                                        ("function", "writeUInt16BE"),
+                                        ("function", "writeUInt32LE"),
+                                        ("function", "writeUInt32BE"),
+                                        ("function", "writeInt8"),
+                                        ("function", "writeInt16LE"),
+                                        ("function", "writeInt16BE"),
+                                        ("function", "writeInt32LE"),
+                                        ("function", "writeInt32BE"),
+                                        ("function", "writeFloatLE"),
+                                        ("function", "writeFloatBE"),
+                                        ("function", "writeDoubleLE"),
+                                        ("function", "writeDoubleBE"),
+                                        ("function", "fill"),
+                                        ])
 
     def test_stream(self):
         """
@@ -755,34 +783,36 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="buffer")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("class", "ReadableStream"),
-             ("class", "WritableStream"),
-            ])
+                                       [("class", "ReadableStream"),
+                                        ("class", "WritableStream"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # from EventEmitter
-             ("variable", "readable"),
-             ("function", "setEncoding"),
-             ("function", "pause"),
-             ("function", "resume"),
-             ("function", "destroy"),
-             ("function", "destroySoon", ">= 0.6 and < 0.7"),
-             ("function", "pipe"),
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        ("variable", "readable"),
+                                        ("function", "setEncoding"),
+                                        ("function", "pause"),
+                                        ("function", "resume"),
+                                        ("function", "destroy"),
+                                        ("function", "destroySoon",
+                                         ">= 0.6 and < 0.7"),
+                                        ("function", "pipe"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "on"), # from EventEmitter
-             ("variable", "writable"),
-             ("function", "write"),
-             ("function", "end"),
-             ("function", "destroy"),
-             ("function", "destroySoon"),
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        ("variable", "writable"),
+                                        ("function", "write"),
+                                        ("function", "end"),
+                                        ("function", "destroy"),
+                                        ("function", "destroySoon"),
+                                        ])
 
     def test_string_decoder(self):
         """
         Test the Node.js string_decoder module
         """
         if self.version < "0.8":
-            raise TestSkipped("Node.js %s is not at least 0.8" % (self.version,))
+            raise TestSkipped(
+                "Node.js %s is not at least 0.8" % (self.version,))
         manifest = {"test.js": """
             var string_decoder = require('string_decoder');
             string_decoder.<1>;
@@ -790,11 +820,11 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="buffer")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("class", "StringDecoder"),
-            ])
+                                       [("class", "StringDecoder"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "write"),
-            ])
+                                       [("function", "write"),
+                                        ])
 
     def test_crypto(self):
         """
@@ -813,56 +843,59 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="crypto")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createCredentials"),
-             ("function", "createHash"),
-             ("function", "createHmac"),
-             ("function", "createCipher"),
-             ("function", "createCipheriv"),
-             ("function", "createDecipher"),
-             ("function", "createDecipheriv"),
-             ("function", "createSign"),
-             ("function", "createVerify"),
-             ("function", "createDiffieHellman"),
-             ("function", "getDiffieHellman", ">= 0.8"),
-             ("function", "pbkdf2"),
-             ("function", "randomBytes"),
-            ])
+                                       [("function", "createCredentials"),
+                                        ("function", "createHash"),
+                                        ("function", "createHmac"),
+                                        ("function", "createCipher"),
+                                        ("function", "createCipheriv"),
+                                        ("function", "createDecipher"),
+                                        ("function", "createDecipheriv"),
+                                        ("function", "createSign"),
+                                        ("function", "createVerify"),
+                                        ("function", "createDiffieHellman"),
+                                        ("function",
+                                         "getDiffieHellman", ">= 0.8"),
+                                        ("function", "pbkdf2"),
+                                        ("function", "randomBytes"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "update"),
-             ("function", "digest"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "digest"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "update"),
-             ("function", "digest"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "digest"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "update"),
-             ("function", "final"),
-             ("function", "setAutoPadding", ">= 0.8"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "final"),
+                                        ("function",
+                                         "setAutoPadding", ">= 0.8"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("function", "update"),
-             ("function", "final"),
-             ("function", "setAutoPadding", ">= 0.8"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "final"),
+                                        ("function",
+                                         "setAutoPadding", ">= 0.8"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[6],
-            [("function", "update"),
-             ("function", "sign"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "sign"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[7],
-            [("function", "update"),
-             ("function", "verify"),
-            ])
+                                       [("function", "update"),
+                                        ("function", "verify"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[8],
-            [("function", "generateKeys"),
-             ("function", "computeSecret"),
-             ("function", "getPrime"),
-             ("function", "getGenerator"),
-             ("function", "getPublicKey"),
-             ("function", "getPrivateKey"),
-             ("function", "setPublicKey"),
-             ("function", "setPrivateKey"),
-            ])
+                                       [("function", "generateKeys"),
+                                        ("function", "computeSecret"),
+                                        ("function", "getPrime"),
+                                        ("function", "getGenerator"),
+                                        ("function", "getPublicKey"),
+                                        ("function", "getPrivateKey"),
+                                        ("function", "setPublicKey"),
+                                        ("function", "setPrivateKey"),
+                                        ])
 
     def test_tls(self):
         """
@@ -876,34 +909,38 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="tls")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "connect"),
-             ("function", "createServer"),
-             ("function", "createSecurePair"),
-            ])
+                                       [("function", "connect"),
+                                        ("function", "createServer"),
+                                        ("function", "createSecurePair"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "listen"),
-             ("function", "close"),
-             ("function", "address"),
-             ("function", "addContext"),
-             ("variable", "maxConnections"),
-             ("variable", "connections"),
-             ("function", "on"), # from EventEmitter
-            ])
+                                       [("function", "listen"),
+                                        ("function", "close"),
+                                        ("function", "address"),
+                                        ("function", "addContext"),
+                                        ("variable", "maxConnections"),
+                                        ("variable", "connections"),
+                                        # from EventEmitter
+                                        ("function", "on"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("variable", "authorized"),
-             ("variable", "authorizationError"),
-             ("function", "getPeerCertificate"),
-             ("function", "getCipher", ">= 0.8"),
-             ("function", "address"),
-             ("variable", "remoteAddress"),
-             ("variable", "remotePort"),
-             ("function", "on"), # from EventEmitter
-             ("function", "resume"), # from ReadableStream
-             ("function", "write"), # from WritableStream
-            ])
+                                       [("variable", "authorized"),
+                                        ("variable", "authorizationError"),
+                                        ("function", "getPeerCertificate"),
+                                        ("function", "getCipher", ">= 0.8"),
+                                        ("function", "address"),
+                                        ("variable", "remoteAddress"),
+                                        ("variable", "remotePort"),
+                                        # from EventEmitter
+                                        ("function", "on"),
+                                        # from ReadableStream
+                                        ("function", "resume"),
+                                        # from WritableStream
+                                        ("function", "write"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "on"), # from EventEmitter
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        ])
 
     def test_fs(self):
         """
@@ -918,107 +955,113 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="fs")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "rename"),
-             ("function", "renameSync"),
-             ("function", "truncate"),
-             ("function", "truncateSync"),
-             ("function", "chown"),
-             ("function", "chownSync"),
-             ("function", "fchown"),
-             ("function", "fchownSync"),
-             ("function", "lchown"),
-             ("function", "lchownSync"),
-             ("function", "chmod"),
-             ("function", "chmodSync"),
-             ("function", "fchmod"),
-             ("function", "fchmodSync"),
-             ("function", "lchmod"),
-             ("function", "lchmodSync"),
-             ("function", "stat"),
-             ("function", "lstat"),
-             ("function", "fstat"),
-             ("function", "statSync"),
-             ("function", "lstatSync"),
-             ("function", "fstatSync"),
-             ("function", "link"),
-             ("function", "linkSync"),
-             ("function", "symlink"),
-             ("function", "symlinkSync"),
-             ("function", "readlink"),
-             ("function", "readlinkSync"),
-             ("function", "realpath"),
-             ("function", "realpathSync"),
-             ("function", "unlink"),
-             ("function", "unlinkSync"),
-             ("function", "rmdir"),
-             ("function", "rmdirSync"),
-             ("function", "mkdir"),
-             ("function", "mkdirSync"),
-             ("function", "readdir"),
-             ("function", "readdirSync"),
-             ("function", "close"),
-             ("function", "closeSync"),
-             ("function", "open"),
-             ("function", "openSync"),
-             ("function", "utimes"),
-             ("function", "utimesSync"),
-             ("function", "futimes"),
-             ("function", "futimesSync"),
-             ("function", "fsync"),
-             ("function", "fsyncSync"),
-             ("function", "write"),
-             ("function", "writeSync"),
-             ("function", "read"),
-             ("function", "readSync"),
-             ("function", "readFile"),
-             ("function", "readFileSync"),
-             ("function", "writeFile"),
-             ("function", "writeFileSync"),
-             ("function", "appendFile", ">= 0.8"),
-             ("function", "appendFileSync", ">= 0.8"),
-             ("function", "watchFile"),
-             ("function", "unwatchFile"),
-             ("function", "watch", ">= 0.8"),
-             ("function", "exists", ">= 0.8"),
-             ("function", "existsSync", ">= 0.8"),
-             ("function", "createReadStream"),
-             ("function", "createWriteStream"),
-            ])
+                                       [("function", "rename"),
+                                        ("function", "renameSync"),
+                                        ("function", "truncate"),
+                                        ("function", "truncateSync"),
+                                        ("function", "chown"),
+                                        ("function", "chownSync"),
+                                        ("function", "fchown"),
+                                        ("function", "fchownSync"),
+                                        ("function", "lchown"),
+                                        ("function", "lchownSync"),
+                                        ("function", "chmod"),
+                                        ("function", "chmodSync"),
+                                        ("function", "fchmod"),
+                                        ("function", "fchmodSync"),
+                                        ("function", "lchmod"),
+                                        ("function", "lchmodSync"),
+                                        ("function", "stat"),
+                                        ("function", "lstat"),
+                                        ("function", "fstat"),
+                                        ("function", "statSync"),
+                                        ("function", "lstatSync"),
+                                        ("function", "fstatSync"),
+                                        ("function", "link"),
+                                        ("function", "linkSync"),
+                                        ("function", "symlink"),
+                                        ("function", "symlinkSync"),
+                                        ("function", "readlink"),
+                                        ("function", "readlinkSync"),
+                                        ("function", "realpath"),
+                                        ("function", "realpathSync"),
+                                        ("function", "unlink"),
+                                        ("function", "unlinkSync"),
+                                        ("function", "rmdir"),
+                                        ("function", "rmdirSync"),
+                                        ("function", "mkdir"),
+                                        ("function", "mkdirSync"),
+                                        ("function", "readdir"),
+                                        ("function", "readdirSync"),
+                                        ("function", "close"),
+                                        ("function", "closeSync"),
+                                        ("function", "open"),
+                                        ("function", "openSync"),
+                                        ("function", "utimes"),
+                                        ("function", "utimesSync"),
+                                        ("function", "futimes"),
+                                        ("function", "futimesSync"),
+                                        ("function", "fsync"),
+                                        ("function", "fsyncSync"),
+                                        ("function", "write"),
+                                        ("function", "writeSync"),
+                                        ("function", "read"),
+                                        ("function", "readSync"),
+                                        ("function", "readFile"),
+                                        ("function", "readFileSync"),
+                                        ("function", "writeFile"),
+                                        ("function", "writeFileSync"),
+                                        ("function", "appendFile", ">= 0.8"),
+                                        ("function",
+                                         "appendFileSync", ">= 0.8"),
+                                        ("function", "watchFile"),
+                                        ("function", "unwatchFile"),
+                                        ("function", "watch", ">= 0.8"),
+                                        ("function", "exists", ">= 0.8"),
+                                        ("function", "existsSync", ">= 0.8"),
+                                        ("function", "createReadStream"),
+                                        ("function", "createWriteStream"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "isFile"),
-             ("function", "isDirectory"),
-             ("function", "isBlockDevice"),
-             ("function", "isCharacterDevice"),
-             ("function", "isSymbolicLink"),
-             ("function", "isFIFO"),
-             ("function", "isSocket"),
-            ])
+                                       [("function", "isFile"),
+                                        ("function", "isDirectory"),
+                                        ("function", "isBlockDevice"),
+                                        ("function", "isCharacterDevice"),
+                                        ("function", "isSymbolicLink"),
+                                        ("function", "isFIFO"),
+                                        ("function", "isSocket"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            # this is actually from the 'streams' module, which is untestable
-            [("function", "addListener"), # from EventEmitter
-             ("function", "on"),          # from EventEmitter
-             ("variable", "readable"),
-             ("function", "setEncoding"),
-             ("function", "pause"),
-             ("function", "resume"),
-             ("function", "destroy"),
-             ("function", "destroySoon", ">= 0.6 and < 0.7"),
-             ("function", "pipe"),
-            ])
+                                       # this is actually from the 'streams'
+                                       # module, which is untestable
+                                       [("function", "addListener"),  # from EventEmitter
+                                        # from EventEmitter
+                                        ("function", "on"),
+                                        ("variable", "readable"),
+                                        ("function", "setEncoding"),
+                                        ("function", "pause"),
+                                        ("function", "resume"),
+                                        ("function", "destroy"),
+                                        ("function", "destroySoon",
+                                         ">= 0.6 and < 0.7"),
+                                        ("function", "pipe"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            # this is actually from the 'streams' module, which is untestable
-            [("function", "addListener"), # from EventEmitter
-             ("function", "on"),          # from EventEmitter
-             ("variable", "writable"),
-             ("function", "write"),
-             ("function", "end"),
-             ("function", "destroy"),
-             ("function", "destroySoon"),
-            ])
+                                       # this is actually from the 'streams'
+                                       # module, which is untestable
+                                       [("function", "addListener"),  # from EventEmitter
+                                        # from EventEmitter
+                                        ("function", "on"),
+                                        ("variable", "writable"),
+                                        ("function", "write"),
+                                        ("function", "end"),
+                                        ("function", "destroy"),
+                                        ("function", "destroySoon"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("function", "close"),
-             ("function", "on"), # EventEmitter
-            ])
+                                       [("function", "close"),
+                                        ("function", "on"),  # EventEmitter
+                                        ])
 
     def test_path(self):
         """
@@ -1030,17 +1073,19 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="path")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "normalize"),
-             ("function", "join"),
-             ("function", "resolve"),
-             ("function", "relative"),
-             ("function", "dirname"),
-             ("function", "basename"),
-             ("function", "extname"),
-             ("function", "exists", ">= 0.6 and < 0.7"),
-             ("function", "existsSync", ">= 0.6 and < 0.7"),
-             ("variable", "sep", ">= 0.8"),
-            ])
+                                       [("function", "normalize"),
+                                        ("function", "join"),
+                                        ("function", "resolve"),
+                                        ("function", "relative"),
+                                        ("function", "dirname"),
+                                        ("function", "basename"),
+                                        ("function", "extname"),
+                                        ("function", "exists",
+                                         ">= 0.6 and < 0.7"),
+                                        ("function", "existsSync",
+                                         ">= 0.6 and < 0.7"),
+                                        ("variable", "sep", ">= 0.8"),
+                                        ])
 
     def test_net(self):
         """
@@ -1056,44 +1101,47 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="net")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createServer"),
-             ("function", "connect"),
-             ("function", "createConnection"),
-             ("function", "isIP"),
-             ("function", "isIPv4"),
-             ("function", "isIPv6"),
-            ])
+                                       [("function", "createServer"),
+                                        ("function", "connect"),
+                                        ("function", "createConnection"),
+                                        ("function", "isIP"),
+                                        ("function", "isIPv4"),
+                                        ("function", "isIPv6"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # from EventEmitter
-             ("function", "listen"),
-             ("function", "close"),
-             ("function", "address"),
-             ("variable", "maxConnections"),
-             ("variable", "connections"),
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        ("function", "listen"),
+                                        ("function", "close"),
+                                        ("function", "address"),
+                                        ("variable", "maxConnections"),
+                                        ("variable", "connections"),
+                                        ])
         for pos in 3, 4:
             self.assertCompletionsInclude2(buf, positions[pos],
-                [("function", "on"), # from EventEmitter
-                 ("variable", "readable"), # from ReadableStream
-                 ("variable", "writable"), # from WritableStream
-                 ("function", "connect"),
-                 ("variable", "bufferSize"),
-                 ("function", "setEncoding"),
-                 ("function", "setSecure", ">= 0.6 and < 0.7"),
-                 ("function", "write"),
-                 ("function", "end"),
-                 ("function", "destroy"),
-                 ("function", "pause"),
-                 ("function", "resume"),
-                 ("function", "setTimeout"),
-                 ("function", "setNoDelay"),
-                 ("function", "setKeepAlive"),
-                 ("function", "address"),
-                 ("variable", "remoteAddress"),
-                 ("variable", "remotePort"),
-                 ("variable", "bytesRead"),
-                 ("variable", "bytesWritten"),
-                ])
+                                           [("function", "on"),  # from EventEmitter
+                                            # from ReadableStream
+                                            ("variable", "readable"),
+                                            # from WritableStream
+                                            ("variable", "writable"),
+                                            ("function", "connect"),
+                                            ("variable", "bufferSize"),
+                                            ("function", "setEncoding"),
+                                            ("function", "setSecure",
+                                             ">= 0.6 and < 0.7"),
+                                            ("function", "write"),
+                                            ("function", "end"),
+                                            ("function", "destroy"),
+                                            ("function", "pause"),
+                                            ("function", "resume"),
+                                            ("function", "setTimeout"),
+                                            ("function", "setNoDelay"),
+                                            ("function", "setKeepAlive"),
+                                            ("function", "address"),
+                                            ("variable", "remoteAddress"),
+                                            ("variable", "remotePort"),
+                                            ("variable", "bytesRead"),
+                                            ("variable", "bytesWritten"),
+                                            ])
 
     def test_dgram(self):
         """
@@ -1107,28 +1155,29 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="dgram")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createSocket"),
-            ])
+                                       [("function", "createSocket"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # EventEmitter
-             ("function", "send"),
-             ("function", "bind"),
-             ("function", "close"),
-             ("function", "address"),
-             ("function", "setBroadcast"),
-             ("function", "setTTL"),
-             ("function", "setMulticastTTL"),
-             ("function", "setMulticastLoopback"),
-             ("function", "addMembership"),
-             ("function", "dropMembership"),
-            ])
+                                       [("function", "on"),  # EventEmitter
+                                        ("function", "send"),
+                                        ("function", "bind"),
+                                        ("function", "close"),
+                                        ("function", "address"),
+                                        ("function", "setBroadcast"),
+                                        ("function", "setTTL"),
+                                        ("function", "setMulticastTTL"),
+                                        ("function", "setMulticastLoopback"),
+                                        ("function", "addMembership"),
+                                        ("function", "dropMembership"),
+                                        ])
 
     def test_domain(self):
         """
         Test the Node.js domain module
         """
         if not self.version >= "0.8":
-            raise TestSkipped("Node.js version %s not at least 0.8" % (self.version,))
+            raise TestSkipped(
+                "Node.js version %s not at least 0.8" % (self.version,))
         manifest = {"test.js": """
             domain = require('domain');
             domain.<1>;
@@ -1136,17 +1185,17 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="dgram")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "create"),
-            ])
+                                       [("function", "create"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "run"),
-             ("variable", "members"),
-             ("function", "add"),
-             ("function", "remove"),
-             ("function", "bind"),
-             ("function", "intercept"),
-             ("function", "dispose"),
-            ])
+                                       [("function", "run"),
+                                        ("variable", "members"),
+                                        ("function", "add"),
+                                        ("function", "remove"),
+                                        ("function", "bind"),
+                                        ("function", "intercept"),
+                                        ("function", "dispose"),
+                                        ])
 
     def test_dns(self):
         """
@@ -1158,17 +1207,17 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="dns")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "lookup"),
-             ("function", "resolve"),
-             ("function", "resolve4"),
-             ("function", "resolve6"),
-             ("function", "resolveMx"),
-             ("function", "resolveTxt"),
-             ("function", "resolveSrv"),
-             ("function", "reverse"),
-             ("function", "resolveNs"),
-             ("function", "resolveCname"),
-            ])
+                                       [("function", "lookup"),
+                                        ("function", "resolve"),
+                                        ("function", "resolve4"),
+                                        ("function", "resolve6"),
+                                        ("function", "resolveMx"),
+                                        ("function", "resolveTxt"),
+                                        ("function", "resolveSrv"),
+                                        ("function", "reverse"),
+                                        ("function", "resolveNs"),
+                                        ("function", "resolveCname"),
+                                        ])
 
     def test_http(self):
         """
@@ -1189,70 +1238,74 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="http")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createServer"),
-             #("function", "createClient"), deprecated
-             ("function", "request"),
-             ("function", "get"),
-             ("variable", "globalAgent"),
-            ])
+                                       [("function", "createServer"),
+                                        #("function", "createClient"), deprecated
+                                        ("function", "request"),
+                                        ("function", "get"),
+                                        ("variable", "globalAgent"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # inherited from EventEmitter
-             ("function", "listen"),
-             ("function", "close"),
-             ("variable", "maxHeadersCount", ">= 0.8"),
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        ("function", "listen"),
+                                        ("function", "close"),
+                                        ("variable",
+                                         "maxHeadersCount", ">= 0.8"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "on"), # inherited from EventEmitter
-             ("variable", "method"),
-             ("variable", "url"),
-             ("variable", "headers"),
-             ("variable", "trailers"),
-             ("variable", "httpVersion"),
-             ("function", "setEncoding"),
-             ("function", "pause"),
-             ("function", "resume"),
-             ("variable", "connection"),
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        ("variable", "method"),
+                                        ("variable", "url"),
+                                        ("variable", "headers"),
+                                        ("variable", "trailers"),
+                                        ("variable", "httpVersion"),
+                                        ("function", "setEncoding"),
+                                        ("function", "pause"),
+                                        ("function", "resume"),
+                                        ("variable", "connection"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "on"), # inherited from EventEmitter
-             ("variable", "writable"), # inherited from WritableStream
-             ("function", "writeContinue"),
-             ("function", "writeHead"),
-             ("variable", "statusCode"),
-             ("function", "setHeader"),
-             ("variable", "sendDate", ">= 0.8"),
-             ("function", "getHeader"),
-             ("function", "removeHeader"),
-             ("function", "write"),
-             ("function", "addTrailers"),
-             ("function", "end"),
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        # inherited from WritableStream
+                                        ("variable", "writable"),
+                                        ("function", "writeContinue"),
+                                        ("function", "writeHead"),
+                                        ("variable", "statusCode"),
+                                        ("function", "setHeader"),
+                                        ("variable", "sendDate", ">= 0.8"),
+                                        ("function", "getHeader"),
+                                        ("function", "removeHeader"),
+                                        ("function", "write"),
+                                        ("function", "addTrailers"),
+                                        ("function", "end"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("variable", "maxSockets"),
-             ("variable", "sockets"),
-             ("variable", "requests"),
-            ])
+                                       [("variable", "maxSockets"),
+                                        ("variable", "sockets"),
+                                        ("variable", "requests"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[6],
-            [("function", "on"), # inherited from EventEmitter
-             ("variable", "writable"), # inherited from WritableStream
-             ("function", "write"),
-             ("function", "end"),
-             ("function", "abort"),
-             ("function", "setTimeout"),
-             ("function", "setNoDelay"),
-             ("function", "setSocketKeepAlive"),
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        # inherited from WritableStream
+                                        ("variable", "writable"),
+                                        ("function", "write"),
+                                        ("function", "end"),
+                                        ("function", "abort"),
+                                        ("function", "setTimeout"),
+                                        ("function", "setNoDelay"),
+                                        ("function", "setSocketKeepAlive"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[7],
-            [("function", "on"), # inherited from EventEmitter
-             ("variable", "readable"), # inherited from ReadableStream
-             ("variable", "statusCode"),
-             ("variable", "httpVersion"),
-             ("variable", "headers"),
-             ("variable", "trailers"),
-             ("function", "setEncoding"),
-             ("function", "pause"),
-             ("function", "resume"),
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        # inherited from ReadableStream
+                                        ("variable", "readable"),
+                                        ("variable", "statusCode"),
+                                        ("variable", "httpVersion"),
+                                        ("variable", "headers"),
+                                        ("variable", "trailers"),
+                                        ("function", "setEncoding"),
+                                        ("function", "pause"),
+                                        ("function", "resume"),
+                                        ])
 
     def test_https(self):
         """
@@ -1267,26 +1320,27 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="https")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createServer"),
-             ("function", "request"),
-             ("function", "get"),
-             ("class", "Agent"),
-             ("variable", "globalAgent"),
-            ])
+                                       [("function", "createServer"),
+                                        ("function", "request"),
+                                        ("function", "get"),
+                                        ("class", "Agent"),
+                                        ("variable", "globalAgent"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # inherited from EventEmitter
-             ("function", "listen"), # inherited from tls.Server
-            ])
+                                       [("function", "on"),  # inherited from EventEmitter
+                                        # inherited from tls.Server
+                                        ("function", "listen"),
+                                        ])
         for pos in 3, 4:
             self.assertCompletionsInclude2(buf, positions[pos],
-                [("function", "on"), # inherited from EventEmitter
-                 ("function", "write"),
-                 ("function", "end"),
-                 ("function", "abort"),
-                ])
+                                           [("function", "on"),  # inherited from EventEmitter
+                                            ("function", "write"),
+                                            ("function", "end"),
+                                            ("function", "abort"),
+                                            ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("variable", "maxSockets"), # inherited from http.Agent
-            ])
+                                       [("variable", "maxSockets"),  # inherited from http.Agent
+                                        ])
 
     def test_url(self):
         """
@@ -1300,23 +1354,23 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="url")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "parse"),
-             ("function", "format"),
-             ("function", "resolve"),
-            ])
+                                       [("function", "parse"),
+                                        ("function", "format"),
+                                        ("function", "resolve"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("variable", "href"),
-             ("variable", "protocol"),
-             ("variable", "host"),
-             ("variable", "auth"),
-             ("variable", "hostname"),
-             ("variable", "port"),
-             ("variable", "pathname"),
-             ("variable", "search"),
-             ("variable", "path"),
-             ("variable", "query"),
-             ("variable", "hash"),
-            ])
+                                       [("variable", "href"),
+                                        ("variable", "protocol"),
+                                        ("variable", "host"),
+                                        ("variable", "auth"),
+                                        ("variable", "hostname"),
+                                        ("variable", "port"),
+                                        ("variable", "pathname"),
+                                        ("variable", "search"),
+                                        ("variable", "path"),
+                                        ("variable", "query"),
+                                        ("variable", "hash"),
+                                        ])
 
     def test_querystring(self):
         """
@@ -1326,13 +1380,14 @@ class StdLibTestCase(CodeIntelTestCase):
             querystring = require('querystring');
             querystring.<1>;
             """}
-        buf, positions = write_files(self, manifest=manifest, name="querystring")
+        buf, positions = write_files(
+            self, manifest=manifest, name="querystring")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "stringify"),
-             ("function", "parse"),
-             ("function", "escape"),
-             ("function", "unescape"),
-            ])
+                                       [("function", "stringify"),
+                                        ("function", "parse"),
+                                        ("function", "escape"),
+                                        ("function", "unescape"),
+                                        ])
 
     def test_readline(self):
         """
@@ -1342,20 +1397,21 @@ class StdLibTestCase(CodeIntelTestCase):
             require('readline').<1>;
             require('readline').createInterface().<2>;
             """}
-        buf, positions = write_files(self, manifest=manifest, name="querystring")
+        buf, positions = write_files(
+            self, manifest=manifest, name="querystring")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createInterface"),
-            ])
+                                       [("function", "createInterface"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # inherited from events.EventEmitter
-             ("function", "setPrompt"),
-             ("function", "prompt"),
-             ("function", "question"),
-             ("function", "close"),
-             ("function", "pause"),
-             ("function", "resume"),
-             ("function", "write"),
-            ])
+                                       [("function", "on"),  # inherited from events.EventEmitter
+                                        ("function", "setPrompt"),
+                                        ("function", "prompt"),
+                                        ("function", "question"),
+                                        ("function", "close"),
+                                        ("function", "pause"),
+                                        ("function", "resume"),
+                                        ("function", "write"),
+                                        ])
 
     def test_repl(self):
         """
@@ -1367,8 +1423,8 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="repl")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "start"),
-            ])
+                                       [("function", "start"),
+                                        ])
 
     def test_vm(self):
         """
@@ -1382,16 +1438,16 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="vm")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "runInThisContext"),
-             ("function", "runInNewContext"),
-             ("function", "runInContext"),
-             ("function", "createContext"),
-             ("function", "createScript"),
-            ])
+                                       [("function", "runInThisContext"),
+                                        ("function", "runInNewContext"),
+                                        ("function", "runInContext"),
+                                        ("function", "createContext"),
+                                        ("function", "createScript"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "runInThisContext"),
-             ("function", "runInNewContext"),
-            ])
+                                       [("function", "runInThisContext"),
+                                        ("function", "runInNewContext"),
+                                        ])
 
     def test_child_process(self):
         """
@@ -1406,35 +1462,39 @@ class StdLibTestCase(CodeIntelTestCase):
             child.stdout.<4>;
             child.stderr.<5>;
             """}
-        buf, positions = write_files(self, manifest=manifest, name="child_process")
+        buf, positions = write_files(
+            self, manifest=manifest, name="child_process")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "spawn"),
-             ("function", "exec"),
-             ("function", "execFile"),
-             ("function", "fork"),
-            ])
+                                       [("function", "spawn"),
+                                        ("function", "exec"),
+                                        ("function", "execFile"),
+                                        ("function", "fork"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[2],
-            [("function", "on"), # EventEmitter
-             ("variable", "stdin"),
-             ("variable", "stdout"),
-             ("variable", "stderr"),
-             ("variable", "pid"),
-             ("function", "kill"),
-             ("function", "send"),
-             ("function", "disconnect", ">= 0.8"),
-            ])
+                                       [("function", "on"),  # EventEmitter
+                                        ("variable", "stdin"),
+                                        ("variable", "stdout"),
+                                        ("variable", "stderr"),
+                                        ("variable", "pid"),
+                                        ("function", "kill"),
+                                        ("function", "send"),
+                                        ("function", "disconnect", ">= 0.8"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[3],
-            [("function", "on"), # from EventEmitter
-             ("variable", "writable"), # from stream.WritableStream
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        # from stream.WritableStream
+                                        ("variable", "writable"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[4],
-            [("function", "on"), # from EventEmitter
-             ("variable", "readable"), # from stream.ReadableStream
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        # from stream.ReadableStream
+                                        ("variable", "readable"),
+                                        ])
         self.assertCompletionsInclude2(buf, positions[5],
-            [("function", "on"), # from EventEmitter
-             ("variable", "readable"), # from stream.ReadableStream
-            ])
+                                       [("function", "on"),  # from EventEmitter
+                                        # from stream.ReadableStream
+                                        ("variable", "readable"),
+                                        ])
 
     def test_assert(self):
         """
@@ -1446,18 +1506,18 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="assert")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "fail"),
-             ("function", "ok"),
-             ("function", "equal"),
-             ("function", "notEqual"),
-             ("function", "deepEqual"),
-             ("function", "notDeepEqual"),
-             ("function", "strictEqual"),
-             ("function", "notStrictEqual"),
-             ("function", "throws"),
-             ("function", "doesNotThrow"),
-             ("function", "ifError"),
-            ])
+                                       [("function", "fail"),
+                                        ("function", "ok"),
+                                        ("function", "equal"),
+                                        ("function", "notEqual"),
+                                        ("function", "deepEqual"),
+                                        ("function", "notDeepEqual"),
+                                        ("function", "strictEqual"),
+                                        ("function", "notStrictEqual"),
+                                        ("function", "throws"),
+                                        ("function", "doesNotThrow"),
+                                        ("function", "ifError"),
+                                        ])
 
     def test_tty(self):
         """
@@ -1469,9 +1529,9 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="tty")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "isatty"),
-             ("function", "setRawMode"),
-            ])
+                                       [("function", "isatty"),
+                                        ("function", "setRawMode"),
+                                        ])
 
     def test_zlib(self):
         """
@@ -1489,52 +1549,63 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="tty")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "createGzip"),
-             ("function", "createGunzip"),
-             ("function", "createDeflate"),
-             ("function", "createInflate"),
-             ("function", "createDeflateRaw"),
-             ("function", "createInflateRaw"),
-             ("function", "createUnzip"),
-             ("function", "deflate"),
-             ("function", "deflateRaw"),
-             ("function", "gzip"),
-             ("function", "gunzip"),
-             ("function", "inflate"),
-             ("function", "inflateRaw"),
-             ("function", "unzip"),
-             # constants
-             ("variable", "Z_OK", ">= 0.8"),
-             ("variable", "Z_STREAM_END", ">= 0.8"),
-             ("variable", "Z_NEED_DICT", ">= 0.8"),
-             ("variable", "Z_ERRNO", ">= 0.8"),
-             ("variable", "Z_STREAM_ERROR", ">= 0.8"),
-             ("variable", "Z_DATA_ERROR", ">= 0.8"),
-             ("variable", "Z_MEM_ERROR", ">= 0.8"),
-             ("variable", "Z_BUF_ERROR", ">= 0.8"),
-             ("variable", "Z_VERSION_ERROR", ">= 0.8"),
-             ("variable", "Z_NO_COMPRESSION", ">= 0.8"),
-             ("variable", "Z_BEST_SPEED", ">= 0.8"),
-             ("variable", "Z_BEST_COMPRESSION", ">= 0.8"),
-             ("variable", "Z_DEFAULT_COMPRESSION", ">= 0.8"),
-             ("variable", "Z_FILTERED", ">= 0.8"),
-             ("variable", "Z_HUFFMAN_ONLY", ">= 0.8"),
-             ("variable", "Z_RLE", ">= 0.8"),
-             ("variable", "Z_FIXED", ">= 0.8"),
-             ("variable", "Z_DEFAULT_STRATEGY", ">= 0.8"),
-             ("variable", "Z_BINARY", ">= 0.8"),
-             ("variable", "Z_TEXT", ">= 0.8"),
-             ("variable", "Z_ASCII", ">= 0.8"),
-             ("variable", "Z_UNKNOWN", ">= 0.8"),
-             ("variable", "Z_DEFLATED", ">= 0.8"),
-             ("variable", "Z_NULL", ">= 0.8"),
-            ])
+                                       [("function", "createGzip"),
+                                        ("function", "createGunzip"),
+                                        ("function", "createDeflate"),
+                                        ("function", "createInflate"),
+                                        ("function", "createDeflateRaw"),
+                                        ("function", "createInflateRaw"),
+                                        ("function", "createUnzip"),
+                                        ("function", "deflate"),
+                                        ("function", "deflateRaw"),
+                                        ("function", "gzip"),
+                                        ("function", "gunzip"),
+                                        ("function", "inflate"),
+                                        ("function", "inflateRaw"),
+                                        ("function", "unzip"),
+                                        # constants
+                                        ("variable", "Z_OK", ">= 0.8"),
+                                        ("variable", "Z_STREAM_END", ">= 0.8"),
+                                        ("variable", "Z_NEED_DICT", ">= 0.8"),
+                                        ("variable", "Z_ERRNO", ">= 0.8"),
+                                        ("variable",
+                                         "Z_STREAM_ERROR", ">= 0.8"),
+                                        ("variable", "Z_DATA_ERROR", ">= 0.8"),
+                                        ("variable", "Z_MEM_ERROR", ">= 0.8"),
+                                        ("variable", "Z_BUF_ERROR", ">= 0.8"),
+                                        ("variable",
+                                         "Z_VERSION_ERROR", ">= 0.8"),
+                                        ("variable",
+                                         "Z_NO_COMPRESSION", ">= 0.8"),
+                                        ("variable", "Z_BEST_SPEED", ">= 0.8"),
+                                        ("variable",
+                                         "Z_BEST_COMPRESSION", ">= 0.8"),
+                                        ("variable",
+                                         "Z_DEFAULT_COMPRESSION", ">= 0.8"),
+                                        ("variable", "Z_FILTERED", ">= 0.8"),
+                                        ("variable",
+                                         "Z_HUFFMAN_ONLY", ">= 0.8"),
+                                        ("variable", "Z_RLE", ">= 0.8"),
+                                        ("variable", "Z_FIXED", ">= 0.8"),
+                                        ("variable",
+                                         "Z_DEFAULT_STRATEGY", ">= 0.8"),
+                                        ("variable", "Z_BINARY", ">= 0.8"),
+                                        ("variable", "Z_TEXT", ">= 0.8"),
+                                        ("variable", "Z_ASCII", ">= 0.8"),
+                                        ("variable", "Z_UNKNOWN", ">= 0.8"),
+                                        ("variable", "Z_DEFLATED", ">= 0.8"),
+                                        ("variable", "Z_NULL", ">= 0.8"),
+                                        ])
         for pos in range(2, 9):
             self.assertCompletionsInclude2(buf, positions[pos],
-                [("function", "on"), # inherited from events.EventEmitter
-                 ("function", "pause"), # inherited from stream.ReadableStream
-                 ("function", "write"), # inherited from stream.WritableStream
-                ])
+                                           [("function", "on"),  # inherited from events.EventEmitter
+                                            # inherited from
+                                            # stream.ReadableStream
+                                            ("function", "pause"),
+                                            # inherited from
+                                            # stream.WritableStream
+                                            ("function", "write"),
+                                            ])
 
     def test_os(self):
         """
@@ -1547,20 +1618,20 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="os")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("function", "tmpDir", ">= 0.8"),
-             ("function", "hostname"),
-             ("function", "type"),
-             ("function", "platform"),
-             ("function", "arch"),
-             ("function", "release"),
-             ("function", "uptime"),
-             ("function", "loadavg"),
-             ("function", "totalmem"),
-             ("function", "freemem"),
-             ("function", "cpus"),
-             ("function", "networkInterfaces"),
-             ("variable", "EOL", ">= 0.8"),
-            ])
+                                       [("function", "tmpDir", ">= 0.8"),
+                                        ("function", "hostname"),
+                                        ("function", "type"),
+                                        ("function", "platform"),
+                                        ("function", "arch"),
+                                        ("function", "release"),
+                                        ("function", "uptime"),
+                                        ("function", "loadavg"),
+                                        ("function", "totalmem"),
+                                        ("function", "freemem"),
+                                        ("function", "cpus"),
+                                        ("function", "networkInterfaces"),
+                                        ("variable", "EOL", ">= 0.8"),
+                                        ])
 
     def test_cluster(self):
         """
@@ -1572,25 +1643,26 @@ class StdLibTestCase(CodeIntelTestCase):
             """}
         buf, positions = write_files(self, manifest=manifest, name="tty")
         self.assertCompletionsInclude2(buf, positions[1],
-            [("variable", "settings", ">= 0.8"),
-             ("variable", "isMaster"),
-             ("variable", "isWorker"),
-             ("function", "setupMaster", ">= 0.8"),
-             ("function", "fork"),
-             ("function", "disconnect", ">= 0.8"),
-             ("variable", "workers", ">= 0.8"),
-             #("function", "on"), # EventEmitter, broken due to bug 78596
-            ])
+                                       [("variable", "settings", ">= 0.8"),
+                                        ("variable", "isMaster"),
+                                        ("variable", "isWorker"),
+                                        ("function", "setupMaster", ">= 0.8"),
+                                        ("function", "fork"),
+                                        ("function", "disconnect", ">= 0.8"),
+                                        ("variable", "workers", ">= 0.8"),
+                                        #("function", "on"), # EventEmitter, broken due to bug 78596
+                                        ])
         if self.version >= "0.8":
             self.assertCompletionsInclude2(buf, positions[2],
-                [("variable", "id"),
-                 ("variable", "process"),
-                 ("variable", "suicide"),
-                 ("function", "send"),
-                 ("function", "destroy"),
-                 ("function", "disconnect"),
-                 ("function", "on"), # EventEmitter
-                ])
+                                           [("variable", "id"),
+                                            ("variable", "process"),
+                                            ("variable", "suicide"),
+                                            ("function", "send"),
+                                            ("function", "destroy"),
+                                            ("function", "disconnect"),
+                                            ("function", "on"),  # EventEmitter
+                                            ])
+
 
 class CallTipTestCase(CodeIntelTestCase):
     lang = "Node.js"

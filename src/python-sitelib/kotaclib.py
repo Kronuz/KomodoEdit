@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -32,7 +32,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 """Provides the base class for Komodo Textbox AutoComplete providers.
@@ -45,15 +45,16 @@ import re
 
 
 class KoTACSearch(object):
+
     """Base class for all KoTAC*Search classes.
-    
+
     All bases classes must override:
     - all _reg_*_ and _com_interfaces_ attributes
     - startSearch() method
-    
+
     Utility methods:
     - parseSearchParam()
-    
+
     """
     #_com_interfaces_ = [components.interfaces.nsIAutoCompleteSearch]
     #_reg_clsid_ = "{<guid>}"
@@ -80,7 +81,7 @@ class KoTACSearch(object):
           pass it back.
         """
         raise NotImplementedError("virtual base method")
-    
+
     def stopSearch(self):
         """This is sent by the autocomplete controller to stop a
         possible previous asynchronous search.
@@ -91,22 +92,24 @@ class KoTACSearch(object):
         # Matches un-quoted params.
         re.compile(r'''(?P<key>[\w-]+):\s*()(?P<name>[^'";]+)\s*;?'''),
         # Matches quoted params.
-        re.compile(r'''(?P<key>[\w-]+):\s*(['"])(?P<name>.*?)(?<!\\)\2\s*;?'''),
+        re.compile(
+            r'''(?P<key>[\w-]+):\s*(['"])(?P<name>.*?)(?<!\\)\2\s*;?'''),
     ]
+
     def parseSearchParam(self, searchParam):
         """Parse the given CSS-like search parameter (i.e. the value of
         the 'autocompletesearchparam' attribute of the <textbox> element).
-        
+
         To support more than one piece of data, some TAC searches use a
         CSS-like search param.
-        
+
             >>> parseSearchParam("foo: bar")
             {'foo': 'bar'}
             >>> parseSearchParam("foo-bar: baz qxz; batman: 'pif pow'")
             {'batman': 'pif pow', 'foo-bar': 'baz qxz'}
             >>> parseSearchParam(r'''robin: 'holy \\'cow\\''; batman: 'pif "pow"';''')
             {'batman': 'pif "pow"', 'robin': "holy 'cow'"}
-        
+
         Returns a dict of name/value pairs.
         """
         data = {}
@@ -117,6 +120,7 @@ class KoTACSearch(object):
 
 
 class KoTACMatch(object):
+
     """A class representing a single textbox autocomplete hit/match.
 
     These are used by a koIAutoCompleteResult like this:
@@ -130,7 +134,7 @@ class KoTACMatch(object):
     See `KoTACResult` docstring (in "koTextboxAutoComplete.py") for details.
     """
     #_com_interfaces_ = [components.interfaces.koIAutoCompleteMatch]
-    #TODO: remove these if not necessary
+    # TODO: remove these if not necessary
     #_reg_clsid_ = "{5AEEBCBF-6C23-4765-9113-2B3C6D52D44E}"
     #_reg_contractid_ = "@activestate.com/autocomplete/match;1"
     #_reg_desc_ = "Komodo textbox autocomplete search match"
@@ -149,9 +153,7 @@ class KoTACMatch(object):
         self.image = image
 
 
-
 #---- internal support routines
 
 def _unescape_quotes(s):
     return s.replace("\\'", "'").replace('\\"', '"')
-

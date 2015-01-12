@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 import os
@@ -42,6 +42,8 @@ import tempfile
 import codecs
 
 # Modified recipe: paths_from_path_patterns (0.5)
+
+
 def should_include_path(path, includes=None, excludes=None, isRemotePath=False):
     """Return True iff the given path should be included."""
     from os.path import basename
@@ -54,26 +56,27 @@ def should_include_path(path, includes=None, excludes=None, isRemotePath=False):
     if includes:
         for include in includes:
             if fnmatch(base, include):
-                #try:
+                # try:
                 #    log.debug("include `%s' (matches `%s')", path, include)
-                #except (NameError, AttributeError):
+                # except (NameError, AttributeError):
                 #    pass
                 break
         else:
-            #try:
+            # try:
             #    log.debug("exclude `%s' (matches no includes)", path)
-            #except (NameError, AttributeError):
+            # except (NameError, AttributeError):
             #    pass
             return False
     if excludes:
         for exclude in excludes:
             if fnmatch(base, exclude):
-                #try:
+                # try:
                 #    log.debug("exclude `%s' (matches `%s')", path, exclude)
-                #except (NameError, AttributeError):
+                # except (NameError, AttributeError):
                 #    pass
                 return False
     return True
+
 
 def _walk_avoiding_cycles(top, topdown=True, onerror=None, followlinks=False,
                           includes=None, excludes=None):
@@ -86,15 +89,18 @@ def _walk_avoiding_cycles(top, topdown=True, onerror=None, followlinks=False,
             if islink(dirpath):
                 rpath = realpath(dirpath)
                 if rpath in seen_rpaths:
-                    #print "Found cyclical path: %s to %s" % (dirpath, rpath)
+                    # print "Found cyclical path: %s to %s" % (dirpath, rpath)
                     dirs.remove(dir)
                     continue
                 seen_rpaths[rpath] = 1
         if includes or excludes:
             # The dirs must be modified in place (see comment above)!
-            dirs[:] = [dir for dir in dirs if should_include_path(dir, includes, excludes)]
-            files = [f for f in files if should_include_path(f, includes, excludes)]
+            dirs[:] = [
+                dir for dir in dirs if should_include_path(dir, includes, excludes)]
+            files = [
+                f for f in files if should_include_path(f, includes, excludes)]
         yield (root, dirs, files)
+
 
 def walk_avoiding_cycles(top, topdown=True, onerror=None, followlinks=False,
                          includes=None, excludes=None):
@@ -125,6 +131,8 @@ def walk_avoiding_cycles(top, topdown=True, onerror=None, followlinks=False,
 
 #---- Local tree copying: shutil.copytree works when only target doesn't exist,
 #     so copy parts manually, and use shutil.copytree for new sub-parts.
+
+
 def copyLocalFolder(srcPath, targetDirPath):
     targetFinalPath = os.path.join(targetDirPath, os.path.basename(srcPath))
     if not os.path.exists(targetFinalPath):
@@ -144,6 +152,7 @@ if sys.platform == "win32":
     GetFileAttributes.rettype = ctypes.c_uint32
     GetFileAttributes.argtypes = [ctypes.c_wchar_p]
     minus_one = ctypes.c_uint32(-1)
+
     def isHiddenFile(path):
         try:
             result = GetFileAttributes(path)
@@ -155,7 +164,8 @@ if sys.platform == "win32":
         except:
             import logging
             log = logging.getLogger("fileutils")
-            log.exception("Internal error: Unexpected exception while trying to access file %s", path)
+            log.exception(
+                "Internal error: Unexpected exception while trying to access file %s", path)
             return True
 else:
     def isHiddenFile(path):
@@ -163,22 +173,27 @@ else:
 
 
 class AtomicFileWriter(object):
+
     """A contextual utility class to give atomic write operations.
-    
+
     Writes to a temporary file and then performs an atomic move when completed.
     """
+
     def __init__(self, filename, mode, encoding=None):
         self.filename = filename
         self.mode = mode
         self.encoding = encoding
+
     def __enter__(self):
         (temp_fd, self.temp_filename) = tempfile.mkstemp(".komodo")
         os.close(temp_fd)
         if self.encoding:
-            self.file = codecs.open(self.temp_filename, self.mode, self.encoding)
+            self.file = codecs.open(
+                self.temp_filename, self.mode, self.encoding)
         else:
             self.file = open(self.temp_filename, self.mode)
         return self.file
+
     def __exit__(self, exc_type, exc_value, exc_tb):
         if exc_type:
             return
@@ -190,4 +205,3 @@ class AtomicFileWriter(object):
         except OSError, details:
             # Could not move, resort to a copy then.
             shutil.copy(self.temp_filename, self.filename)
-

@@ -4,7 +4,9 @@ from collections import defaultdict
 
 _g_reporter = None
 
+
 class BenchReporter(object):
+
     def __init__(self, time0=None, name=""):
         self.time0 = time0 if time0 is not None else time.time()
         self.name = name
@@ -36,7 +38,8 @@ class BenchReporter(object):
         self._depth -= 1
 
     def addTiming(self, name, duration):
-        self._entries[name].append((time.time() - duration, duration, self._depth))
+        self._entries[name].append(
+            (time.time() - duration, duration, self._depth))
 
     def addEvent(self, name):
         self._events.append((name, time.time()))
@@ -64,7 +67,7 @@ class BenchReporter(object):
 
     def display(self, order="by-time", limit=None):
         """Display the reports.
-        
+
         The `order` argument can be used to order the results in a particular
         manner. Supported variations are:
             "by-time": reports are displayed in chronological order
@@ -89,20 +92,26 @@ class BenchReporter(object):
         self.displayEvents()
         self.displayAccumulations()
 
+
 def initialise(t=None):
     global _g_reporter
     if _g_reporter is None:
         _g_reporter = BenchReporter(t)
     return True
 
+
 class bench(object):
+
     """Decorator to benchmark a function call, records the time it takes to execute."""
+
     def __init__(self, name=None):
         self.name = name
+
     def __call__(self, fn):
         if self.name is None:
             self.name = fn.__name__
         this = self
+
         def fn_wrap(*args, **kwargs):
             if _g_reporter is None:
                 initialise()
@@ -114,14 +123,19 @@ class bench(object):
             return result
         return fn_wrap
 
+
 class bench_accumulate(object):
+
     """Records the number of calls and total time it took to execute."""
+
     def __init__(self, name=None):
         self.name = name
+
     def __call__(self, fn):
         if self.name is None:
             self.name = fn.__name__
         this = self
+
         def fn_wrap(*args, **kwargs):
             if _g_reporter is None:
                 initialise()
@@ -133,41 +147,50 @@ class bench_accumulate(object):
             return result
         return fn_wrap
 
+
 def startTiming(name):
     if _g_reporter is None:
         initialise()
     _g_reporter.startTiming(name)
+
 
 def endTiming(name):
     if _g_reporter is None:
         initialise()
     _g_reporter.endTiming(name)
 
+
 def addTiming(name, duration):
     if _g_reporter is None:
         initialise()
     _g_reporter.addTiming(name, duration)
+
 
 def addEvent(name):
     if _g_reporter is None:
         initialise()
     _g_reporter.addEvent(name)
 
+
 def accumulate(name, duration):
     if _g_reporter is None:
         initialise()
     _g_reporter.accumulate(name)
+
 
 def addEventAtTime(name, t):
     if _g_reporter is None:
         initialise()
     _g_reporter.addEventAtTime(name, t)
 
+
 def display():
     assert _g_reporter is not None
     _g_reporter.display()
 
 import inspect
+
+
 def klass(cls, ismethod=inspect.ismethod):
     """Wrap all class functions with benchmarked versions"""
     clsname = cls.__name__

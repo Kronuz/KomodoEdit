@@ -1,25 +1,25 @@
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
-# 
+#
 # The contents of this file are subject to the Mozilla Public License
 # Version 1.1 (the "License"); you may not use this file except in
 # compliance with the License. You may obtain a copy of the License at
 # http://www.mozilla.org/MPL/
-# 
+#
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
 # License for the specific language governing rights and limitations
 # under the License.
-# 
+#
 # The Original Code is Komodo code.
-# 
+#
 # The Initial Developer of the Original Code is ActiveState Software Inc.
 # Portions created by ActiveState Software Inc are Copyright (C) 2000-2007
 # ActiveState Software Inc. All Rights Reserved.
-# 
+#
 # Contributor(s):
 #   ActiveState Software Inc
-# 
+#
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
 # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
@@ -31,7 +31,7 @@
 # and other provisions required by the GPL or the LGPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
 # the terms of any one of the MPL, the GPL or the LGPL.
-# 
+#
 # ***** END LICENSE BLOCK *****
 
 # Komodo Django language service.
@@ -40,7 +40,9 @@
 # Then put into skel/ on Fri Jul  6 14:28:38 PDT 2007
 
 import logging
-import os, sys, re
+import os
+import sys
+import re
 from os.path import join, dirname, exists
 import tempfile
 import process
@@ -54,7 +56,8 @@ from koLintResult import KoLintResult
 from koLintResults import koLintResults
 
 log = logging.getLogger("koDjangoLanguage")
-#log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
+
 
 def registerLanguage(registry):
     log.debug("Registering language Django")
@@ -74,7 +77,8 @@ class KoDjangoLanguage(KoDjangoTemplateFamilyBase):
     extraFileAssociations = ['*.django']
     searchURL = "http://docs.djangoproject.com/en"
 
-    lang_from_udl_family = {'CSL': 'JavaScript', 'TPL': 'Django', 'M': 'HTML', 'CSS': 'CSS'}
+    lang_from_udl_family = {
+        'CSL': 'JavaScript', 'TPL': 'Django', 'M': 'HTML', 'CSS': 'CSS'}
 
     _sliders = "else elif".split()
     _startWords = "else elif if ifchanged ifequal ifnotequal block comment filter for with spaceless".split()
@@ -90,6 +94,7 @@ class KoDjangoLanguage(KoDjangoTemplateFamilyBase):
 {% endif %}
 """
 
+
 class KoDjangoLinter(object):
     _com_interfaces_ = [components.interfaces.koILinter]
     _reg_desc_ = "Django Template Linter"
@@ -104,13 +109,14 @@ class KoDjangoLinter(object):
             getService(components.interfaces.koISysUtils)
         self._koDirSvc = components.classes["@activestate.com/koDirs;1"].\
             getService(components.interfaces.koIDirs)
-        koLintService = components.classes["@activestate.com/koLintService;1"].getService(components.interfaces.koILintService)
+        koLintService = components.classes[
+            "@activestate.com/koLintService;1"].getService(components.interfaces.koILintService)
         self._userPath = koprocessutils.getUserEnv()["PATH"].split(os.pathsep)
         self._pythonInfo = components.classes["@activestate.com/koAppInfoEx?app=Python;1"]\
             .createInstance(components.interfaces.koIAppInfoEx)
         self._djangoLinterPath = join(dirname(dirname(__file__)),
-                                     "pylib",
-                                     "djangoLinter.py")
+                                      "pylib",
+                                      "djangoLinter.py")
         self._settingsForDirs = {}
         self._lineSplitterRE = re.compile(r'\r?\n')
         self._html_linter = koLintService.getLinterForLanguage("HTML")
@@ -125,14 +131,15 @@ class KoDjangoLinter(object):
     def _walkUpDir(self, directory):
         if self._isSettingsIn(directory):
             return directory
-        count = 10 # Look up at most 10 levels.
+        count = 10  # Look up at most 10 levels.
         while True:
             parent = dirname(directory)
             if not parent or parent == directory:
                 return None
             if self._isSettingsIn(parent):
                 return parent
-            # Look for settings.py file in the sibling dirs as well - bug 99362.
+            # Look for settings.py file in the sibling dirs as well - bug
+            # 99362.
             sibling_dirs = (join(parent, d) for d in os.listdir(parent))
             for d in sibling_dirs:
                 if d == directory:
@@ -144,7 +151,7 @@ class KoDjangoLinter(object):
             count -= 1
             if count <= 0:
                 return None
-    
+
     def _getSettingsDir(self, directory):
         log.debug("cur dir: %s", directory)
         dir = self._settingsForDirs.get(directory, None)
@@ -158,7 +165,7 @@ class KoDjangoLinter(object):
             return fileDir
         # Try the current project
         partSvc = components.classes["@activestate.com/koPartService;1"]\
-                   .getService(components.interfaces.koIPartService)
+            .getService(components.interfaces.koIPartService)
         currentProject = partSvc.currentProject
         if currentProject is None:
             return None
@@ -173,7 +180,8 @@ class KoDjangoLinter(object):
                     |(?:\{\#.*?\#\})   # Anything in {#...#}
                     |(?:[^\{]+)        # Anything but a {
                     |.)''',                  # Catchall
-                                re.DOTALL|re.VERBOSE)
+                                re.DOTALL | re.VERBOSE)
+
     def _extractHTMLPart(self, text):
         parts = self._djangoMatcher.findall(text)
         if not parts:
@@ -188,8 +196,9 @@ class KoDjangoLinter(object):
             else:
                 htmlTextParts.append(part)
         return "".join(htmlTextParts)
-    
+
     _nonNewlineMatcher = re.compile(r'[^\r\n]')
+
     def _spaceOutNonNewlines(self, markup):
         return self._nonNewlineMatcher.sub(' ', markup)
 
@@ -212,9 +221,9 @@ class KoDjangoLinter(object):
                 fout.write(text)
                 fout.close()
 
-                #XXX: How to tell whether we're using Python or Python3?
+                # XXX: How to tell whether we're using Python or Python3?
                 prefName = "pythonExtraPaths"
-                pythonPath =  request.prefset.getString(prefName, "")
+                pythonPath = request.prefset.getString(prefName, "")
                 pythonPathEnv = env.get("PYTHONPATH", "")
                 if pythonPathEnv:
                     if pythonPath:
@@ -229,7 +238,8 @@ class KoDjangoLinter(object):
                     del env["PYTHONPATH"]
 
                 results = koLintResults()
-                pythonExe = self._pythonInfo.getExecutableFromDocument(request.koDoc)
+                pythonExe = self._pythonInfo.getExecutableFromDocument(
+                    request.koDoc)
                 argv = [pythonExe, self._djangoLinterPath,
                         tmpFileName, settingsDir]
                 p = process.ProcessOpen(argv, cwd=cwd, env=env, stdin=None)
@@ -242,7 +252,8 @@ class KoDjangoLinter(object):
                 if error:
                     results.addResult(self._buildResult(text, error))
                 else:
-                    results.addResult(self._buildResult(text, "Unexpected error"))
+                    results.addResult(
+                        self._buildResult(text, "Unexpected error"))
         else:
             result = KoLintResult()
             result.lineStart = 1
@@ -255,19 +266,17 @@ class KoDjangoLinter(object):
             results = koLintResults()
             results.addResult(result)
         return results
-            
+
     _simple_matchers = {
         "Empty block tag": r"\{\%\s*\%\}",
         "Empty variable tag":  r"\{\{\s*\}\}",
     }
     _contextual_matchers = {
-        r"Invalid block tag:\s*'(.*?)'"               : r"\{\%%\s*(%s).*?\%%\}",
-        r"Invalid filter:\s+'(.*?)'"                  : r"\|(%s)",
-        r"(\S+) requires \d+ arguments?, \d+ provided" : r"\{\{\s*(.*?\|%s)",
-        r"Variables and attributes may not begin with underscores: '(.*?)'"
-                                                      : r"\{\{\s*(%s)",
-        r"<ExtendsNode: extends \"(.*?)\"> must be the first tag in the template"
-                    : r"""(\{%%\s*extends\s*["']%s["'])""",
+        r"Invalid block tag:\s*'(.*?)'": r"\{\%%\s*(%s).*?\%%\}",
+        r"Invalid filter:\s+'(.*?)'": r"\|(%s)",
+        r"(\S+) requires \d+ arguments?, \d+ provided": r"\{\{\s*(.*?\|%s)",
+        r"Variables and attributes may not begin with underscores: '(.*?)'": r"\{\{\s*(%s)",
+        r"<ExtendsNode: extends \"(.*?)\"> must be the first tag in the template"        : r"""(\{%%\s*extends\s*["']%s["'])""",
     }
     _compiled_ptns = {}
 
@@ -303,7 +312,7 @@ class KoDjangoLinter(object):
         lintResult.columnStart = m.span(1)[0] + 1
         lintResult.columnEnd = m.span(1)[1] + 1
         return True
-        
+
     def _test_for_duplicate_extends(self, message, text, lintResult):
         # Special case: find the second occurrence, and underline it
         if "'extends' cannot appear more than once in the same template" not in message:
@@ -328,7 +337,7 @@ class KoDjangoLinter(object):
             lintResult.columnStart = 1
         lintResult.columnEnd = lintResult.columnStart + span[1] - span[0]
         return lintResult
-                
+
     def _buildResult(self, text, message):
         inputLines = text.splitlines()
         r = KoLintResult()
@@ -352,13 +361,14 @@ class KoDjangoLinter(object):
                         return r
             if self._test_for_duplicate_extends(message, text, r):
                 return r
-                    
+
             # Special-case contextual pattern has two parts
-            m = re.compile(r"Could not parse the remainder: '(.*?)' from '(.*?)'").search(message)
+            m = re.compile(
+                r"Could not parse the remainder: '(.*?)' from '(.*?)'").search(message)
             if m:
                 part2 = m.group(1)
                 part1 = m.group(2)[:-1 * len(part2)]
-                ptn = r'%s(%%s)' %  (re.escape(part1),)
+                ptn = r'%s(%%s)' % (re.escape(part1),)
                 res = self._do_contextual_matcher(ptn, part2, text, r)
                 if res:
                     return r
