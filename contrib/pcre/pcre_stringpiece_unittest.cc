@@ -2,6 +2,7 @@
 // Author: Sanjay Ghemawat
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <map>
 #include <algorithm>    // for make_pair
 #include <pcre_stringpiece.h>
