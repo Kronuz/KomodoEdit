@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from six.moves import range
 #!/usr/bin/env python2
 
 # Win32 named pipe helper
@@ -128,7 +130,7 @@ class Win32Pipe(object):
             log.debug("Trying to create pipe with randomness %s",
                       hex(start))
             # Try a few variations on the name in case it's somehow taken
-            for i in xrange(1024):
+            for i in range(1024):
                 name = (pipe_prefix + (self.pipe_prefix or "") +
                         hex(start + i)[2:-1])
                 assert len(name) <= 256

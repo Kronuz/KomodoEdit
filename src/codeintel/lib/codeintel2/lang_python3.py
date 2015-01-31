@@ -3,6 +3,7 @@
 # See LICENSE.txt for license details.
 
 """Python 3 support for CodeIntel"""
+from __future__ import absolute_import
 
 import logging
 

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #!python
 # Copyright (c) 2000-2011 ActiveState Software Inc.
 # See the file LICENSE.txt for licensing information.
@@ -23,10 +24,10 @@ def loadTemplate(pathname):
         f.close()
     try:
         t = Template(s)
-    except TemplateSyntaxError, ex:
+    except TemplateSyntaxError as ex:
         sys.stderr.write("TemplateSyntaxError: %s\n" % ex[0])
         return 1
-    except Exception, ex:
+    except Exception as ex:
         sys.stdout.write("Unexpected error: %s\n" % ex[0])
     return 0
 

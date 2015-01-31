@@ -32,6 +32,10 @@ of where the match was found. For example:
     from PATH element 0
     from HKLM\SOFTWARE\...\perl.exe
 """
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import map
+from six.moves import range
 
 _cmdlnUsage = """
     Show the full path of commands.
@@ -91,13 +95,13 @@ def _getRegisteredExecutable(exeName):
     if sys.platform.startswith('win'):
         if os.path.splitext(exeName)[1].lower() != '.exe':
             exeName += '.exe'
-        import _winreg
+        import six.moves.winreg
         try:
             key = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" +\
                   exeName
-            value = _winreg.QueryValue(_winreg.HKEY_LOCAL_MACHINE, key)
+            value = six.moves.winreg.QueryValue(six.moves.winreg.HKEY_LOCAL_MACHINE, key)
             registered = (value, "from HKLM\\" + key)
-        except _winreg.error:
+        except six.moves.winreg.error:
             pass
         if registered and not os.path.exists(registered[0]):
             registered = None
@@ -192,7 +196,7 @@ def whichgen(command, path=None, verbose=0, exts=None):
                 exts = ['.com', '.exe', '.bat', '.cmd']
         elif not isinstance(exts, list):
             raise TypeError("'exts' argument must be a list or None")
-        exts = map(os.path.normcase, exts)
+        exts = list(map(os.path.normcase, exts))
     elif sys.platform == "darwin":
         if exts is None:
             exts = [".app"]
@@ -227,7 +231,7 @@ def whichgen(command, path=None, verbose=0, exts=None):
                     names = os.listdir(dirName)
                 except OSError:
                     names = []
-                names = map(os.path.normcase, names)  # lowercase for Windows.
+                names = list(map(os.path.normcase, names))  # lowercase for Windows.
                 g_listdir_cache[dirName] = {
                     "timestamp": time_now, "names": names}
             else:
@@ -286,7 +290,7 @@ def which(command, path=None, verbose=0, exts=None):
     If no match is found for the command, a WhichError is raised.
     """
     try:
-        match = whichgen(command, path, verbose, exts).next()
+        match = next(whichgen(command, path, verbose, exts))
     except StopIteration:
         raise WhichError("Could not find '%s' on the path." % command)
     return match
@@ -322,17 +326,17 @@ def main(argv):
     try:
         optlist, args = getopt.getopt(argv[1:], 'haVvqp:e:',
                                       ['help', 'all', 'version', 'verbose', 'quiet', 'path=', 'exts='])
-    except getopt.GetoptError, msg:
+    except getopt.GetoptError as msg:
         sys.stderr.write("which: error: %s. Your invocation was: %s\n"
                          % (msg, argv))
         sys.stderr.write("Try 'which --help'.\n")
         return 1
     for opt, optarg in optlist:
         if opt in ('-h', '--help'):
-            print _cmdlnUsage
+            print(_cmdlnUsage)
             return 0
         elif opt in ('-V', '--version'):
-            print "which %s" % __version__
+            print("which %s" % __version__)
             return 0
         elif opt in ('-a', '--all'):
             all = 1
@@ -360,9 +364,9 @@ def main(argv):
         nmatches = 0
         for match in whichgen(arg, path=altpath, verbose=verbose, exts=exts):
             if verbose:
-                print "%s (%s)" % match
+                print("%s (%s)" % match)
             else:
-                print match
+                print(match)
             nmatches += 1
             if not all:
                 break

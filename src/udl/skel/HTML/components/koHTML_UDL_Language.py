@@ -35,6 +35,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Language package for HTML"""
+from __future__ import absolute_import
 
 from xpcom import components, ServerException
 

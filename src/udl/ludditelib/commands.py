@@ -35,6 +35,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Basic luddite commands."""
+from __future__ import absolute_import
 
 import os
 from os.path import basename, dirname, join, exists, abspath, splitext

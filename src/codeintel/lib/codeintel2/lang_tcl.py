@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Tcl support for CodeIntel"""
+from __future__ import absolute_import
 
 import sys
 import os
@@ -54,6 +55,7 @@ from codeintel2.citadel_common import ScanRequest
 from codeintel2.common import *
 from codeintel2.parseutil import urlencode_path
 from codeintel2.tree import tree_from_cix
+from six.moves import range
 
 
 #---- globals
@@ -150,8 +152,9 @@ class TclImportHandler(ImportHandler):
     # for Tcl.
     PATH_ENV_VAR = None
 
-    def _findScannableFiles(self, (files, searchedDirs, skipRareImports),
+    def _findScannableFiles(self, xxx_todo_changeme,
                             dirname, names):
+        (files, searchedDirs, skipRareImports) = xxx_todo_changeme
         if sys.platform.startswith("win"):
             cpath = dirname.lower()
         else:

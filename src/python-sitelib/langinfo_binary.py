@@ -35,6 +35,7 @@
 # ***** END LICENSE BLOCK *****
 
 """LangInfo definitions for some binary file types."""
+from __future__ import absolute_import
 
 from langinfo import LangInfo
 

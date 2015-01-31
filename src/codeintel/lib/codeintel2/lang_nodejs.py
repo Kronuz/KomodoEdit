@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """NodeJS support for CodeIntel"""
+from __future__ import absolute_import
 
 import os
 import json
@@ -48,6 +49,8 @@ from codeintel2.lang_javascript import (JavaScriptLexer,
                                         JavaScriptImportHandler,
                                         JavaScriptCILEDriver)
 from codeintel2.tree_javascript import JavaScriptTreeEvaluator
+from six.moves import map
+from six.moves import range
 
 #---- globals
 
@@ -146,7 +149,7 @@ class NodeJSTreeEvaluator(JavaScriptTreeEvaluator):
                     self.log("skipping lib %r, don't know how to deal", lib)
                     continue
 
-                if dirname in map(os.path.normpath, lib.dirs):
+                if dirname in list(map(os.path.normpath, lib.dirs)):
                     # Found a lib with the directory we want. Whether we found
                     # a hit or not, we don't need to look in any other libs
                     # (since they will just give the same results)
@@ -180,7 +183,7 @@ class NodeJSTreeEvaluator(JavaScriptTreeEvaluator):
                         self.log("found module via %r, trying %r",
                                  manifest_path, main_path)
                         hits = load_as_file(main_path)
-                except ValueError, e:
+                except ValueError as e:
                     self.log("Error loading %r: %r", manifest_path, e)
                 finally:
                     manifest_file.close()

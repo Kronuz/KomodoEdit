@@ -35,12 +35,14 @@
 # ***** END LICENSE BLOCK *****
 
 """End-of-line constants, detection and manipulation."""
+from __future__ import absolute_import
 
 import sys
 
 # Need xpcom.components for 'eol2scimozEOL', can move back to koDocument.py
 # if requiring XPCOM is a pain.
 from xpcom import components
+from six.moves import range
 
 
 EOL_LF = 0

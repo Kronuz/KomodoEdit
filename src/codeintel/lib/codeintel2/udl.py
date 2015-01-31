@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """UDL (User-Defined Language) support for codeintel."""
+from __future__ import absolute_import
 
 import os
 from os.path import dirname, join, abspath, normpath, basename, exists
@@ -55,6 +56,8 @@ from SilverCity.Lexer import Lexer
 
 from codeintel2.common import *
 from codeintel2.citadel import CitadelBuffer
+import six
+from six.moves import range
 #from codeintel2.javascript_common import trg_from_pos as javascript_trg_from_pos
 
 if _xpcom_:
@@ -448,7 +451,7 @@ class UDLBuffer(CitadelBuffer):
 
         # Get a style group from styles.py.
         if "UDL" in styles.StateMap:
-            for style_group, const_names in styles.StateMap["UDL"].items():
+            for style_group, const_names in list(styles.StateMap["UDL"].items()):
                 if const_name in const_names:
                     style_names.append(style_group)
                     break
@@ -553,12 +556,12 @@ class XMLParsingBufferMixin(CitadelBuffer):
             # Grab only the text that's in markup regions; this skils scripts
             # that might have things that look like tags, see bug 101280
             stripped = ""
-            was_unicode = isinstance(content, unicode)
+            was_unicode = isinstance(content, six.text_type)
             if was_unicode:
                 content = content.encode("utf-8")
             trans_tbl = self.__blank_out_non_new_line_table
             for offset, text in self.text_chunks_from_lang(self.m_lang):
-                if isinstance(text, unicode):
+                if isinstance(text, six.text_type):
                     text = text.encode("utf-8")
                 skipped_text = content[len(stripped):offset]
                 stripped += string.translate(skipped_text, trans_tbl) + text

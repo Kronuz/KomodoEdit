@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """RHTML support for CodeIntel"""
+from __future__ import absolute_import
 
 import os
 from os.path import (isfile, isdir, exists, dirname, abspath, splitext,

@@ -36,6 +36,8 @@
 # ***** END LICENSE BLOCK *****
 
 """Ruby support for CodeIntel"""
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os
 from os.path import basename, splitext, isdir, join, normcase, \
@@ -79,6 +81,8 @@ from codeintel2.util import (isident, isdigit, banner, indent, markup_text,
                              hotshotit, makePerformantLogger)
 from codeintel2.tree import tree_2_0_from_tree_0_1
 from codeintel2.tree_ruby import RubyTreeEvaluator
+from six.moves import map
+from six.moves import range
 
 if _xpcom_:
     from xpcom.server import UnwrapObject
@@ -415,7 +419,7 @@ class RubyLangIntel(CitadelLangIntel,
         def gem_ver_from_ver_str(ver_str):
             parts = ver_str.split('.')
             try:
-                parts = map(int, parts)
+                parts = list(map(int, parts))
             except ValueError:
                 return ver_str
             else:
@@ -657,15 +661,15 @@ class RubyLangIntel(CitadelLangIntel,
                            or _RubyStyleClassifier)(buf)
         DEBUG = False  # not using 'logging' system, because want to be fast
         if DEBUG:
-            print banner("Ruby trg_from_pos(pos=%r, implicit=%r)"
-                         % (pos, implicit))
+            print(banner("Ruby trg_from_pos(pos=%r, implicit=%r)"
+                         % (pos, implicit)))
 
         accessor = buf.accessor
         last_pos = pos - 1
         last_ch = accessor.char_at_pos(last_pos)
         if DEBUG:
-            print "  last_pos: %s" % last_pos
-            print "  last_ch: %r" % last_ch
+            print("  last_pos: %s" % last_pos)
+            print("  last_ch: %r" % last_ch)
 
         # All Ruby trigger points occur at one of the trg_chars.
         # Also some require specific two (or more) character combos that
@@ -688,8 +692,8 @@ class RubyLangIntel(CitadelLangIntel,
                                            "names",
                                            start_pos, implicit, length=0, prefix=prefix)
             if DEBUG:
-                print "no: %r is not in %r"\
-                      % (last_ch, self.trg_chars)
+                print("no: %r is not in %r"\
+                      % (last_ch, self.trg_chars))
             return None
         elif last_ch == ' ':
             if last_pos <= 0:
@@ -704,8 +708,8 @@ class RubyLangIntel(CitadelLangIntel,
                 pass
             else:
                 if DEBUG:
-                    print "no: %r is not '< ' or ending a word"\
-                          "(i.e. 'include ')" % (penultimate_ch + last_ch)
+                    print("no: %r is not '< ' or ending a word"\
+                          "(i.e. 'include ')" % (penultimate_ch + last_ch))
                 return None
         elif last_ch == ':' \
             and not (last_pos > 0
@@ -713,8 +717,8 @@ class RubyLangIntel(CitadelLangIntel,
             if DEBUG:
                 penultimate_ch = (last_pos > 0
                                   and accessor.char_at_pos(last_pos - 1) or '')
-                print "no: %r is not '::'"\
-                      % (penultimate_ch + last_ch)
+                print("no: %r is not '::'"\
+                      % (penultimate_ch + last_ch))
             return None
 
         # Suppress triggering in some styles.
@@ -722,7 +726,7 @@ class RubyLangIntel(CitadelLangIntel,
         last_style = accessor.style_at_pos(last_pos)
         if DEBUG:
             style_names = buf.style_names_from_style_num(last_style)
-            print "  style: %s %s" % (last_style, style_names)
+            print("  style: %s %s" % (last_style, style_names))
         suppress = False
         if implicit:
             if last_style in styleClassifier.implicit_completion_skip_styles:
@@ -741,8 +745,8 @@ class RubyLangIntel(CitadelLangIntel,
 
         if suppress:
             if DEBUG:
-                print "no: completion is suppressed in style at %s: %s %s"\
-                      % (last_pos, last_style, style_names)
+                print("no: completion is suppressed in style at %s: %s %s"\
+                      % (last_pos, last_style, style_names))
             return None
 
         WHITESPACE = tuple(' \t\n\r')
@@ -763,7 +767,7 @@ class RubyLangIntel(CitadelLangIntel,
             text = accessor.text_range(
                 max(0, last_pos - LIMIT), last_pos)  # working text
             if DEBUG:
-                print "  working text: %r" % text
+                print("  working text: %r" % text)
             i = len(text) - 1
             while i > 0:  # Skip back to start of line.
                 if text[i] in EOL:
@@ -771,25 +775,25 @@ class RubyLangIntel(CitadelLangIntel,
                 i -= 1
             line = text[i:].lstrip()
             if DEBUG:
-                print "  line: %r" % line
+                print("  line: %r" % line)
             if penultimate_ch == "<":
                 if not line.startswith("class"):
                     if DEBUG:
-                        print "no: line does not start with 'class'"
+                        print("no: line does not start with 'class'")
                     return None
                 if DEBUG:
-                    print "complete-available-modules-and-classes"
+                    print("complete-available-modules-and-classes")
                 return Trigger("Ruby", TRG_FORM_CPLN,
                                "available-modules-and-classes",
                                pos, implicit)
             elif line.strip() == "include":
                 if DEBUG:
-                    print "complete-available-modules"
+                    print("complete-available-modules")
                 return Trigger("Ruby", TRG_FORM_CPLN, "available-modules",
                                pos, implicit)
             else:  # maybe a calltip on a paren-free call
                 if DEBUG:
-                    print "calltip-call-signature"
+                    print("calltip-call-signature")
                 return Trigger("Ruby", TRG_FORM_CALLTIP, "call-signature",
                                pos, implicit)
 
@@ -833,7 +837,7 @@ class RubyLangIntel(CitadelLangIntel,
                 last_last_pos = last_pos - 1
                 last_last_ch = accessor.char_at_pos(last_last_pos)
                 if DEBUG:
-                    print "  prev char = %r" % last_last_ch
+                    print("  prev char = %r" % last_last_ch)
                 if last_last_ch in '"\'':
                     return Trigger("Ruby", TRG_FORM_CPLN,
                                    "literal-methods", pos, implicit,
@@ -899,7 +903,7 @@ class RubyLangIntel(CitadelLangIntel,
                             line = text
                         if self._method_def_header.search(line):
                             if DEBUG:
-                                print "==> bailing out, defining something"
+                                print("==> bailing out, defining something")
                             return None
                     return Trigger("Ruby", TRG_FORM_CPLN,
                                    "object-methods", pos, implicit)
@@ -909,8 +913,8 @@ class RubyLangIntel(CitadelLangIntel,
                         accessor.line_start_pos_from_pos(last_pos),
                         last_pos)
                     if DEBUG:
-                        print "'<digit>.': numeric literal or identifier"
-                        print "check for leading number in %r" % wrk_line
+                        print("'<digit>.': numeric literal or identifier")
+                        print("check for leading number in %r" % wrk_line)
                     if self._leading_float_re.search(wrk_line):
                         return Trigger("Ruby", TRG_FORM_CPLN,
                                        "literal-methods", pos,
@@ -938,7 +942,7 @@ class RubyLangIntel(CitadelLangIntel,
             text = accessor.text_range(
                 max(0, last_pos - LIMIT), last_pos)  # working text
             if DEBUG:
-                print "  working text: %r" % text
+                print("  working text: %r" % text)
             i = len(text) - 1
             while i >= 0 and text[i] in WHITESPACE:  # parse off whitespace
                 i -= 1
@@ -946,8 +950,8 @@ class RubyLangIntel(CitadelLangIntel,
             if i >= 0 and not (isident(text[i]) or isdigit(text[i])
                                or text[i] in RUBY_SPECIAL_METHOD_END_CHARS):
                 if DEBUG:
-                    print "no: first non-ws char before "\
-                          "trigger point is not an ident char: '%s'" % text[i]
+                    print("no: first non-ws char before "\
+                          "trigger point is not an ident char: '%s'" % text[i])
                 return None
             end = i + 1
             if text[i] in RUBY_SPECIAL_METHOD_END_CHARS:
@@ -970,20 +974,20 @@ class RubyLangIntel(CitadelLangIntel,
             else:
                 identifier = text[:end]
             if DEBUG:
-                print "  identifier: %r" % identifier
+                print("  identifier: %r" % identifier)
             if not identifier:
                 if DEBUG:
-                    print "no: no identifier preceding trigger point"
+                    print("no: no identifier preceding trigger point")
                 return None
             elif isdigit(identifier[0]):
                 if DEBUG:
-                    print "no: token preceding trigger "\
-                          "point is not a legal identifier"
+                    print("no: token preceding trigger "\
+                          "point is not a legal identifier")
                 return None
             if identifier in self.RUBY_KEYWORDS:
                 if DEBUG:
-                    print "no: no trigger on paren "\
-                          "after keyword: %r" % identifier
+                    print("no: no trigger on paren "\
+                          "after keyword: %r" % identifier)
                 return None
             # Now we want to rule out subroutine definition lines, e.g.:
             #    def foo(
@@ -992,13 +996,13 @@ class RubyLangIntel(CitadelLangIntel,
             #    def (wacked+out).foo(
             line = text[:end].splitlines(0)[-1]
             if DEBUG:
-                print "  trigger line: %r" % line
+                print("  trigger line: %r" % line)
             if line.lstrip().startswith("def"):
                 if DEBUG:
-                    print "no: no trigger on Ruby func definition"
+                    print("no: no trigger on Ruby func definition")
                 return None
             if DEBUG:
-                print "calltip-call-signature"
+                print("calltip-call-signature")
             return Trigger("Ruby", TRG_FORM_CALLTIP, "call-signature",
                            pos, implicit)
 
@@ -1010,7 +1014,7 @@ class RubyLangIntel(CitadelLangIntel,
             text = accessor.text_range(
                 max(0, last_pos - LIMIT), last_pos)  # working text
             if DEBUG:
-                print "  working text: %r" % text
+                print("  working text: %r" % text)
             i = len(text) - 1
             # Parse off whitespace before quote.
             while i >= 0 and text[i] in WHITESPACE:
@@ -1028,10 +1032,10 @@ class RubyLangIntel(CitadelLangIntel,
                 pass
             else:
                 if DEBUG:
-                    print "no: quote not preceded by bare 'require'"
+                    print("no: quote not preceded by bare 'require'")
                 return None
             if DEBUG:
-                print "complete-lib-paths"
+                print("complete-lib-paths")
             return Trigger("Ruby", TRG_FORM_CPLN, "lib-paths",
                            pos, implicit)
 
@@ -1044,7 +1048,7 @@ class RubyLangIntel(CitadelLangIntel,
             text = accessor.text_range(
                 max(0, last_pos - LIMIT), last_pos)  # working text
             if DEBUG:
-                print "  working text: %r" % text
+                print("  working text: %r" % text)
             # Get the current line.
             i = len(text) - 1
             while i > 0:  # Skip back to start of line.
@@ -1058,7 +1062,7 @@ class RubyLangIntel(CitadelLangIntel,
                 i -= 1
             line = text[i:].lstrip()
             if DEBUG:
-                print "  line: %r" % line
+                print("  line: %r" % line)
             # Optimization: Just check that the line looks like a
             # require statement. This might miss things like:
             #       foo; require 'bar/baz'
@@ -1068,11 +1072,11 @@ class RubyLangIntel(CitadelLangIntel,
                or line[LEN_REQUIRE] not in WHITESPACE \
                or line[LEN_REQUIRE:].lstrip()[0] not in ("'", '"'):
                 if DEBUG:
-                    print "no: line doesn't start with "\
-                          "/require\\s+['\"]/: <<%r>>" % line
+                    print("no: line doesn't start with "\
+                          "/require\\s+['\"]/: <<%r>>" % line)
                 return None
             if DEBUG:
-                print "complete-lib-subpaths"
+                print("complete-lib-subpaths")
             return Trigger("Ruby", TRG_FORM_CPLN, "lib-subpaths",
                            pos, implicit)
 
@@ -1085,7 +1089,7 @@ class RubyLangIntel(CitadelLangIntel,
             text = accessor.text_range(
                 max(0, last_pos - LIMIT), last_pos)  # working text
             if DEBUG:
-                print "  working text: %r" % text
+                print("  working text: %r" % text)
             # Just walk over the preceding token until we are pretty
             # sure it can be a variable name: there is a letter or
             # underscore in it.
@@ -1097,16 +1101,16 @@ class RubyLangIntel(CitadelLangIntel,
                     i -= 1  # might be an identifier, need to keep looking
                 else:
                     if DEBUG:
-                        print "no: '::' not preceded with "\
-                              "identifier: %r" % text[i]
+                        print("no: '::' not preceded with "\
+                              "identifier: %r" % text[i])
                     return None
             else:
                 if DEBUG:
-                    print "no: '::' not preceded with "\
-                          "identifier: %r" % text[i]
+                    print("no: '::' not preceded with "\
+                          "identifier: %r" % text[i])
                 return None
             if DEBUG:
-                print "complete-module-names"
+                print("complete-module-names")
             return Trigger("Ruby", TRG_FORM_CPLN, "module-names",
                            pos, implicit, length=2)
 
@@ -1116,12 +1120,12 @@ class RubyLangIntel(CitadelLangIntel,
             #       @|              complete-instance-vars
             if (last_pos > 0 and accessor.char_at_pos(last_pos - 1) == '@'):
                 if DEBUG:
-                    print "complete-class-vars"
+                    print("complete-class-vars")
                 return Trigger("Ruby", TRG_FORM_CPLN, "class-vars",
                                pos, implicit, length=2)
             else:
                 if DEBUG:
-                    print "complete-instance-vars"
+                    print("complete-instance-vars")
                 return Trigger("Ruby", TRG_FORM_CPLN, "instance-vars",
                                pos, implicit)
 
@@ -1129,7 +1133,7 @@ class RubyLangIntel(CitadelLangIntel,
             # Is likely (always?) this:
             #       $|              complete-global-vars
             if DEBUG:
-                print "complete-global-vars"
+                print("complete-global-vars")
             return Trigger("Ruby", TRG_FORM_CPLN, "global-vars",
                            pos, implicit)
 
@@ -1210,7 +1214,7 @@ class RubyLangIntel(CitadelLangIntel,
         if trg is not None:
             return trg
         if DEBUG:
-            print "preceding_trg_from_pos: pos=%d, curr_pos=%d" % (pos, curr_pos)
+            print("preceding_trg_from_pos: pos=%d, curr_pos=%d" % (pos, curr_pos))
         styleClassifier = styleClassifierClass(buf)
         # Assume we're on an identifier that doesn't follow a
         # trigger character.  Find its start.
@@ -1227,12 +1231,12 @@ class RubyLangIntel(CitadelLangIntel,
                 idx -= 1
             if idx <= 0:
                 if DEBUG:
-                    print "Moved to beginning of buffer"
+                    print("Moved to beginning of buffer")
                 return None
             trg = self.trg_from_pos(buf, curr_pos, implicit=False, DEBUG=DEBUG)
             return trg
         elif DEBUG:
-            print "Ignore current style %d" % curr_style
+            print("Ignore current style %d" % curr_style)
 
     def citdl_expr_from_trg(self, buf, trg):
         """Parse out the leading Ruby expression and return a CITDL
@@ -1303,12 +1307,12 @@ class RubyLangIntel(CitadelLangIntel,
             end_pos = pos - trg_length
         wrk_text = buf.accessor.text_range(max(0, pos - 100), end_pos)
         if DEBUG:
-            print banner("Ruby citdl_expr_from_trg")
+            print(banner("Ruby citdl_expr_from_trg"))
             if pos > 100:
-                print "...",
-            print (wrk_text
-                   + "<+>")
-            print banner(None, '-')
+                print("...", end=' ')
+            print((wrk_text
+                   + "<+>"))
+            print(banner(None, '-'))
 
         # Parse off a Ruby leading expression.
         match = self._leading_citdl_expr_pat.search(wrk_text)
@@ -1316,19 +1320,19 @@ class RubyLangIntel(CitadelLangIntel,
             if trg.type == "names" and not trg.implicit:
                 citdl_expr = ""
                 if DEBUG:
-                    print "trigger-type of current-names: match anything"
+                    print("trigger-type of current-names: match anything")
             else:
                 citdl_expr = None
                 if DEBUG:
-                    print "could not match a trailing Ruby var"
+                    print("could not match a trailing Ruby var")
         elif match.group("literal"):
             literal = match.group("literal")
             literal_tail = match.group("literal_tail")
             ruby_type_from_literal = {']': "Array", '}': "Hash",
                                       '"': "String", "'": "String"}
             if DEBUG:
-                print "leading literal (part): %r (tail=%r)"\
-                      % (literal, literal_tail)
+                print("leading literal (part): %r (tail=%r)"\
+                      % (literal, literal_tail))
             try:
                 ruby_type = ruby_type_from_literal[match.group('literal')]
             except KeyError:
@@ -1340,11 +1344,11 @@ class RubyLangIntel(CitadelLangIntel,
         else:
             citdl_expr = match.group(0)
             if DEBUG:
-                print "parsed out leading Ruby citdl_expr: %r" % citdl_expr
+                print("parsed out leading Ruby citdl_expr: %r" % citdl_expr)
 
         if DEBUG:
-            print "returning: %r" % citdl_expr
-            print banner(None, '-')
+            print("returning: %r" % citdl_expr)
+            print(banner(None, '-'))
         return citdl_expr
 
     _require_pat = re.compile(r'(?:require|load)\s+[\'"](.*?)$')
@@ -1518,7 +1522,7 @@ class RubyImportHandler(ImportHandler):
             import which
             try:
                 compiler = which.which("ruby")
-            except which.WhichError, ex:
+            except which.WhichError as ex:
                 self.corePath = []  # could not determine
                 return
         self.corePath = self._shellOutForPath(compiler)
@@ -1547,12 +1551,12 @@ class RubyImportHandler(ImportHandler):
                     subimports[name + "/"] = True
                 elif splitext(name)[-1] in (".rb", ".so"):
                     subimports[splitext(name)[0]] = True
-        return subimports.keys()
+        return list(subimports.keys())
 
-    def _findScannableFiles(self,
-                            (files, searchedDirs, skipRareImports,
-                             importableOnly),
+    def _findScannableFiles(self, xxx_todo_changeme,
                             dirname, names):
+        (files, searchedDirs, skipRareImports,
+                             importableOnly) = xxx_todo_changeme
         if sys.platform.startswith("win"):
             cpath = dirname.lower()
         else:
@@ -1605,7 +1609,7 @@ class RubyImportHandler(ImportHandler):
 
         try:
             names = os.listdir(dir)
-        except OSError, ex:
+        except OSError as ex:
             return {}
         dirs, nondirs = set(), set()
         for name in names:

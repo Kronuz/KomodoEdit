@@ -38,6 +38,8 @@
 r"""A command-line interface for managing UDL (User-Defined Language)
 files for Komodo.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os
 from os.path import basename, dirname, join, exists, abspath, splitext
@@ -211,7 +213,7 @@ class Shell(cmdln.Cmdln):
                     raise LudditeError("`%s' is not a GUID and does not "
                                        "exist" % opts.guid)
                 guid_from_lang = {}  # dict((lang, g) for lang, g in)
-                for line in file(opts.guid):
+                for line in open(opts.guid):
                     if line.startswith("#"):
                         continue
                     if not line.strip():
@@ -367,7 +369,7 @@ if __name__ == "__main__":
             log.error(exc_info[0])
         if log.isEnabledFor(logging.DEBUG):
             import traceback
-            print
+            print()
             traceback.print_exception(*exc_info)
         sys.exit(1)
     else:

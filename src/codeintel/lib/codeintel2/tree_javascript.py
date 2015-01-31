@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Completion evaluation code for JavaScript"""
+from __future__ import absolute_import
 
 import logging
 import types
@@ -46,6 +47,8 @@ from itertools import chain
 from codeintel2.common import *
 from codeintel2.util import indent
 from codeintel2.tree import TreeEvaluator
+from six.moves import range
+from six.moves import zip
 
 
 class CandidatesForTreeEvaluator(TreeEvaluator):
@@ -123,12 +126,12 @@ class CandidatesForTreeEvaluator(TreeEvaluator):
                 for token in get_pending_token():
                     yield token
                 if next == block[1]:
-                    chars.next()  # consume close quote
+                    next(chars)  # consume close quote
                     yield block[0] + block[1]
                 elif next in ('"', "'"):  # quoted string
-                    chars.next()  # consume open bracket
+                    next(chars)  # consume open bracket
                     next_tokens = list(get_quoted_string(next))
-                    ch, next = chars.next()
+                    ch, next = next(chars)
                     if ch == block[1] and emit:
                         for next_token in next_tokens:
                             yield next_token
@@ -263,7 +266,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
         # javascript/cpln/ctor_scope_cheat for an example of why.
         try:
             elem = self._elem_from_scoperef(scoperef)
-        except KeyError, ex:
+        except KeyError as ex:
             self.warn("_hit_from_first_token:: no elem for scoperef: %r",
                       scoperef)
             return (None, None)
@@ -283,7 +286,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
         while 1:
             try:
                 elem = self._elem_from_scoperef(scoperef)
-            except KeyError, ex:
+            except KeyError as ex:
                 raise EvalError("could not resolve scoperef %r: %s"
                                 % (scoperef, ex))
             try:
@@ -478,13 +481,13 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                     if token == "()":
                         try:
                             new_hits += self._hits_from_call(elem, scoperef)
-                        except CodeIntelError, ex:
+                        except CodeIntelError as ex:
                             self.warn("could resolve call on %r: %s", elem, ex)
                         continue
                     try:
                         new_hit = self._hit_from_getattr(
                             elem, scoperef, token)
-                    except CodeIntelError, ex:
+                    except CodeIntelError as ex:
                         if token == "prototype" and elem.get("ilk") == "class":
                             self.debug("_hits_from_citdl: using class %r for "
                                        "its prototype", elem)
@@ -531,7 +534,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                         else:
                             subhits = self._hits_from_variable_type_inference(
                                 elem, scoperef)
-                    except CodeIntelError, ex:
+                    except CodeIntelError as ex:
                         self.warn("could not resolve %r: %s", elem, ex)
                     else:
                         resolved_hits += subhits
@@ -785,7 +788,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                      " expression found, trying alternatives.")
             try:
                 parent_elem = self._elem_from_scoperef(scoperef)
-            except KeyError, ex:
+            except KeyError as ex:
                 raise CodeIntelError(
                     "could not resolve recursive citdl expression %r" % citdl)
             else:
@@ -1011,4 +1014,4 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                 if name not in all_completions:
                     all_completions[name] = ilk
 
-        return [(ilk, name) for name, ilk in all_completions.items()]
+        return [(ilk, name) for name, ilk in list(all_completions.items())]

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
@@ -39,6 +40,8 @@ import logging
 import itertools
 import contextlib
 import functools
+from six.moves import range
+from functools import reduce
 
 log = logging.getLogger("TreeView")
 # log.setLevel(logging.DEBUG)
@@ -210,7 +213,7 @@ class TreeView(object):
             numRanges = treeSelection.getRangeCount()
             for i in range(numRanges):
                 min_index, max_index = treeSelection.getRangeAt(i)
-                a += range(min_index, max_index + 1)
+                a += list(range(min_index, max_index + 1))
         return a
 
     def getSelectedIndices(self, rootsOnly=False):
@@ -494,7 +497,7 @@ class ObjectTreeViewItem(object):
 
         # no child found, look for the child that is an ancestor of the target
         child_index = -1
-        for i in self._index_to_children.keys():
+        for i in list(self._index_to_children.keys()):
             if i < index and i > child_index:
                 child_index = i
 
@@ -785,7 +788,7 @@ class InvalidationRange(object):
                         assert len(entry) == 3, \
                             "%s %r: ranges %r is inconsistent" % (
                                 pos, f, self.ranges)
-                        assert all(map(lambda x: isinstance(x, int), entry)), \
+                        assert all([isinstance(x, int) for x in entry]), \
                             "%s %r: ranges %r is inconsistent" % (
                                 pos, f, self.ranges)
                         assert entry[0] >= 0, \
@@ -944,7 +947,7 @@ class InvalidationRange(object):
             self._maybeMerge(index + 1)
             self._maybeMerge(index)
 
-        except Exception, e:
+        except Exception as e:
             self.log_exception(e)
             # mark this is being broken; the next commit will simply refresh
             # the whole tree and discard all changes.
@@ -990,7 +993,7 @@ class InvalidationRange(object):
                 self.ranges.append([start, start, count])
                 self._maybeMerge(len(self.ranges) - 2)
 
-        except Exception, e:
+        except Exception as e:
             self.log_exception(e)
             # mark this is being broken; the next commit will simply refresh
             # the whole tree and discard all changes.
@@ -1104,7 +1107,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         try:
             while not index in parent._index_to_children:
                 i = max(
-                    filter(lambda k: k < index, parent._index_to_children.keys()))
+                    [k for k in list(parent._index_to_children.keys()) if k < index])
                 # i is the offset of the next parent to use (from the current
                 # parent)
 

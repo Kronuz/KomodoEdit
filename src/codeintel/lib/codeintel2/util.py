@@ -37,6 +37,8 @@
 # ***** END LICENSE BLOCK *****
 
 """Code Intelligence: utility functions"""
+from __future__ import absolute_import
+from __future__ import print_function
 
 import bisect
 import os
@@ -50,6 +52,8 @@ import types
 from pprint import pprint, pformat
 import time
 import codecs
+import six
+from six.moves import range
 
 # Global dict for holding specific hotshot profilers
 hotshotProfilers = {}
@@ -257,7 +261,7 @@ def parsePyFuncDoc(doc, fallbackCallSig=None, scope="?", funcname="?"):
         return ([], [])
 
     limit = LINE_LIMIT
-    if not isinstance(doc, unicode):
+    if not isinstance(doc, six.text_type):
         # try to convert from utf8 to unicode; if we fail, too bad.
         try:
             doc = codecs.utf_8_decode(doc)[0]
@@ -392,7 +396,7 @@ def unmark_text(markedup_text):
     See the matching markup_text() below.
     """
     splitter = re.compile(r"(<(?:[\|\+\$\[\]<]|\d+)>)")
-    text = u"" if isinstance(markup_text, unicode) else ""
+    text = u"" if isinstance(markup_text, six.text_type) else ""
     data = {}
     posNameFromSymbol = {
         "<|>": "pos",
@@ -403,7 +407,7 @@ def unmark_text(markedup_text):
     }
 
     def byte_length(text):
-        if isinstance(text, unicode):
+        if isinstance(text, six.text_type):
             return len(text.encode("utf-8"))
         return len(text)
 
@@ -437,7 +441,7 @@ def markup_text(text, pos=None, trg_pos=None, start_pos=None):
         positions_and_markers.append((start_pos, '<$>'))
     positions_and_markers.sort()
 
-    if isinstance(text, unicode):
+    if isinstance(text, six.text_type):
         # codeintel is now UTF-8 internally; use that for tests too
         text = text.encode("utf-8")
     m_text = ""
@@ -472,7 +476,7 @@ def lines_from_pos(unmarked_text, positions):
         >>> lines_from_pos(text, {"hello": 10, "moo": 20, "not": "an int"})
         {'moo': 1, 'hello': 1}
     """
-    if isinstance(unmarked_text, unicode):
+    if isinstance(unmarked_text, six.text_type):
         unmarked_text = unmarked_text.encode("utf-8")
     lines = unmarked_text.splitlines(True)
     offsets = [0]
@@ -480,11 +484,11 @@ def lines_from_pos(unmarked_text, positions):
         offsets.append(offsets[-1] + len(line))
     try:
         # assume a dict
-        keys = positions.iterkeys()
+        keys = six.iterkeys(positions)
         values = {}
     except AttributeError:
         # assume a list/tuple
-        keys = range(len(positions))
+        keys = list(range(len(positions)))
         values = []
 
     for key in keys:
@@ -556,8 +560,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
     """
     DEBUG = False
     if DEBUG:
-        print "dedent: dedent(..., tabsize=%d, skip_first_line=%r)"\
-              % (tabsize, skip_first_line)
+        print("dedent: dedent(..., tabsize=%d, skip_first_line=%r)"\
+              % (tabsize, skip_first_line))
     indents = []
     margin = None
     for i, line in enumerate(lines):
@@ -576,13 +580,13 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
         else:
             continue  # skip all-whitespace lines
         if DEBUG:
-            print "dedent: indent=%d: %r" % (indent, line)
+            print("dedent: indent=%d: %r" % (indent, line))
         if margin is None:
             margin = indent
         else:
             margin = min(margin, indent)
     if DEBUG:
-        print "dedent: margin=%r" % margin
+        print("dedent: margin=%r" % margin)
 
     if margin is not None and margin > 0:
         for i, line in enumerate(lines):
@@ -596,7 +600,7 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                     removed += tabsize - (removed % tabsize)
                 elif ch in '\r\n':
                     if DEBUG:
-                        print "dedent: %r: EOL -> strip up to EOL" % line
+                        print("dedent: %r: EOL -> strip up to EOL" % line)
                     lines[i] = lines[i][j:]
                     break
                 else:
@@ -604,8 +608,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                                      "line %r while removing %d-space margin"
                                      % (ch, line, margin))
                 if DEBUG:
-                    print "dedent: %r: %r -> removed %d/%d"\
-                          % (line, ch, removed, margin)
+                    print("dedent: %r: %r -> removed %d/%d"\
+                          % (line, ch, removed, margin))
                 if removed == margin:
                     lines[i] = lines[i][j + 1:]
                     break
@@ -671,7 +675,7 @@ def walk2(top, topdown=True, onerror=None, followlinks=False,
         # Note that listdir and error are globals in this module due
         # to earlier import-*.
         names = os.listdir(top)
-    except os.error, err:
+    except os.error as err:
         if onerror is not None:
             onerror(err)
         return
@@ -683,7 +687,7 @@ def walk2(top, topdown=True, onerror=None, followlinks=False,
                 dirs.append(name)
             else:
                 nondirs.append(name)
-        except UnicodeDecodeError, err:
+        except UnicodeDecodeError as err:
             if ondecodeerror is not None:
                 ondecodeerror(err)
 
@@ -719,7 +723,7 @@ def timeit(func):
             return func(*args, **kw)
         finally:
             total_time = clock() - start_time
-            print "%s took %.3fs" % (func.func_name, total_time)
+            print("%s took %.3fs" % (func.__name__, total_time))
     return wrapper
 
 
@@ -727,7 +731,7 @@ def hotshotit(func):
     def wrapper(*args, **kw):
         import hotshot
         global hotshotProfilers
-        prof_name = func.func_name + ".prof"
+        prof_name = func.__name__ + ".prof"
         profiler = hotshotProfilers.get(prof_name)
         if profiler is None:
             profiler = hotshot.Profile(prof_name)
@@ -810,7 +814,7 @@ def make_short_name_dict(names, length=3):
             else:
                 l.append(name)
         # pprint(outdict)
-    for values in outdict.values():
+    for values in list(outdict.values()):
         values.sort(CompareNPunctLast)
     return outdict
 

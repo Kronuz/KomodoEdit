@@ -35,6 +35,7 @@
 # ***** END LICENSE BLOCK *****
 
 """LangInfo definitions specific to Komodo."""
+from __future__ import absolute_import
 
 from langinfo import LangInfo
 

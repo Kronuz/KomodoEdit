@@ -4,6 +4,8 @@ This module provides the UUID class and the functions uuid1(), uuid3(),
 uuid4(), uuid5() for generating version 1, 3, 4, and 5 UUIDs respectively.
 
 This module works with Python 2.3 or higher."""
+from __future__ import absolute_import
+from six.moves import map
 
 __author__ = 'Ka-Ping Yee <ping@zesty.ca>'
 __date__ = '$Date: 2005/11/30 11:51:58 $'.split()[1].replace('/', '-')
@@ -90,7 +92,7 @@ class UUID(object):
                 byte(self.node >> 8) + byte(self.node))
 
     def set_bytes(self, bytes):
-        values = map(ord, bytes)
+        values = list(map(ord, bytes))
         self.time_low = ((values[0] << 24) + (values[1] << 16) +
                          (values[2] << 8) + values[3])
         self.time_mid = (values[4] << 8) + values[5]

@@ -1,8 +1,10 @@
 """
 Mozilla CSS extensions.
 """
+from __future__ import absolute_import
 
 import textwrap
+from six.moves import range
 
 # Auto generated from:
 #  'src/codeintel/support/gencix/css/gen_moz_css_properties.py'
@@ -426,7 +428,7 @@ CSS_MOZ_DATA = {
 
 CSS_MOZ_SPECIFIC_ATTRS_DICT = {}
 CSS_MOZ_SPECIFIC_CALLTIP_DICT = {}
-for attr, details in CSS_MOZ_DATA.items():
+for attr, details in list(CSS_MOZ_DATA.items()):
     values = details.get("values", {})
     attr_completions = sorted(values.keys())
     if attr_completions:
@@ -438,7 +440,7 @@ for attr, details in CSS_MOZ_DATA.items():
         desc_lines = textwrap.wrap(description, width=60)
         if values:
             desc_lines.append("")
-            for value, attr_desc in values.items():
+            for value, attr_desc in list(values.items()):
                 attr_desc = "  %r: %s" % (value, attr_desc)
                 attr_desc_lines = textwrap.wrap(attr_desc, width=50)
                 for i in range(len(attr_desc_lines)):

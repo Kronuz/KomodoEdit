@@ -34,6 +34,11 @@ optparse-based option processing. Basically you use it like this:
 See the README.txt or <http://trentm.com/projects/cmdln/> for more
 details.
 """
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import map
+from six.moves import range
+from six.moves import input
 
 __revision__ = "$Id$"
 __version_info__ = (1, 0, 1)
@@ -48,7 +53,7 @@ from pprint import pprint
 
 #---- globals
 
-LOOP_ALWAYS, LOOP_NEVER, LOOP_IF_EMPTY = range(3)
+LOOP_ALWAYS, LOOP_NEVER, LOOP_IF_EMPTY = list(range(3))
 
 # An unspecified optional argument when None is a meaningful value.
 _NOT_SPECIFIED = ("Not", "Specified")
@@ -237,13 +242,13 @@ class RawCmdln(cmd.Cmd):
         if self.optparser:  # i.e. optparser=None means don't process for opts
             try:
                 self.options, args = self.optparser.parse_args(argv[1:])
-            except CmdlnUserError, ex:
+            except CmdlnUserError as ex:
                 msg = "%s: %s\nTry '%s help' for info.\n"\
                       % (self.name, ex, self.name)
                 self.stderr.write(self._str(msg))
                 self.stderr.flush()
                 return 1
-            except StopOptionProcessing, ex:
+            except StopOptionProcessing as ex:
                 return 0
         else:
             self.options, args = None, argv[1:]
@@ -324,7 +329,7 @@ class RawCmdln(cmd.Cmd):
             else:
                 if self.use_rawinput:
                     try:
-                        line = raw_input(self._prompt_str)
+                        line = input(self._prompt_str)
                     except EOFError:
                         line = 'EOF'
                 else:
@@ -581,7 +586,7 @@ class RawCmdln(cmd.Cmd):
             "${cmd_option_list}": self._help_preprocess_cmd_option_list,
         }
 
-        for marker, preprocessor in preprocessors.items():
+        for marker, preprocessor in list(preprocessors.items()):
             if marker in help:
                 help = preprocessor(help, cmdname)
         return help
@@ -616,7 +621,7 @@ class RawCmdln(cmd.Cmd):
         # Find any aliases for commands.
         token2canonical = self._get_canonical_map()
         aliases = {}
-        for token, cmdname in token2canonical.items():
+        for token, cmdname in list(token2canonical.items()):
             if token == cmdname:
                 continue
             aliases.setdefault(cmdname, []).append(token)
@@ -627,7 +632,7 @@ class RawCmdln(cmd.Cmd):
         for attr in self.get_names():
             if attr.startswith("do_"):
                 cmdnames[attr[3:]] = True
-        cmdnames = cmdnames.keys()
+        cmdnames = list(cmdnames.keys())
         cmdnames.sort()
         linedata = []
         for cmdname in cmdnames:
@@ -693,7 +698,7 @@ class RawCmdln(cmd.Cmd):
                 helpnames[helpname] = attr
 
         if helpnames:
-            linedata = [(n, a.__doc__ or "") for n, a in helpnames.items()]
+            linedata = [(n, a.__doc__ or "") for n, a in list(helpnames.items())]
             linedata.sort()
 
             subindent = indent + ' ' * 4
@@ -735,14 +740,14 @@ class RawCmdln(cmd.Cmd):
         suffix = _get_trailing_whitespace(marker, help)
 
         # Extract the introspection bits we need.
-        func = handler.im_func
-        if func.func_defaults:
-            func_defaults = list(func.func_defaults)
+        func = handler.__func__
+        if func.__defaults__:
+            func_defaults = list(func.__defaults__)
         else:
             func_defaults = []
-        co_argcount = func.func_code.co_argcount
-        co_varnames = func.func_code.co_varnames
-        co_flags = func.func_code.co_flags
+        co_argcount = func.__code__.co_argcount
+        co_varnames = func.__code__.co_varnames
+        co_flags = func.__code__.co_flags
         CO_FLAGS_ARGS = 4
         CO_FLAGS_KWARGS = 8
 
@@ -769,7 +774,7 @@ class RawCmdln(cmd.Cmd):
                 warnings.warn("argument '**%s' on '%s.%s' command "
                               "handler will never get values"
                               % (name, self.__class__.__name__,
-                                 func.func_name))
+                                 func.__name__))
             if co_flags & CO_FLAGS_ARGS:
                 name = argnames.pop(-1)
                 tail = "[%s...]" % name.upper()
@@ -839,7 +844,7 @@ class RawCmdln(cmd.Cmd):
                     continue
                 cmd2funcname[cmdname] = attr
                 token2canonical[cmdname] = cmdname
-            for cmdname, funcname in cmd2funcname.items():  # add aliases
+            for cmdname, funcname in list(cmd2funcname.items()):  # add aliases
                 func = getattr(self, funcname)
                 aliases = getattr(func, "aliases", [])
                 for alias in aliases:
@@ -1081,14 +1086,14 @@ class Cmdln(RawCmdln):
         and an appropriate error message will be raised/printed if the
         command is called with a different number of args.
         """
-        co_argcount = handler.im_func.func_code.co_argcount
+        co_argcount = handler.__func__.__code__.co_argcount
         if co_argcount == 2:   # handler ::= do_foo(self, argv)
             return handler(argv)
         elif co_argcount >= 3:  # handler ::= do_foo(self, subcmd, opts, ...)
             try:
                 optparser = handler.optparser
             except AttributeError:
-                optparser = handler.im_func.optparser = SubCmdOptionParser()
+                optparser = handler.__func__.optparser = SubCmdOptionParser()
             assert isinstance(optparser, SubCmdOptionParser)
             optparser.set_cmdln_info(self, argv[0])
             try:
@@ -1100,7 +1105,7 @@ class Cmdln(RawCmdln):
 
             try:
                 return handler(argv[0], opts, *args)
-            except TypeError, ex:
+            except TypeError as ex:
                 # Some TypeError's are user errors:
                 #   do_foo() takes at least 4 arguments (3 given)
                 #   do_foo() takes at most 5 arguments (6 given)
@@ -1361,8 +1366,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
     """
     DEBUG = False
     if DEBUG:
-        print "dedent: dedent(..., tabsize=%d, skip_first_line=%r)"\
-              % (tabsize, skip_first_line)
+        print("dedent: dedent(..., tabsize=%d, skip_first_line=%r)"\
+              % (tabsize, skip_first_line))
     indents = []
     margin = None
     for i, line in enumerate(lines):
@@ -1381,13 +1386,13 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
         else:
             continue  # skip all-whitespace lines
         if DEBUG:
-            print "dedent: indent=%d: %r" % (indent, line)
+            print("dedent: indent=%d: %r" % (indent, line))
         if margin is None:
             margin = indent
         else:
             margin = min(margin, indent)
     if DEBUG:
-        print "dedent: margin=%r" % margin
+        print("dedent: margin=%r" % margin)
 
     if margin is not None and margin > 0:
         for i, line in enumerate(lines):
@@ -1401,7 +1406,7 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                     removed += tabsize - (removed % tabsize)
                 elif ch in '\r\n':
                     if DEBUG:
-                        print "dedent: %r: EOL -> strip up to EOL" % line
+                        print("dedent: %r: EOL -> strip up to EOL" % line)
                     lines[i] = lines[i][j:]
                     break
                 else:
@@ -1409,8 +1414,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                                      "line %r while removing %d-space margin"
                                      % (ch, line, margin))
                 if DEBUG:
-                    print "dedent: %r: %r -> removed %d/%d"\
-                          % (line, ch, removed, margin)
+                    print("dedent: %r: %r -> removed %d/%d"\
+                          % (line, ch, removed, margin))
                 if removed == margin:
                     lines[i] = lines[i][j + 1:]
                     break

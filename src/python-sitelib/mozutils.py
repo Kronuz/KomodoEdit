@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright (c) 2000-2008 ActiveState Software Inc.
 # See the file LICENSE.txt for licensing information.
 

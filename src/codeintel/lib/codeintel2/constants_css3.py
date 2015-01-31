@@ -1,12 +1,14 @@
 """
 CSS 3 definitions - requires CSS 1 and CSS 2 modules.
 """
+from __future__ import absolute_import
 
 import textwrap
 
 from codeintel2.constants_css1 import CSS_ATTR_DICT as CSS1_SPECIFIC_ATTRS_DICT
 from codeintel2.constants_css1 import CSS_PROPERTY_ATTRIBUTE_CALLTIPS_DICT as CSS1_SPECIFIC_CALLTIP_DICT
 from codeintel2.constants_css2 import CSS2_SPECIFIC_ATTRS_DICT, CSS2_SPECIFIC_CALLTIP_DICT
+from six.moves import range
 
 CSS_PSEUDO_CLASS_NAMES = """
     root
@@ -862,7 +864,7 @@ CSS3_DATA = {
 
 CSS3_SPECIFIC_ATTRS_DICT = {}
 CSS3_SPECIFIC_CALLTIP_DICT = {}
-for attr, details in CSS3_DATA.items():
+for attr, details in list(CSS3_DATA.items()):
     values = details.get("values", {})
     attr_completions = sorted(values.keys())
     if attr_completions:
@@ -874,7 +876,7 @@ for attr, details in CSS3_DATA.items():
         desc_lines = textwrap.wrap(description, width=60)
         if values:
             desc_lines.append("")
-            for value, attr_desc in values.items():
+            for value, attr_desc in list(values.items()):
                 attr_desc = "  %r: %s" % (value, attr_desc)
                 attr_desc_lines = textwrap.wrap(attr_desc, width=50)
                 for i in range(len(attr_desc_lines)):
@@ -910,7 +912,7 @@ for name in removed_css2_items:
     CSS_ATTR_DICT.pop(name, None)
     CSS_PROPERTY_ATTRIBUTE_CALLTIPS_DICT.pop(name, None)
 
-for property, calltip in CSS_PROPERTY_ATTRIBUTE_CALLTIPS_DICT.items():
+for property, calltip in list(CSS_PROPERTY_ATTRIBUTE_CALLTIPS_DICT.items()):
     if property not in CSS3_SPECIFIC_CALLTIP_DICT:
         if property in CSS2_SPECIFIC_CALLTIP_DICT:
             calltip += "\n(CSS2, CSS3)"

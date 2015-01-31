@@ -40,6 +40,7 @@
     CIX helpers for codeintel creation. Code Intelligence XML format. See:
         http://specs.tl.activestate.com/kd/kd-0100.html#xml-based-import-export-syntax-cix
 """
+from __future__ import absolute_import
 
 import os
 import sys
@@ -50,6 +51,7 @@ import warnings
 
 from ciElementTree import Element, ElementTree, SubElement
 from codeintel2.util import parseDocSummary
+from six.moves import range
 
 # Dictionary of known js types and what they map to
 known_javascript_types = {

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
@@ -53,6 +54,7 @@ from eollib import newl
 import logging
 import uriparse
 import urllib
+import six
 
 __all__ = ["cgi_escape", "dePercent", "dePickleCache", "deserializeFile",
            "getChildText", "koGlobalPreferenceDefinition",
@@ -106,12 +108,12 @@ def pickleCache(prefs, filename):
     """
     from tempfile import mkstemp
     (fdes, pickleFilename) = mkstemp(".tmp", "koPickle_")
-    import cPickle
+    import six.moves.cPickle
     pickle_file = os.fdopen(fdes, "wb")
     try:
         try:
             log.debug("Pickling object %s to %r", prefs, pickleFilename)
-            cPickle.dump(prefs, pickle_file, 1)
+            six.moves.cPickle.dump(prefs, pickle_file, 1)
             log.info("saved the pickle to %r", pickleFilename)
         except:
             log.exception("pickleCache error for file %r", pickleFilename)
@@ -119,7 +121,7 @@ def pickleCache(prefs, filename):
                 pickle_file.close()
                 pickle_file = None
                 os.unlink(pickleFilename)
-            except IOError, details:
+            except IOError as details:
                 log.error("Could not erase the incomplete pickle file %r: %s",
                           pickleFilename, details)
     finally:
@@ -130,7 +132,7 @@ def pickleCache(prefs, filename):
             import shutil
             try:
                 shutil.move(pickleFilename, filename)
-            except OSError, details:
+            except OSError as details:
                 # Could not move, resort to a copy then.
                 shutil.copy(pickleFilename, filename)
 
@@ -177,7 +179,7 @@ def dePickleCache(pickleFilename):
     Return a pref object from a pref pickle file.
     Assumes that pickleCacheOKToLoad() has been called
     """
-    import cPickle
+    import six.moves.cPickle
     try:
         file = open(pickleFilename, "rb")
     except IOError:
@@ -187,7 +189,7 @@ def dePickleCache(pickleFilename):
     try:
         try:
             log.info("Loading preferences from pickle %r", pickleFilename)
-            return cPickle.load(file)
+            return six.moves.cPickle.load(file)
         except:
             log.exception(
                 "dePickleCache: Couldn't depickle %r", pickleFilename)
@@ -224,12 +226,12 @@ class koGlobalPreferenceDefinition:
         self.defaults_filename = None
         self.save_format = self.SAVE_DEFAULT
         self.contract_id = None
-        for name, val in kw.items():
+        for name, val in list(kw.items()):
             # Handle deprecated "user_filename" field.
             if name == "user_filename":
                 name = "user_filepath"
-            if not self.__dict__.has_key(name):
-                raise ValueError, "Unknown keyword param '%s'" % (name,)
+            if name not in self.__dict__:
+                raise ValueError("Unknown keyword param '%s'" % (name,))
             self.__dict__[name] = val
 
     @property
@@ -271,7 +273,7 @@ def dePercent(m):
 
 
 def _depercent_unicode(s):
-    return unicode(_pct_re.sub(dePercent, s))
+    return six.text_type(_pct_re.sub(dePercent, s))
 
 
 class koPreferenceSetDeserializer:
@@ -480,7 +482,7 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
                             pref = relative
                     else:
                         pref = relative
-            except Exception, e:
+            except Exception as e:
                 # XXX quick fix bug 65913
                 log.exception(e)
                 pass  # pass and use original value
@@ -488,7 +490,7 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
         # will also call cgi_escape
         #pref = cgi_escape(pref)
         data = u'  <string'
-        for a, v in attrs.items():
+        for a, v in list(attrs.items()):
             data += ' %s="%s"' % (a, v)
         data += u'>%s</string>%s' % (_xmlencode(pref), newl)
         stream.write(data)
@@ -517,7 +519,7 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
             log.error("preference '%s' (a %s) is unserializable",
                       prefName, pref)
             raise
-        except TypeError, e:
+        except TypeError as e:
             log.error("cannot serialize %r %s", pref, str(e))
 
 if sys.version_info[0] == 2 and sys.version_info[1] < 3:
@@ -623,7 +625,7 @@ class koXMLPreferenceSetObjectFactory:
         unless a deserializer has already been instantiated to
         handle the given preference type. We cache deserializer
         instances in self._deserializers. """
-        if self._deserializers.has_key(prefType):
+        if prefType in self._deserializers:
             return self._deserializers[prefType]
         else:
             return None

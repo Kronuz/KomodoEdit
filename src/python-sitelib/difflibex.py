@@ -42,6 +42,11 @@ Notes:
   of many formats.
 
 """
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 __version_info__ = (0, 1, 0)
 __version__ = '.'.join(map(str, __version_info__))
@@ -283,8 +288,8 @@ class Hunk:
         self.lines = lines
 
     def pprint(self, indent=' ' * 8):
-        print "%shunk: lines %d-%d"\
-              % (indent, self.start_line, self.end_line)
+        print("%shunk: lines %d-%d"\
+              % (indent, self.start_line, self.end_line))
 
 
 class FileDiff:
@@ -326,7 +331,7 @@ class FileDiff:
         elif self.diff_type == "context" and "---" in self.paths:
             path = self.paths["---"]
         elif self.paths:
-            path = self.paths.values()[0]
+            path = list(self.paths.values())[0]
         else:
             return None
         if not path or not cwd or os.path.isabs(path):
@@ -337,7 +342,7 @@ class FileDiff:
         """Return a list of possible paths for this hunk."""
         best_path = self.best_path(cwd=cwd)
         all_paths = [best_path]
-        for path in self.paths.values():
+        for path in list(self.paths.values()):
             if path == best_path:
                 continue
             if path and cwd and not os.path.isabs(path):
@@ -349,11 +354,11 @@ class FileDiff:
         best_path = self.best_path()
         if best_path is None:
             best_path = "???"
-        print "%s%s file diff of '%s' (%d hunks)"\
+        print("%s%s file diff of '%s' (%d hunks)"\
               % (indent,
                  self.diff_type,
                  best_path,
-                 len(self.hunks))
+                 len(self.hunks)))
         for hunk in self.hunks:
             hunk.pprint(indent * 2)
 
@@ -403,7 +408,7 @@ class Diff:
                   sum([len(f.hunks) for f in self.file_diffs]))
 
     def pprint(self):
-        print "diff (%s files)" % (len(self.file_diffs))
+        print("diff (%s files)" % (len(self.file_diffs)))
         for file_diff in self.file_diffs:
             file_diff.pprint(indent=' ' * 4)
 
@@ -959,7 +964,7 @@ def _get_hash_for_arrays(a, b):
     if len(_split_opcodes_diffs) >= 1000:
         # If we have more than 1000 keys, remove the least recently used.
         oldest_item = min([(x[1]['time'], x[0])
-                           for x in _split_opcodes_diffs.items()])
+                           for x in list(_split_opcodes_diffs.items())])
         del _split_opcodes_diffs[oldest_item[1]]
     _split_opcodes_diffs[key] = {'time': currTime, 'opcodes': None}
     return key
@@ -1147,7 +1152,7 @@ def _unique(s):
     except TypeError:
         del u  # move on to the next method
     else:
-        return u.keys()
+        return list(u.keys())
 
 
 def _splitall(path):
@@ -1236,15 +1241,15 @@ def _test():
 
 
 def _print_file_position(diff, path, diff_pos):
-    diff_line, diff_col = map(int, diff_pos.split(','))
+    diff_line, diff_col = list(map(int, diff_pos.split(',')))
     try:
         file_path, file_line, file_col \
             = diff.file_pos_from_diff_pos(diff_line - 1, diff_col - 1)
-    except DiffLibExError, ex:
-        print "%s:%s -> unknown (%s)" % (path, diff_pos, ex)
+    except DiffLibExError as ex:
+        print("%s:%s -> unknown (%s)" % (path, diff_pos, ex))
     else:
-        print "%s:%s -> %s:%s,%s" % (path, diff_pos, file_path, file_line + 1,
-                                     file_col + 1)
+        print("%s:%s -> %s:%s,%s" % (path, diff_pos, file_path, file_line + 1,
+                                     file_col + 1))
 
 
 def main(argv):
@@ -1279,7 +1284,7 @@ def main(argv):
             if diff_pos:
                 _print_file_position(d, path, diff_pos)
             else:
-                print path + ':',
+                print(path + ':', end=' ')
                 d.pprint()
 
     else:  # read from stdin
@@ -1300,7 +1305,7 @@ if __name__ == "__main__":
     except:
         exc_info = sys.exc_info()
         if log.isEnabledFor(logging.DEBUG):
-            print
+            print()
             traceback.print_exception(*exc_info)
         else:
             if hasattr(exc_info[0], "__name__"):

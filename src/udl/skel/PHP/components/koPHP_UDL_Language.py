@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Language package for PHP"""
+from __future__ import absolute_import
 
 import os
 import re

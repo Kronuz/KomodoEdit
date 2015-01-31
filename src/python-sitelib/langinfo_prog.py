@@ -35,6 +35,7 @@
 # ***** END LICENSE BLOCK *****
 
 """LangInfo definitions for some programming languages."""
+from __future__ import absolute_import
 
 import re
 from langinfo import LangInfo

@@ -38,6 +38,7 @@
 """The multilang-zone of the codeintel database.
 See the database/database.py module docstring for an overview.
 """
+from __future__ import absolute_import
 
 import sys
 import os
@@ -55,6 +56,7 @@ from codeintel2.common import *
 from codeintel2.database.langlibbase import LangDirsLibBase
 from codeintel2.database.langlib import LangZone
 from codeintel2 import util
+import six
 
 
 #---- globals
@@ -350,7 +352,7 @@ class MultiLangDirsLib(LangDirsLibBase):
                     try:
                         buf = self.mgr.buf_from_path(
                             join(blobdir, blobfile), self.lang)
-                    except (EnvironmentError, CodeIntelError), ex:
+                    except (EnvironmentError, CodeIntelError) as ex:
                         # This can occur if the path does not exist, such as a
                         # broken symlink, or we don't have permission to read
                         # the file, or the file does not contain text.
@@ -441,16 +443,16 @@ class MultiLangTopLevelNameIndex(object):
     def merge(self):
         """Merge all on-deck changes with `self.data'."""
         for base, (timestamp, res_data,
-                   res_data_pivot) in self._on_deck.items():
+                   res_data_pivot) in list(self._on_deck.items()):
             if res_data_pivot is None:
                 res_data_pivot = self._pivot_res_data(res_data)
             # res_data_pivot: {lang -> ilk -> toplevelname -> blobnames}
             # "bftfi" means blobnames_from_toplevelname_from_ilk
-            for lang, bftfi in res_data_pivot.iteritems():
+            for lang, bftfi in six.iteritems(res_data_pivot):
                 data_bftfi = self._data.setdefault(lang, {})
-                for ilk, bft in bftfi.iteritems():
+                for ilk, bft in six.iteritems(bftfi):
                     data_bft = data_bftfi.setdefault(ilk, {})
-                    for toplevelname, blobnames in bft.iteritems():
+                    for toplevelname, blobnames in six.iteritems(bft):
                         if toplevelname not in data_bft:
                             data_bft[toplevelname] = blobnames
                         else:
@@ -460,7 +462,7 @@ class MultiLangTopLevelNameIndex(object):
     def merge_expired(self, now):
         """Merge expired on-deck changes with `self.data'."""
         for base, (timestamp, res_data,
-                   res_data_pivot) in self._on_deck.items():
+                   res_data_pivot) in list(self._on_deck.items()):
             if now - timestamp < self.timeout:
                 continue
 
@@ -468,11 +470,11 @@ class MultiLangTopLevelNameIndex(object):
                 res_data_pivot = self._pivot_res_data(res_data)
             # res_data_pivot: {lang -> ilk -> toplevelname -> blobnames}
             # "bftfi" means blobnames_from_toplevelname_from_ilk
-            for lang, bftfi in res_data_pivot.iteritems():
+            for lang, bftfi in six.iteritems(res_data_pivot):
                 data_bftfi = self._data.setdefault(lang, {})
-                for ilk, bft in bftfi.iteritems():
+                for ilk, bft in six.iteritems(bftfi):
                     data_bft = data_bftfi.setdefault(ilk, {})
-                    for toplevelname, blobnames in bft.iteritems():
+                    for toplevelname, blobnames in six.iteritems(bft):
                         if toplevelname not in data_bft:
                             data_bft[toplevelname] = blobnames
                         else:
@@ -497,12 +499,12 @@ class MultiLangTopLevelNameIndex(object):
             # Remove old refs from current data.
             # old_res_data: {lang -> blobname -> ilk -> toplevelnames}
             # self._data:   {lang -> ilk -> toplevelname -> blobnames}
-            for lang, tfifb in old_res_data.iteritems():
+            for lang, tfifb in six.iteritems(old_res_data):
                 if lang not in self._data:
                     continue
                 data_bftfi = self._data[lang]
-                for blobname, tfi in tfifb.iteritems():
-                    for ilk, toplevelnames in tfi.iteritems():
+                for blobname, tfi in six.iteritems(tfifb):
+                    for ilk, toplevelnames in six.iteritems(tfi):
                         for toplevelname in toplevelnames:
                             try:
                                 data_bftfi[ilk][toplevelname].remove(blobname)
@@ -524,9 +526,9 @@ class MultiLangTopLevelNameIndex(object):
         res_data_pivot = dict(
             (lang, {}) for lang in res_data
         )
-        for lang, tfifb in res_data.iteritems():
-            for blobname, toplevelnames_from_ilk in tfifb.iteritems():
-                for ilk, toplevelnames in toplevelnames_from_ilk.iteritems():
+        for lang, tfifb in six.iteritems(res_data):
+            for blobname, toplevelnames_from_ilk in six.iteritems(tfifb):
+                for ilk, toplevelnames in six.iteritems(toplevelnames_from_ilk):
                     pivot_bft = res_data_pivot[lang].setdefault(ilk, {})
                     for toplevelname in toplevelnames:
                         if toplevelname not in pivot_bft:
@@ -555,7 +557,7 @@ class MultiLangTopLevelNameIndex(object):
 
         # ...on-deck items
         for base, (timestamp, res_data,
-                   res_data_pivot) in self._on_deck.items():
+                   res_data_pivot) in list(self._on_deck.items()):
             if lang not in res_data:
                 continue
             if res_data_pivot is None:
@@ -564,7 +566,7 @@ class MultiLangTopLevelNameIndex(object):
             # res_data_pivot: {lang -> ilk -> toplevelname -> blobnames}
             bftfi = res_data_pivot[lang]
             if ilk is None:
-                for i, bft in bftfi.iteritems():
+                for i, bft in six.iteritems(bftfi):
                     cplns += [(i, toplevelname) for toplevelname in bft]
             elif ilk in bftfi:
                 cplns += [(ilk, toplevelname) for toplevelname in bftfi[ilk]]
@@ -574,7 +576,7 @@ class MultiLangTopLevelNameIndex(object):
         if lang in self._data:
             bftfi = self._data[lang]
             if ilk is None:
-                for i, bft in bftfi.iteritems():
+                for i, bft in six.iteritems(bftfi):
                     cplns += [(i, toplevelname) for toplevelname in bft]
             elif ilk in bftfi:
                 cplns += [(ilk, toplevelname) for toplevelname in bftfi[ilk]]
@@ -604,7 +606,7 @@ class MultiLangTopLevelNameIndex(object):
         blobnames = set()
         # First check on-deck items.
         for base, (timestamp, res_data,
-                   res_data_pivot) in self._on_deck.items():
+                   res_data_pivot) in list(self._on_deck.items()):
             if lang not in res_data:
                 continue
             if res_data_pivot is None:
@@ -613,7 +615,7 @@ class MultiLangTopLevelNameIndex(object):
             # res_data_pivot: {lang -> ilk -> toplevelname -> blobnames}
             bftfi = res_data_pivot[lang]
             if ilk is None:
-                for bft in bftfi.itervalues():
+                for bft in six.itervalues(bftfi):
                     if toplevelname in bft:
                         blobnames.update(bft[toplevelname])
             elif ilk in bftfi:
@@ -627,7 +629,7 @@ class MultiLangTopLevelNameIndex(object):
         if lang in self._data:
             bftfi = self._data[lang]
             if ilk is None:
-                for bft in bftfi.itervalues():
+                for bft in six.itervalues(bftfi):
                     if toplevelname in bft:
                         blobnames.update(bft[toplevelname])
             elif ilk in bftfi:
@@ -652,7 +654,7 @@ class MultiLangZone(LangZone):
         blob_index = self.load_index(dir, "blob_index", default=default)
         try:
             return blob_index[sublang]
-        except KeyError, ex:
+        except KeyError as ex:
             if default is not None:
                 return default
             raise
@@ -672,7 +674,7 @@ class MultiLangZone(LangZone):
 
             try:
                 blob_index = self.load_index(dir, "blob_index")
-            except EnvironmentError, ex:
+            except EnvironmentError as ex:
                 self.db.corruption("MultiLangZone.get_buf_data",
                                    "could not find 'blob_index' index: %s" % ex,
                                    "recover")
@@ -683,13 +685,13 @@ class MultiLangZone(LangZone):
             blob_from_lang = {}
             # res_data: {lang -> blobname -> ilk -> toplevelnames}
             for lang, blobname in (
-                (lang, tfifb.keys()[0])  # only one blob per lang in a resource
-                for lang, tfifb in res_data.items()
+                (lang, list(tfifb.keys())[0])  # only one blob per lang in a resource
+                for lang, tfifb in list(res_data.items())
             ):
                 dbsubpath = join(dhash, blob_index[lang][blobname])
                 try:
                     blob = self.load_blob(dbsubpath)
-                except ET.XMLParserError, ex:
+                except ET.XMLParserError as ex:
                     self.db.corruption("MultiLangZone.get_buf_data",
                                        "could not parse dbfile for '%s' blob: %s"
                                        % (blobname, ex),
@@ -698,7 +700,7 @@ class MultiLangZone(LangZone):
                     raise NotFoundInDatabase(
                         "`%s' buffer %s `%s' blob was corrupted in database"
                         % (buf.path, lang, blobname))
-                except EnvironmentError, ex:
+                except EnvironmentError as ex:
                     self.db.corruption("MultiLangZone.get_buf_data",
                                        "could not read dbfile for '%s' blob: %s"
                                        % (blobname, ex),
@@ -732,7 +734,7 @@ class MultiLangZone(LangZone):
 
             try:
                 blob_index = self.load_index(dir, "blob_index")
-            except EnvironmentError, ex:
+            except EnvironmentError as ex:
                 self.db.corruption("MultiLangZone.remove_path",
                                    "could not read blob_index for '%s' dir: %s" % (
                                        dir, ex),
@@ -744,7 +746,7 @@ class MultiLangZone(LangZone):
                 try:
                     toplevelname_index = self.load_index(
                         dir, "toplevelname_index")
-                except EnvironmentError, ex:
+                except EnvironmentError as ex:
                     self.db.corruption("MultiLangZone.remove_path",
                                        "could not read toplevelname_index for '%s' dir: %s"
                                        % (dir, ex),
@@ -755,8 +757,8 @@ class MultiLangZone(LangZone):
             del res_index[base]
             # res_data: {lang -> blobname -> ilk -> toplevelnames}
             for lang, blobname in (
-                (lang, tfifb.keys()[0])  # only one blob per lang in a resource
-                for lang, tfifb in res_data.items()
+                (lang, list(tfifb.keys())[0])  # only one blob per lang in a resource
+                for lang, tfifb in list(res_data.items())
             ):
                 try:
                     dbfile = blob_index[lang][blobname]
@@ -845,7 +847,7 @@ class MultiLangZone(LangZone):
                     new_blob_from_lang_and_blobname[(lang, blobname)] = blob
                     tfifb = new_res_data.setdefault(lang, {})
                     toplevelnames_from_ilk = tfifb.setdefault(blobname, {})
-                    for toplevelname, elem in blob.names.iteritems():
+                    for toplevelname, elem in six.iteritems(blob.names):
                         ilk = elem.get("ilk") or elem.tag
                         if ilk not in toplevelnames_from_ilk:
                             toplevelnames_from_ilk[ilk] = set([toplevelname])
@@ -855,7 +857,7 @@ class MultiLangZone(LangZone):
                         # child items, as this will make it easy for tree_php
                         # to lookup a Fully Qualified Namespace (FQN).
                         if ilk == "namespace" and lang == "PHP":
-                            for childname, childelem in elem.names.iteritems():
+                            for childname, childelem in six.iteritems(elem.names):
                                 child_ilk = childelem.get(
                                     "ilk") or childelem.tag
                                 child_fqn = "%s\\%s" % (
@@ -896,7 +898,7 @@ class MultiLangZone(LangZone):
                 # and the dbfiles and then make them.
                 dbfile_changes = []
                 for (lang, blobname), blob \
-                        in new_blob_from_lang_and_blobname.items():
+                        in list(new_blob_from_lang_and_blobname.items()):
                     try:
                         old_res_data[lang][blobname]
                     except KeyError:
@@ -904,7 +906,7 @@ class MultiLangZone(LangZone):
                     else:
                         dbfile_changes.append(("update", lang, blobname, blob))
 
-                for lang, old_tfifb in old_res_data.items():
+                for lang, old_tfifb in list(old_res_data.items()):
                     for blobname in old_tfifb:
                         try:
                             new_res_data[lang][blobname]
@@ -940,7 +942,7 @@ class MultiLangZone(LangZone):
                         try:
                             os.remove(
                                 join(self.base_dir, dhash, dbfile + ".blob"))
-                        except EnvironmentError, ex:
+                        except EnvironmentError as ex:
                             self.db.corruption("MultiLangZone.update_buf_data",
                                                "could not remove dbfile for '%s' blob: %s"
                                                % (blobname, ex),
@@ -962,7 +964,7 @@ class MultiLangZone(LangZone):
                         #       common. I.e. just for the "editset".
                         try:
                             fin = open(dbpath, 'r')
-                        except (OSError, IOError), ex:
+                        except (OSError, IOError) as ex:
                             # Technically if the dbfile doesn't exist, this
                             # is a sign of database corruption. No matter
                             # though (for this blob anyway), we are about to

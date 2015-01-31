@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Smarty support for codeintel"""
+from __future__ import absolute_import
 
 import logging
 

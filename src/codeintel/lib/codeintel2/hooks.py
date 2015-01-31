@@ -22,6 +22,7 @@ by external modules. Implementing a hook is done by adding a
         mgr.add_hook_handler(FooHookHandler(mgr))
     --------------------------
 """
+from __future__ import absolute_import
 
 from pprint import pformat
 

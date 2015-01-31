@@ -43,6 +43,7 @@ Manager instance.
 
 XXX A separate indexer instance may be used for batch updates of the db.
 """
+from __future__ import absolute_import
 # TODO:
 # - How are scan errors handled? do we try to keep from re-scanning over
 #   and over? Perhaps still use mtime to only try again on new content.
@@ -55,7 +56,7 @@ import sys
 import threading
 import time
 import bisect
-import Queue
+import six.moves.queue
 from hashlib import md5
 import traceback
 
@@ -65,6 +66,7 @@ from codeintel2.common import *
 from codeintel2.buffer import Buffer
 from codeintel2.database.langlib import LangDirsLib
 from codeintel2.database.multilanglib import MultiLangDirsLib
+from six.moves import range
 
 if _xpcom_:
     from xpcom.server import UnwrapObject
@@ -78,7 +80,7 @@ log = logging.getLogger("codeintel.indexer")
 
 #---- internal support
 
-class _PriorityQueue(Queue.Queue):
+class _PriorityQueue(six.moves.queue.Queue):
 
     """A thread-safe priority queue.
 
@@ -291,7 +293,7 @@ class _StagingRequestQueue(_UniqueRequestPriorityQueue):
             currTime = time.time()
             toQueue = []
             try:
-                for id, (timeDue, priority, item) in self._onDeck.items():
+                for id, (timeDue, priority, item) in list(self._onDeck.items()):
                     if currTime >= timeDue:
                         toQueue.append(item)
                         del self._onDeck[id]
@@ -492,7 +494,7 @@ class Indexer(threading.Thread):
     - There is a potential race condition on request id generation
       if addRequest/stageRequest calls are made from multiple threads.
     """
-    MODE_DAEMON, MODE_ONE_SHOT = range(2)
+    MODE_DAEMON, MODE_ONE_SHOT = list(range(2))
     mode = MODE_DAEMON
 
     class StopIndexing(Exception):
@@ -577,7 +579,7 @@ class Indexer(threading.Thread):
             while 1:
                 try:
                     self._iteration()
-                except Queue.Empty:  # for mode=MODE_ONE_SHOT only
+                except six.moves.queue.Empty:  # for mode=MODE_ONE_SHOT only
                     ##                    reason = "completed"
                     break
                 except self.StopIndexing:

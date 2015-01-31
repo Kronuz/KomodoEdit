@@ -35,6 +35,8 @@
 # ***** END LICENSE BLOCK *****
 
 """Shared stuff for ludditelib modules."""
+from __future__ import absolute_import
+from six.moves import map
 
 __revision__ = "$Id$"
 __version_info__ = (1, 2, 0)

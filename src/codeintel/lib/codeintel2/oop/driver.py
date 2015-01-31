@@ -1,6 +1,10 @@
+from __future__ import absolute_import
 #!/usr/bin/env python2
 
 import logging
+from six.moves import filter
+import six
+from six.moves import zip
 
 log = logging.getLogger("codeintel.oop.driver")
 # log.setLevel(logging.DEBUG)
@@ -29,7 +33,7 @@ import imp
 import itertools
 import json
 import os.path
-import Queue
+import six.moves.queue
 import shutil
 import string
 import sys
@@ -149,7 +153,7 @@ class Driver(threading.Thread):
         self.next_buffer = 0
         self.active_request = None
 
-        self.send_queue = Queue.Queue()
+        self.send_queue = six.moves.queue.Queue()
         self.send_thread = threading.Thread(name="Codeintel OOP Driver Send Thread",
                                             target=self._send_proc)
         self.send_thread.daemon = True
@@ -476,7 +480,7 @@ class Driver(threading.Thread):
     def report_error(self, message):
         self.send(request=None,
                   command="report-error",
-                  message=unicode(message))
+                  message=six.text_type(message))
 
     def start(self):
         """Start reading from the socket and dump requests into the queue"""
@@ -574,7 +578,7 @@ class Driver(threading.Thread):
                             except ValueError:
                                 pass  # ... shouldn't happen, but tolerate it
                             continue
-                        for handlers in self._command_handler_map.values():
+                        for handlers in list(self._command_handler_map.values()):
                             try:
                                 handlers[
                                     handlers.index(handler)] = real_handler
@@ -735,8 +739,8 @@ class CoreHandler(CommandHandler):
         else:
             langs = request.get("languages", None)
             if not langs:
-                langs = dict(zip(self._get_stdlib_langs(driver),
-                                 itertools.repeat(None)))
+                langs = dict(list(zip(self._get_stdlib_langs(driver),
+                                 itertools.repeat(None))))
             progress_base = 5
             progress_incr = (80 - progress_base) / \
                 len(langs)  # stage 1 goes up to 80%
@@ -779,11 +783,11 @@ class CoreHandler(CommandHandler):
         elif typ == "citadel":
             driver.send(languages=driver.mgr.get_citadel_langs())
         elif typ == "xml":
-            driver.send(languages=filter(driver.mgr.is_xml_lang,
-                                         driver.mgr.buf_class_from_lang.keys()))
+            driver.send(languages=list(filter(driver.mgr.is_xml_lang,
+                                         list(driver.mgr.buf_class_from_lang.keys()))))
         elif typ == "multilang":
-            driver.send(languages=filter(driver.mgr.is_multilang,
-                                         driver.mgr.buf_class_from_lang.keys()))
+            driver.send(languages=list(filter(driver.mgr.is_multilang,
+                                         list(driver.mgr.buf_class_from_lang.keys()))))
         elif typ == "stdlib-supported":
             driver.send(languages=self._get_stdlib_langs(driver))
         else:
@@ -793,7 +797,7 @@ class CoreHandler(CommandHandler):
         if self._stdlib_langs is None:
             stdlibs_zone = driver.mgr.db.get_stdlibs_zone()
             langs = set()
-            for lang in driver.mgr.buf_class_from_lang.keys():
+            for lang in list(driver.mgr.buf_class_from_lang.keys()):
                 if stdlibs_zone.vers_and_names_from_lang(lang):
                     langs.add(lang)
             self._stdlib_langs = sorted(langs)
@@ -851,7 +855,7 @@ class CoreHandler(CommandHandler):
         priority = request.get("priority", codeintel2.common.PRIORITY_CURRENT)
         mtime = request.get("mtime")
         if mtime is not None:
-            mtime = long(mtime)
+            mtime = int(mtime)
 
         def on_complete():
             driver.send(request=request,
@@ -925,10 +929,10 @@ class CoreHandler(CommandHandler):
         public = set()
         system = set()
         datasetHandler = koXMLDatasetInfo.getService()
-        for catalog in datasetHandler.resolver.catalogMap.values():
-            public.update(catalog.public.keys())
-            system.update(catalog.system.keys())
-        namespaces = datasetHandler.resolver.getWellKnownNamspaces().keys()
+        for catalog in list(datasetHandler.resolver.catalogMap.values()):
+            public.update(list(catalog.public.keys()))
+            system.update(list(catalog.system.keys()))
+        namespaces = list(datasetHandler.resolver.getWellKnownNamspaces().keys())
         driver.send(request=request,
                     public=sorted(public),
                     system=sorted(system),
@@ -971,7 +975,7 @@ class Environment(codeintel2.environment.Environment):
 
     def __init__(self, request={}, send_fn=None, name=None):
         codeintel2.environment.Environment.__init__(self)
-        log_name = filter(None, [self.__class__.__name__, name])
+        log_name = [_f for _f in [self.__class__.__name__, name] if _f]
         self.log = log.getChild(".".join(log_name))
         env = request.get("env", {})
         self._env = dict(env.get("env", {}))
@@ -1034,10 +1038,10 @@ class Environment(codeintel2.environment.Environment):
         # Determine the prefs that were added/removed
         changed_prefs = set()
         old_keys = set(old_prefs.keys())
-        changed_prefs.update(old_keys.symmetric_difference(new_prefs.keys()))
+        changed_prefs.update(old_keys.symmetric_difference(list(new_prefs.keys())))
 
         # Determine the prefs that were modified
-        for key in old_keys.intersection(new_prefs.keys()):
+        for key in old_keys.intersection(list(new_prefs.keys())):
             if old_prefs[key] != new_prefs[key]:
                 changed_prefs.add(key)
 
@@ -1092,7 +1096,7 @@ class Environment(codeintel2.environment.Environment):
     def remove_all_pref_observers(self):
         if self._send:
             self._send(command="global-prefs-observe",
-                       remove=self._observers.keys())
+                       remove=list(self._observers.keys()))
         self._observers.clear()
 
     def _notify_pref_observers(self, name):

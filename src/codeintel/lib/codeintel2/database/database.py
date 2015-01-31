@@ -241,13 +241,14 @@ class).
 - check for collisions in catalog: same lang, same blobname provided by
   two CIX files
 """
+from __future__ import absolute_import
 
 import sys
 import os
 from os.path import (join, dirname, exists, expanduser, splitext, basename,
                      split, abspath, isabs, isdir, isfile)
-import cPickle as pickle
-from cPickle import UnpicklingError
+import six.moves.cPickle as pickle
+from six.moves.cPickle import UnpicklingError
 import threading
 import time
 from hashlib import md5
@@ -260,7 +261,7 @@ from cStringIO import StringIO
 import codecs
 import copy
 import weakref
-import Queue
+import six.moves.queue
 
 import ciElementTree as ET
 from codeintel2.common import *
@@ -273,6 +274,8 @@ from codeintel2.database.catalog import CatalogsZone
 from codeintel2.database.langlib import LangZone
 from codeintel2.database.multilanglib import MultiLangZone
 from codeintel2.database.projlib import ProjectZone
+import six
+from six.moves import range
 
 
 #---- globals
@@ -359,7 +362,7 @@ class Database(object):
     # Possible return values from .upgrade_info().
     (UPGRADE_NOT_NECESSARY,
      UPGRADE_NOT_POSSIBLE,
-     UPGRADE_NECESSARY) = range(3)
+     UPGRADE_NECESSARY) = list(range(3))
 
     def __init__(self, mgr, base_dir=None, catalog_dirs=None,
                  event_reporter=None,
@@ -423,7 +426,7 @@ class Database(object):
         path = join(self.base_dir, "VERSION")
         try:
             fin = open(path, 'r')
-        except EnvironmentError, ex:
+        except EnvironmentError as ex:
             return None
         try:
             return fin.read().strip()
@@ -624,7 +627,7 @@ class Database(object):
         if self.event_reporter:
             try:
                 self.event_reporter(desc)
-            except Exception, ex:
+            except Exception as ex:
                 log.exception("error calling event reporter: %s", ex)
 
     def save(self):
@@ -636,7 +639,7 @@ class Database(object):
         #   periodically call this.
         if self._catalogs_zone:
             self._catalogs_zone.save()
-        for lang_zone in self._lang_zone_from_lang.values():
+        for lang_zone in list(self._lang_zone_from_lang.values()):
             lang_zone.save()
 
     def cull_mem(self):
@@ -726,7 +729,7 @@ class Database(object):
         errors = []
         catalogs_zone = self.get_catalogs_zone()
         cix_path_from_res_id = {}
-        for cix_path, res_data in catalogs_zone.res_index.items():
+        for cix_path, res_data in list(catalogs_zone.res_index.items()):
             res_id, last_updated, name, toplevelnames_from_blobname_from_lang \
                 = res_data
             if res_id in cix_path_from_res_id:
@@ -770,7 +773,7 @@ class Database(object):
 
             all_blobnames = {}
             for filename, (scan_time, scan_error, res_data) \
-                    in res_index.items():
+                    in list(res_index.items()):
                 # res_data: {blobname -> ilk -> toplevelnames}
                 for blobname in res_data:
                     if blobname in all_blobnames:
@@ -826,12 +829,12 @@ class Database(object):
 
             all_langs_and_blobnames = {}
             for filename, (scan_time, scan_error, res_data) \
-                    in res_index.items():
+                    in list(res_index.items()):
                 # res_data: {lang -> blobname -> ilk -> toplevelnames}
                 for lang, blobname in (
                     # only one blob per lang in a resource
-                    (lang, tfifb.keys()[0])
-                    for lang, tfifb in res_data.items()
+                    (lang, list(tfifb.keys())[0])
+                    for lang, tfifb in list(res_data.items())
                 ):
                     if (lang, blobname) in all_langs_and_blobnames:
                         errors.append("%s lang zone: %s blob '%s' provided "
@@ -967,9 +970,9 @@ class Database(object):
             yield self._catalogs_zone
         if self._stdlibs_zone:
             yield self._stdlibs_zone
-        for zone in self._lang_zone_from_lang.values()[:]:
+        for zone in list(self._lang_zone_from_lang.values())[:]:
             yield zone
-        for zone in self._proj_zone_from_proj_path.values()[:]:
+        for zone in list(self._proj_zone_from_proj_path.values())[:]:
             yield zone
 
     def load_blob(self, dbsubpath):
@@ -985,7 +988,7 @@ class Database(object):
             cache_key = ext[1:]
             try:
                 blob.cache[cache_key] = self.load_pickle(blob_cache_file)
-            except (UnpicklingError, ImportError), ex:
+            except (UnpicklingError, ImportError) as ex:
                 log.warn("error unpickling `%s' (skipping): %s",
                          blob_cache_file, ex)
         return blob
@@ -1024,7 +1027,7 @@ class Database(object):
                       dirname(path)[len(self.base_dir) + 1:])
             try:
                 os.makedirs(dirname(path))
-            except OSError, ex:
+            except OSError as ex:
                 log.warn("error creating `%s': %s", dirname(path), ex)
         log.debug("fs-write: '%s'", path[len(self.base_dir) + 1:])
         fout = open(path, 'wb')
@@ -1044,14 +1047,14 @@ class Database(object):
         This is used as the filename for the dbfile for this blob.
         """
         s = ':'.join([res_path, lang, blobname])
-        if isinstance(s, unicode):
+        if isinstance(s, six.text_type):
             s = s.encode(sys.getfilesystemencoding())
         return md5(s).hexdigest()
 
     # TODO:PERF: evaluate perf improvement with caching of this
     def dhash_from_dir(self, dir):
         """Return a hash path to use internally in the db for the given dir."""
-        if isinstance(dir, unicode):
+        if isinstance(dir, six.text_type):
             dir = dir.encode(sys.getfilesystemencoding())
         return md5(dir).hexdigest()
 

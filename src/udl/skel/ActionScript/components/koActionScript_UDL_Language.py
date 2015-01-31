@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
@@ -182,14 +183,14 @@ class koActionScriptLinter:
                 fout = open(tmpFileName, 'wb')
                 fout.write(text)
                 fout.close()
-            except (OSError, IOError), ex:
+            except (OSError, IOError) as ex:
                 tmpFileName = None
         if not tmpFileName:
             # Fallback to using a tmp dir if cannot write in cwd.
             try:
                 tmpFileName = tempfile.mktemp()
                 cwd = os.path.dirname(tmpFileName)
-            except OSError, ex:
+            except OSError as ex:
                 # Sometimes get this error but don't know why:
                 # OSError: [Errno 13] Permission denied:
                 # 'C:\\DOCUME~1\\trentm\\LOCALS~1\\Temp\\~1324-test'

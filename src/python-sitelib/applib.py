@@ -10,6 +10,9 @@ Utility Functions:
     site_data_dir(...)      path to all users shared app data dir
     user_cache_dir(...)     path to user-specific app cache dir
 """
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import map
 # Dev Notes:
 # - MSDN on where to store app data files:
 #   http://support.microsoft.com/default.aspx?scid=kb;en-us;310294#XSLTH3194121123120121120120
@@ -156,7 +159,7 @@ def _get_win_folder_from_registry(csidl_name):
     registry for this guarantees us the correct answer for all CSIDL_*
     names.
     """
-    import _winreg
+    import six.moves.winreg
 
     shell_folder_name = {
         "CSIDL_APPDATA": "AppData",
@@ -164,9 +167,9 @@ def _get_win_folder_from_registry(csidl_name):
         "CSIDL_LOCAL_APPDATA": "Local AppData",
     }[csidl_name]
 
-    key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
+    key = six.moves.winreg.OpenKey(six.moves.winreg.HKEY_CURRENT_USER,
                           r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
-    dir, type = _winreg.QueryValueEx(key, shell_folder_name)
+    dir, type = six.moves.winreg.QueryValueEx(key, shell_folder_name)
     return dir
 
 
@@ -203,6 +206,6 @@ if sys.platform == "win32":
 #---- self test code
 
 if __name__ == "__main__":
-    print "applib: user data dir:", user_data_dir("Komodo", "ActiveState")
-    print "applib: site data dir:", site_data_dir("Komodo", "ActiveState")
-    print "applib: user cache dir:", user_cache_dir("Komodo", "ActiveState")
+    print("applib: user data dir:", user_data_dir("Komodo", "ActiveState"))
+    print("applib: site data dir:", site_data_dir("Komodo", "ActiveState"))
+    print("applib: user cache dir:", user_cache_dir("Komodo", "ActiveState"))

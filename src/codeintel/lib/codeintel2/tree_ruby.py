@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Completion evaluation code for Ruby"""
+from __future__ import absolute_import
 
 import re
 
@@ -43,6 +44,8 @@ from codeintel2.common import *
 from codeintel2.tree import TreeEvaluator
 from codeintel2.tree_javascript import JavaScriptTreeEvaluator
 from codeintel2.database.stdlib import StdLib
+from six.moves import range
+from functools import reduce
 
 # Evaluator
 #   CitadelEvaluator
@@ -199,7 +202,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
     _common_classes = {"Kernel": None, "Class": None, "Object": None}
 
     def _skip_common_ref(self, cls_name):
-        return self.trg.implicit and self._common_classes.has_key(cls_name)
+        return self.trg.implicit and cls_name in self._common_classes
 
     def _tokenize_citdl_expr(self, expr):
         toks = [x for x in token_splitter_re.split(expr) if x]
@@ -280,7 +283,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
         self._get_current_names = False
         cplns = self._cplns_from_hits(hits, allowed_cplns)
         if held_get_current_names:
-            for kwd in self.langintel.RUBY_KEYWORDS.keys():
+            for kwd in list(self.langintel.RUBY_KEYWORDS.keys()):
                 cplns.add(("function", kwd))  # "keyword" would be nice
             cplns = self._filter_by_prefix(cplns, self.expr)
         self.debug("eval_cplns: raw list: %r", cplns)
@@ -414,7 +417,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
                                                             (sc2_hit[0], []))
                                 scoperefs += new_scoperefs
 
-            except AttributeError, ex:
+            except AttributeError as ex:
                 self.debug("_calc_base_scoperefs: %s", ex)
                 pass
 
@@ -566,7 +569,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
             if elem.get("ilk") == "class":
                 classref = elem.get("classrefs")
                 if classref is not None:
-                    if not self._visited_blobs.has_key(classref):
+                    if classref not in self._visited_blobs:
                         self._visited_blobs[classref] = None
                         insert_scoperef = True
                         self._base_scoperefs.insert(0, scoperef)
@@ -601,7 +604,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
             symbol_name = elem.get("symbol")
             module_name = elem.get("module")
             if module_name is None:
-                if self._visited_blobs.has_key(symbol_name):
+                if symbol_name in self._visited_blobs:
                     return members
                 self._visited_blobs[symbol_name] = None
                 hits = self._hits_from_citdl(symbol_name)
@@ -610,7 +613,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
                         members.update(
                             self._members_from_elem(child, allowed_cplns))
             elif symbol_name is not None and self.citadel:
-                if self._visited_blobs.has_key(module_name):
+                if module_name in self._visited_blobs:
                     return members
                 self._visited_blobs[module_name] = None
                 import_handler = self.citadel.import_handler_from_lang(
@@ -654,7 +657,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
                                 self.debug(
                                     "Not adding from %s: member_type=%s or not fabricated", imported_name, member_type)
                                 pass
-                        except CodeIntelError, ex:
+                        except CodeIntelError as ex:
                             self.warn(
                                 "_members_from_elem: %s (can't look up member %r in blob %r)", ex, imported_name, blob)
 
@@ -830,7 +833,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
             if classref:
                 # if self._skip_common_ref(classref):
                 #    continue
-                if not self._visited_blobs.has_key(classref):
+                if classref not in self._visited_blobs:
                     self._visited_blobs[classref] = True
                     new_hit = self._hit_from_type_inference(
                         classref, first_token, filter_type)
@@ -988,7 +991,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
             blob = import_handler.import_blob_name(
                 module_name, self.libs, self.ctlr)
             return blob
-        except CodeIntelError, ex:
+        except CodeIntelError as ex:
             # Continue looking
             self.warn("_get_imported_blob(2): %s", str(ex))
 
@@ -1006,7 +1009,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
         if not citdl:
             raise CodeIntelError(
                 "_hit_from_variable_type_inference: no type-inference info for %r" % elem)
-        if self._visited_variables.has_key(citdl):
+        if citdl in self._visited_variables:
             self.log(
                 "_hit_from_variable_type_inference: already looked at var '%s'", citdl)
             return NO_HITS

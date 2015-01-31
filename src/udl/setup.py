@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 """Distutils setup script for luddite.py"""
+from __future__ import absolute_import
 
 import sys
 import os

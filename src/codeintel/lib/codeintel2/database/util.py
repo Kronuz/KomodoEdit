@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #!python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -114,7 +115,7 @@ def rmdir(dir):
 def _rmtree_onerror(rm_func, path, exc_info):
     if exc_info[0] == OSError:
         # presuming because file is read-only
-        os.chmod(path, 0777)
+        os.chmod(path, 0o777)
         rm_func(path)
 
 
