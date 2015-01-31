@@ -396,6 +396,7 @@ public:
 	void Release();
 	bool Initialised();
 	void PenColour(ColourDesired fore);
+	int LogPixelsX();
 	int LogPixelsY();
 	int DeviceHeightFont(int points);
 	void MoveTo(int x_, int y_);
@@ -614,13 +615,17 @@ void SurfaceImpl::PenColour(ColourDesired fore) {
 	}
 }
 
+int SurfaceImpl::LogPixelsX() {
+	return gdk_screen_get_resolution(gdk_screen_get_default());
+}
+
 int SurfaceImpl::LogPixelsY() {
-	return 72;
+	return gdk_screen_get_resolution(gdk_screen_get_default());
 }
 
 int SurfaceImpl::DeviceHeightFont(int points) {
 	int logPix = LogPixelsY();
-	return (points * logPix + logPix / 2) / 72;
+	return (points * logPix + logPix / 2) / 96;
 }
 
 void SurfaceImpl::MoveTo(int x_, int y_) {

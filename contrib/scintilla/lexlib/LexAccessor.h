@@ -26,7 +26,9 @@ private:
 	char buf[bufferSize+1];
 	int startPos;
 	int endPos;
-	int codePage;
+protected:
+	int codePage; // SilverCity BufferAccessor < LexAccessor uses this field.
+private:
 	enum EncodingType encodingType;
 	int lenDoc;
 	char styleBuf[bufferSize];
@@ -147,6 +149,9 @@ public:
 	}
 	int SetLineState(int line, int state) {
 		return pAccess->SetLineState(line, state);
+	}
+	int SetLineStateNoNotify(int line, int state) {
+		return pAccess->SetLineStateNoNotify(line, state);
 	}
 	// Style setting
 	void StartAt(unsigned int start) {

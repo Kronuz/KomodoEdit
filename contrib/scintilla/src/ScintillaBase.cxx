@@ -187,15 +187,33 @@ int ScintillaBase::KeyCommand(unsigned int iMessage) {
 		    (iMessage != SCI_CHARRIGHTEXTEND) &&
 		    (iMessage != SCI_EDITTOGGLEOVERTYPE) &&
 		    (iMessage != SCI_DELETEBACK) &&
-		    (iMessage != SCI_DELETEBACKNOTLINE)
+		    (iMessage != SCI_DELETEBACKNOTLINE) &&
+		    // ACTIVESTATE start
+		    (iMessage != SCI_NEWLINE) &&
+		    (iMessage != SCI_LINEDOWN) &&
+		    (iMessage != SCI_LINEUP) &&
+		    (iMessage != SCI_VCHOME) &&
+		    (iMessage != SCI_WORDLEFT) &&
+		    (iMessage != SCI_WORDLEFTEXTEND) &&
+		    (iMessage != SCI_WORDRIGHT) &&
+		    (iMessage != SCI_WORDRIGHTEXTEND) &&
+		    (iMessage != SCI_LINEEND)
+		    // ACTIVESTATE end
 		) {
 			ct.CallTipCancel();
 		}
+		//XXX Komodo change: Scintilla's CallTip::posStartCallTip
+		//    gets improperly set to the currentPos when
+		//    SCI_CALLTIPSHOW is called, rather than the actual
+		//    position it is told to show at. The result is that
+		//    this block can cancel the calltip at the wrong pos.
+		/*
 		if ((iMessage == SCI_DELETEBACK) || (iMessage == SCI_DELETEBACKNOTLINE)) {
 			if (sel.MainCaret() <= ct.posStartCallTip) {
 				ct.CallTipCancel();
 			}
 		}
+		*/
 	}
 	return Editor::KeyCommand(iMessage);
 }

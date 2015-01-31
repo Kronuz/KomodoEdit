@@ -1,98 +1,115 @@
-# Make file for Scintilla on Mac OS X
-# Copyright 2002 by Evan Jones <ejones@uwaterloo.ca>
-# Based on the GTK makefile Copyright 1998-2001 by Neil Hodgson <neilh@scintilla.org>
+# Make file for Scintilla on Linux or compatible OS
+# Copyright 1998-2010 by Neil Hodgson <neilh@scintilla.org>
 # The License.txt file describes the conditions under which this software may be distributed.
-# This makefile assumes that Apple's version of GCC 3.1 is used and changes will be needed to use other compilers.
+# This makefile assumes GCC 4.3 is used and changes will be needed to use other compilers.
 # GNU make does not like \r\n line endings so should be saved to CVS in binary form.
+# Builds for GTK+ 2 and no longer supports GTK+ 1.
+# Also works with ming32-make on Windows.
 
-.SUFFIXES: .cxx .c .o .h .a .mm
-CC = $(CXX)
-LIBTOOL = libtool
+.SUFFIXES: .mm .cxx .c .o .h .a
+ifdef CLANG
+CXX = clang++ -Wno-deprecated-register
+CC = clang
+# Can choose aspect to sanitize: address and undefined can simply change SANITIZE but for
+# thread also need to create Position Independent Executable -> search online documentation
+SANITIZE = address
+#SANITIZE = undefined
+endif
+RANLIB = touch
 
-GCC_MAJOR    := $(shell $(CC) -v 2>&1 | \
-                        grep version | cut -d' ' -f3  | cut -d'.' -f1)
+ifdef GTK3
+GTKVERSION=gtk+-3.0
+else
+GTKVERSION=gtk+-2.0
+endif
 
-# We call it "libscintilla" so when you add it to a Project Builder project,
-# Project Builder will link it correctly.
-STATICLIB=../bin/libscintilla.a
-DYNAMICLIB_BASE=libscintilla.dylib
-DYNAMICLIB=../bin/$(DYNAMICLIB_BASE)
+# Environment variable windir always defined on Win32
+
+ifndef windir
+ifeq ($(shell uname),Darwin)
+RANLIB = ranlib
+endif
+endif
+
+ifdef windir
+DEL = del /q
+COMPLIB=..\bin\scintilla.a
+else
+DEL = rm -f
+COMPLIB=../bin/scintilla.a
+endif
 
 vpath %.h ../src ../include ../lexlib
 vpath %.cxx ../src ../lexlib ../lexers
 
-INCLUDEDIRS=-I. -I ../include -I ../src -I ../lexlib
+INCLUDEDIRS=-I ../include -I ../src -I ../lexlib
+ifdef CHECK_DEPRECATED
+DEPRECATED=-DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DDISABLE_GDK_FONT
+endif
+CXXBASEFLAGS=-Wall -pedantic -DSCI_NAMESPACE -DMACOSX -DSCI_LEXER $(INCLUDEDIRS) $(DEPRECATED)
 
-ifndef NATIVE
-ARCH_BASE_FLAGS=/Developer/SDKs/MacOSX10.5.sdk -arch i386
-ARCHFLAGS=-isysroot $(ARCH_BASE_FLAGS)
-LINK_FLAGS=-Wl,-syslibroot,$(ARCH_BASE_FLAGS)
-DYN_FLAGS=$(LINK_FLAGS) -framework Cocoa -framework QuartzCore -dynamiclib -install_name @executable_path/$(DYNAMICLIB_BASE)
+ifdef NOTHREADS
+THREADFLAGS=-DG_THREADS_IMPL_NONE
 else
-DYN_FLAGS=$(LDFLAGS) -framework Cocoa -framework QuartzCore -dynamiclib -install_name @executable_path/$(DYNAMICLIB_BASE) -L. -lpcre
+THREADFLAGS=
 endif
 
-# See http://stackoverflow.com/questions/127426/gnu-compiler-warning-class-has-virtual-functions-but-non-virtual-destructor
-OPTIONS=-Wall -Wno-missing-braces -Wno-char-subscripts -Wno-non-virtual-dtor -DSCI_NAMESPACE -DMACOSX -DSCI_LEXER
-
-#DEBUG = 1
+ifdef CXX11_REGEX
+REFLAGS=-DCXX11_REGEX
+endif
 
 ifdef DEBUG
-DFLAGS=-DDEBUG -g
+ifdef CLANG
+CTFLAGS=-DDEBUG -g -fsanitize=$(SANITIZE) $(CXXBASEFLAGS) $(THREADFLAGS)
 else
-DFLAGS=-DNDEBUG -Os
+CTFLAGS=-DDEBUG -g $(CXXBASEFLAGS) $(THREADFLAGS)
+endif
+else
+CTFLAGS=-DNDEBUG -Os $(CXXBASEFLAGS) $(THREADFLAGS)
 endif
 
-ifdef CONTAINER_HANDLES_EVENTS
-CONTAINER=-DCONTAINER_HANDLES_EVENTS=1
-endif
+CFLAGS:=$(CTFLAGS)
+CXXTFLAGS:=$(CTFLAGS) $(REFLAGS)
 
-ifdef EXT_INPUT
-EXT_INPUT=-DEXT_INPUT
-endif
+#CONFIGFLAGS:=$(shell pkg-config --cflags $(GTKVERSION))
+CONFIGFLAGS=
+MARSHALLER=
 
-.cxx.o:
-	$(CC) $(CXXFLAGS) $(OPTIONS) $(DFLAGS) $(CONTAINER) $(ARCHFLAGS) $(EXT_INPUT) $(INCLUDEDIRS) -c $<
 .mm.o:
-	$(CC) $(CXXFLAGS) $(OPTIONS) $(DFLAGS) $(CONTAINER) $(ARCHFLAGS) $(EXT_INPUT) $(INCLUDEDIRS) -c $<
+	$(CXX) $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) -c $<
+.cxx.o:
+	$(CXX) $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) -c $<
 .c.o:
-	$(CCOMP) $(CXXFLAGS) $(OPTIONS) $(DFLAGS) $(CONTAINER) $(ARCHFLAGS) $(EXT_INPUT) $(INCLUDEDIRS) -w -c $<
+	$(CC) $(CONFIGFLAGS) $(CFLAGS) -w -c $<
 
 LEXOBJS:=$(addsuffix .o,$(basename $(notdir $(wildcard ../lexers/Lex*.cxx))))
 
-# The LEXOBJS have to be treated specially as the functions in them are not called from external code
+all: $(COMPLIB)
 
-all: $(STATICLIB) $(LEXOBJS)
+shared: $(COMPLIB)
 
-shared: $(DYNAMICLIB) $(LEXOBJS)
+../bin/libscintilla.dylib: $(COMPLIB)
+	$(CC) -dynamic -o $@ $(LDFLAGS) -framework Cocoa -framework QuartzCore -dynamiclib -install_name @executable_path/libscintilla.dylib -L. -lpcre $^
 
 clean:
-	rm -f *.o $(COMPLIB)
+	$(DEL) *.o $(COMPLIB) *.plist
+
+analyze:
+	clang --analyze $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx
 
 deps:
-	$(CC) -MM -DSCI_NAMESPACE -DMACOSX -DSCI_LEXER  $(CXXFLAGS) $(INCLUDEDIRS) -I. *.mm ../src/*.cxx ../lexlib/*.cxx ../src/*.cxx >deps.mak
+	$(CXX) -MM $(CONFIGFLAGS) $(CXXTFLAGS) *.mm ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx | sed -e 's/\/usr.* //' | grep [a-zA-Z] >deps.mak
 
-COMPLIB=Accessor.o CharacterCategory.o CharacterSet.o LexerBase.o LexerModule.o LexerSimple.o StyleContext.o WordList.o \
-	CaseConvert.o CaseFolder.o CharClassify.o Decoration.o Document.o PerLine.o Catalogue.o CallTip.o \
-	ScintillaBase.o ContractionState.o Editor.o ExternalLexer.o PropSetSimple.o \
-	KeyMap.o LineMarker.o PositionCache.o CellBuffer.o ViewStyle.o \
+$(COMPLIB): Accessor.o CharacterSet.o LexerBase.o LexerModule.o LexerSimple.o StyleContext.o WordList.o \
+	CharClassify.o Decoration.o Document.o PerLine.o Catalogue.o CallTip.o CaseConvert.o CaseFolder.o \
+	ScintillaBase.o ContractionState.o EditModel.o Editor.o EditView.o ExternalLexer.o MarginView.o \
+	PropSetSimple.o \
+	InfoBar.o PlatCocoa.o ScintillaCocoa.o ScintillaView.o \
+	KeyMap.o LineMarker.o PositionCache.o CellBuffer.o CharacterCategory.o ViewStyle.o \
 	RESearch.o RunStyles.o Selection.o Style.o Indicator.o AutoComplete.o UniConversion.o XPM.o \
-        InfoBar.o PlatCocoa.o ScintillaCocoa.o ScintillaView.o \
-	$(LEXOBJS)
-
-$(STATICLIB): $(COMPLIB)
-	$(LIBTOOL) -static -o $@ $^
-
-$(DYNAMICLIB): $(COMPLIB)
-	$(CC) -dynamic -o $@ $(DYN_FLAGS) $^
-
-# Generate header files from Scintilla.iface
-../include/Scintilla_gen.h: ../include/HFacer.py ../include/Face.py ../include/Scintilla.iface
-	cd ../include && python HFacer.py
-../include/SciLexer_gen.h: ../include/HFacer.py ../include/Face.py ../include/Scintilla.iface
-	cd ../include && python HFacer.py
-../include/Scintilla.h: ../include/Scintilla_gen.h
-../include/SciLexer.h: ../include/SciLexer_gen.h
+	$(MARSHALLER) $(LEXOBJS)
+	$(AR) rc $@ $^
+	$(RANLIB) $@
 
 # Automatically generate header dependencies with "make deps"
 include deps.mak

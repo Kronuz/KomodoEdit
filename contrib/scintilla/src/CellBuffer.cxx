@@ -11,6 +11,7 @@
 #include <stdarg.h>
 
 #include <algorithm>
+#include <vector>
 
 #include "Platform.h"
 
@@ -259,7 +260,11 @@ void UndoHistory::BeginUndoAction() {
 }
 
 void UndoHistory::EndUndoAction() {
-	PLATFORM_ASSERT(undoSequenceDepth > 0);
+	if (undoSequenceDepth <= 0) {
+		// ACTIVESTATE Komodo bug 92695
+		PLATFORM_ASSERT(undoSequenceDepth > 0);
+		return;
+	}
 	EnsureUndoRoom();
 	undoSequenceDepth--;
 	if (0 == undoSequenceDepth) {
@@ -679,6 +684,11 @@ void CellBuffer::BasicInsertString(int position, const char *s, int insertLength
 void CellBuffer::BasicDeleteChars(int position, int deleteLength) {
 	if (deleteLength == 0)
 		return;
+	// XXX ACTIVESTATE bug 48527 {
+	int length = substance.Length();
+	if (deleteLength > length)
+		deleteLength = length;
+	// XXX }
 
 	if ((position == 0) && (deleteLength == substance.Length())) {
 		// If whole buffer is being deleted, faster to reinitialise lines data

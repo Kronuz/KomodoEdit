@@ -358,6 +358,18 @@ CGImageRef SurfaceImpl::GetImage()
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Returns the horizontal logical device resolution of the main monitor.
+ * This is no longer called.
+ * For Cocoa, all screens are treated as 72 DPI, even retina displays.
+ */
+int SurfaceImpl::LogPixelsX()
+{
+  return 72;
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Returns the vertical logical device resolution of the main monitor.
  * This is no longer called.
  * For Cocoa, all screens are treated as 72 DPI, even retina displays.

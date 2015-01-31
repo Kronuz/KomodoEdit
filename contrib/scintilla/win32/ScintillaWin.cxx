@@ -107,6 +107,8 @@ typedef BOOL (WINAPI *TrackMouseEventSig)(LPTRACKMOUSEEVENT);
 typedef UINT_PTR (WINAPI *SetCoalescableTimerSig)(HWND hwnd, UINT_PTR nIDEvent,
 	UINT uElapse, TIMERPROC lpTimerFunc, ULONG uToleranceDelay);
 
+#define DISABLE_DRAG_DROP // KOMODO
+
 // GCC has trouble with the standard COM ABI so do it the old C way with explicit vtables.
 
 const TCHAR scintillaClassName[] = TEXT("Scintilla");
@@ -149,6 +151,7 @@ public:
 	FormatEnumerator(int pos_, CLIPFORMAT formats_[], size_t formatsLen_);
 };
 
+#ifndef DISABLE_DRAG_DROP
 /**
  */
 class DropSource {
@@ -175,6 +178,7 @@ public:
 	ScintillaWin *sci;
 	DropTarget();
 };
+#endif
 
 /**
  */
@@ -201,10 +205,11 @@ class ScintillaWin :
 	CLIPFORMAT cfVSLineTag;
 
 	HRESULT hrOle;
+#ifndef DISABLE_DRAG_DROP
 	DropSource ds;
 	DataObject dob;
 	DropTarget dt;
-
+#endif
 	static HINSTANCE hInstance;
 	static ATOM scintillaClassAtom;
 	static ATOM callClassAtom;
@@ -301,6 +306,7 @@ public:
 	// Public for benefit of Scintilla_DirectFunction
 	virtual sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
+#ifndef DISABLE_DRAG_DROP
 	/// Implement IUnknown
 	STDMETHODIMP QueryInterface(REFIID riid, PVOID *ppv);
 	STDMETHODIMP_(ULONG)AddRef();
@@ -316,17 +322,18 @@ public:
 
 	/// Implement important part of IDataObject
 	STDMETHODIMP GetData(FORMATETC *pFEIn, STGMEDIUM *pSTM);
-
+#endif
 	static bool Register(HINSTANCE hInstance_);
 	static bool Unregister();
 
+#ifndef DISABLE_DRAG_DROP
 	friend class DropSource;
 	friend class DataObject;
 	friend class DropTarget;
 	bool DragIsRectangularOK(CLIPFORMAT fmt) const {
 		return drag.rectangular && (fmt == cfColumnSelect);
 	}
-
+#endif
 private:
 	// For use in creating a system caret
 	bool HasCaretSizeChanged() const;
@@ -336,6 +343,11 @@ private:
 	int sysCaretWidth;
 	int sysCaretHeight;
 	bool keysAlwaysUnicode;
+	
+	// XXX ActiveState drag scroll support
+	int scrollSpeed;
+	int scrollTicks;
+	void DragScroll();
 };
 
 HINSTANCE ScintillaWin::hInstance = 0;
@@ -373,11 +385,11 @@ ScintillaWin::ScintillaWin(HWND hwnd) {
 	hrOle = E_FAIL;
 
 	wMain = hwnd;
-
+#ifndef DISABLE_DRAG_DROP
 	dob.sci = this;
 	ds.sci = this;
 	dt.sci = this;
-
+#endif
 	sysCaretBitmap = 0;
 	sysCaretWidth = 0;
 	sysCaretHeight = 0;
@@ -536,6 +548,7 @@ bool ScintillaWin::DragThreshold(Point ptStart, Point ptNow) {
 }
 
 void ScintillaWin::StartDrag() {
+#ifndef DISABLE_DRAG_DROP
 	inDragDrop = ddDragging;
 	DWORD dwEffect = 0;
 	dropWentOutside = true;
@@ -555,6 +568,7 @@ void ScintillaWin::StartDrag() {
 	}
 	inDragDrop = ddNone;
 	SetDragPosition(SelectionPosition(invalidPosition));
+#endif
 }
 
 // Avoid warnings everywhere for old style casts by concentrating them here
@@ -971,7 +985,9 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 			ctrlID = ::GetDlgCtrlID(reinterpret_cast<HWND>(wMain.GetID()));
 			// Get Intellimouse scroll line parameters
 			GetIntelliMouseParameters();
+#ifndef DISABLE_DRAG_DROP
 			::RegisterDragDrop(MainHWND(), reinterpret_cast<IDropTarget *>(&dt));
+#endif
 			break;
 
 		case WM_COMMAND:
@@ -1042,7 +1058,7 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 				else
 					wheelDelta = - (-wheelDelta % WHEEL_DELTA);
 
-				if (wParam & MK_CONTROL) {
+				if ((wParam & MK_CONTROL) && !suppressZoomOnScrollWheel) {
 					// Zoom! We play with the font sizes in the styles.
 					// Number of steps/line is ignored, we just care if sizing up or down
 					if (linesToScroll < 0) {
@@ -1062,6 +1078,7 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 				SendMessage(MainHWND(), SC_WIN_IDLE, 0, 1);
 			} else {
 				TickFor(static_cast<TickReason>(wParam - fineTimerStart));
+				DragScroll();
 			}
 			break;
 
@@ -1103,7 +1120,11 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 			//	Platform::IsKeyDown(VK_SHIFT),
 			//	Platform::IsKeyDown(VK_CONTROL),
 			//	Platform::IsKeyDown(VK_MENU));
+#if 0
+/* when embeding in mozilla, this causes a focus on the main mozilla window
+    this is generaly bad because we do a lot of stuff there, see komodo.xul onfocus */
 			::SetFocus(MainHWND());
+#endif
 			ButtonDown(Point::FromLong(static_cast<long>(lParam)), ::GetMessageTime(),
 				(wParam & MK_SHIFT) != 0,
 				(wParam & MK_CONTROL) != 0,
@@ -1543,6 +1564,8 @@ void ScintillaWin::SetMouseCapture(bool on) {
 			::SetCapture(MainHWND());
 		} else {
 			::ReleaseCapture();
+                        // KOMODO: Disable drag drop tracking - bug 87342.
+			inDragDrop = ddNone;
 		}
 	}
 	capturedMouse = on;
@@ -1571,6 +1594,41 @@ bool ScintillaWin::PaintContains(PRectangle rc) {
 		return BoundsContains(rcPaint, hRgnUpdate, rc);
 	}
 	return true;
+}
+
+void ScintillaWin::DragScroll() {
+#define RESET_SCROLL_TIMER(lines) \
+  scrollSpeed = (lines); \
+  scrollTicks = 2000;
+
+    if (!posDrag.IsValid()) {
+        RESET_SCROLL_TIMER(1);
+        return;
+    }
+    int posDragPosition = posDrag.Position();
+    Point dragMouse = LocationFromPosition(posDragPosition);
+    int line = pdoc->LineFromPosition(posDragPosition);
+    int currentVisibleLine = cs.DisplayFromDoc(line);
+    int lastVisibleLine = Platform::Minimum(topLine + LinesOnScreen() - 1, pdoc->LinesTotal() - 1);
+
+    if (currentVisibleLine <= topLine && topLine > 0) {
+        ScrollTo( topLine - scrollSpeed );
+    } else if (currentVisibleLine >= lastVisibleLine) {
+        ScrollTo( topLine + scrollSpeed );
+    } else {
+        RESET_SCROLL_TIMER(1);
+        return;
+    }
+    if (scrollSpeed == 1) {
+        scrollTicks -= timer.tickSize;
+        if (scrollTicks <= 0) {
+            RESET_SCROLL_TIMER(5);
+        }
+    }
+
+    SetDragPosition(SelectionPosition(PositionFromLocation(dragMouse)));
+
+#undef RESET_SCROLL_TIMER
 }
 
 void ScintillaWin::ScrollText(int /* linesToMove */) {
@@ -1609,6 +1667,9 @@ void ScintillaWin::ChangeScrollPos(int barType, int pos) {
 	sci.fMask = SIF_POS;
 	GetScrollInfo(barType, &sci);
 	if (sci.nPos != pos) {
+		ContainerNeedsUpdate(barType == SB_VERT ?
+				     SC_UPDATE_V_SCROLL :
+				     SC_UPDATE_H_SCROLL);
 		DwellEnd(true);
 		sci.nPos = pos;
 		SetScrollInfo(barType, &sci, TRUE);
@@ -1631,7 +1692,7 @@ bool ScintillaWin::ModifyScrollBars(int nMax, int nPage) {
 	sci.fMask = SIF_PAGE | SIF_RANGE;
 	GetScrollInfo(SB_VERT, &sci);
 	int vertEndPreferred = nMax;
-	if (!verticalScrollBarVisible)
+	if (!verticalScrollBarVisible || useCustomScrollBars)
 		nPage = vertEndPreferred + 1;
 	if ((sci.nMin != 0) ||
 		(sci.nMax != vertEndPreferred) ||
@@ -1644,6 +1705,7 @@ bool ScintillaWin::ModifyScrollBars(int nMax, int nPage) {
 		sci.nPos = 0;
 		sci.nTrackPos = 1;
 		SetScrollInfo(SB_VERT, &sci, TRUE);
+		ContainerNeedsUpdate(SC_UPDATE_V_SCROLL);
 		modified = true;
 	}
 
@@ -1654,19 +1716,22 @@ bool ScintillaWin::ModifyScrollBars(int nMax, int nPage) {
 	unsigned int pageWidth = static_cast<unsigned int>(rcText.Width());
 	if (!horizontalScrollBarVisible || Wrapping())
 		pageWidth = horizEndPreferred + 1;
+	unsigned int usedPageWidth = useCustomScrollBars ?
+		horizEndPreferred + 1 : pageWidth;
 	sci.fMask = SIF_PAGE | SIF_RANGE;
 	GetScrollInfo(SB_HORZ, &sci);
 	if ((sci.nMin != 0) ||
 		(sci.nMax != horizEndPreferred) ||
-		(sci.nPage != pageWidth) ||
+		(sci.nPage != usedPageWidth) ||
 	        (sci.nPos != 0)) {
 		sci.fMask = SIF_PAGE | SIF_RANGE;
 		sci.nMin = 0;
 		sci.nMax = horizEndPreferred;
-		sci.nPage = pageWidth;
+		sci.nPage = usedPageWidth;
 		sci.nPos = 0;
 		sci.nTrackPos = 1;
 		SetScrollInfo(SB_HORZ, &sci, TRUE);
+		ContainerNeedsUpdate(SC_UPDATE_H_SCROLL);
 		modified = true;
 		if (scrollWidth < static_cast<int>(pageWidth)) {
 			HorizontalScrollTo(0);
@@ -2034,6 +2099,7 @@ void ScintillaWin::ClaimSelection() {
 	// Windows does not have a primary selection
 }
 
+#ifndef DISABLE_DRAG_DROP
 /// Implement IUnknown
 
 STDMETHODIMP_(ULONG)FormatEnumerator_AddRef(FormatEnumerator *fe);
@@ -2338,6 +2404,7 @@ DropTarget::DropTarget() {
 	vtbl = vtDropTarget;
 	sci = 0;
 }
+#endif
 
 /**
  * DBCS: support Input Method Editor (IME).
@@ -2546,6 +2613,15 @@ void ScintillaWin::HorizontalScrollMessage(WPARAM wParam) {
 		break;
 	case SB_LINEDOWN:	// May move past the logical end
 		xPos += 20;
+                // ACTIVESTATE 
+		if (xPos > scrollWidth - rcText.Width()) {
+			// we are at the end according to the scroll bar.  We'll
+			// go faster since this is not really a 'scroll left by a bit'
+			// request but more a 'grow my scrollbar' request
+			xPos += 20;
+			scrollWidth = xPos + rcText.Width();
+			SetScrollBars();
+		}
 		break;
 	case SB_PAGEUP:
 		xPos -= pageWidth;
@@ -2653,6 +2729,7 @@ DWORD ScintillaWin::EffectFromState(DWORD grfKeyState) const {
 	return dwEffect;
 }
 
+#ifndef DISABLE_DRAG_DROP
 /// Implement IUnknown
 STDMETHODIMP ScintillaWin::QueryInterface(REFIID riid, PVOID *ppv) {
 	*ppv = NULL;
@@ -2844,12 +2921,13 @@ STDMETHODIMP ScintillaWin::GetData(FORMATETC *pFEIn, STGMEDIUM *pSTM) {
 	pSTM->pUnkForRelease = 0;
 	return S_OK;
 }
+#endif
 
 bool ScintillaWin::Register(HINSTANCE hInstance_) {
 
 	hInstance = hInstance_;
 	bool result;
-
+#if 0
 	// Register the Scintilla class
 	if (IsNT()) {
 
@@ -2870,7 +2948,7 @@ bool ScintillaWin::Register(HINSTANCE hInstance_) {
 		scintillaClassAtom = ::RegisterClassExW(&wndclass);
 		result = 0 != scintillaClassAtom;
 	} else {
-
+#endif
 		// Register Scintilla as a normal character window
 		WNDCLASSEX wndclass;
 		wndclass.cbSize = sizeof(wndclass);
@@ -2887,7 +2965,6 @@ bool ScintillaWin::Register(HINSTANCE hInstance_) {
 		wndclass.hIconSm = 0;
 		scintillaClassAtom = ::RegisterClassEx(&wndclass);
 		result = 0 != scintillaClassAtom;
-	}
 
 	if (result) {
 		// Register the CallTip class

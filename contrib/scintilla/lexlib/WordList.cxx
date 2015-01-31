@@ -191,7 +191,7 @@ bool WordList::InListAbbreviated(const char *s, const char marker) const {
 	if (0 == words)
 		return false;
 	unsigned char firstChar = s[0];
-	int j = starts[firstChar];
+	int j = starts[(int)firstChar];
 	if (j >= 0) {
 		while (static_cast<unsigned char>(words[j][0]) == firstChar) {
 			bool isSubword = false;

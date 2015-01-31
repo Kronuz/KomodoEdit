@@ -11,7 +11,7 @@
 namespace Scintilla {
 #endif
 
-class Decoration {
+class SCIAPI Decoration {
 public:
 	Decoration *next;
 	RunStyles rs;
@@ -23,7 +23,7 @@ public:
 	bool Empty() const;
 };
 
-class DecorationList {
+class SCIAPI DecorationList {
 	int currentIndicator;
 	int currentValue;
 	Decoration *current;

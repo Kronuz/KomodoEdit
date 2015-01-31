@@ -1,10 +1,8 @@
 // Scintilla source code edit control
 /** @file LexPerl.cxx
- ** Lexer for Perl.
- ** Converted to lexer object by "Udo Lechner" <dlchnr(at)gmx(dot)net>
+ ** Lexer for subset of Perl.
  **/
-// Copyright 1998-2008 by Neil Hodgson <neilh@scintilla.org>
-// Lexical analysis fixes by Kein-Hong Man <mkh@pl.jaring.my>
+// Copyright 1998-2001 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
 #include <stdlib.h>
@@ -14,1716 +12,2521 @@
 #include <assert.h>
 #include <ctype.h>
 
-#include <string>
-#include <map>
-
 #include "ILexer.h"
 #include "Scintilla.h"
 #include "SciLexer.h"
 
 #include "WordList.h"
 #include "LexAccessor.h"
+#include "Accessor.h"
 #include "StyleContext.h"
 #include "CharacterSet.h"
 #include "LexerModule.h"
-#include "OptionSet.h"
 
 #ifdef SCI_NAMESPACE
 using namespace Scintilla;
 #endif
 
-// Info for HERE document handling from perldata.pod (reformatted):
-// ----------------------------------------------------------------
-// A line-oriented form of quoting is based on the shell ``here-doc'' syntax.
-// Following a << you specify a string to terminate the quoted material, and
-// all lines following the current line down to the terminating string are
-// the value of the item.
-// * The terminating string may be either an identifier (a word), or some
-//   quoted text.
-// * If quoted, the type of quotes you use determines the treatment of the
-//   text, just as in regular quoting.
-// * An unquoted identifier works like double quotes.
-// * There must be no space between the << and the identifier.
-//   (If you put a space it will be treated as a null identifier,
-//    which is valid, and matches the first empty line.)
-//   (This is deprecated, -w warns of this syntax)
-// * The terminating string must appear by itself (unquoted and
-//   with no surrounding whitespace) on the terminating line.
-
-#define HERE_DELIM_MAX 256		// maximum length of HERE doc delimiter
-
-#define PERLNUM_BINARY		1	// order is significant: 1-4 cannot have a dot
-#define PERLNUM_HEX			2
-#define PERLNUM_OCTAL		3
-#define PERLNUM_FLOAT_EXP	4	// exponent part only
-#define PERLNUM_DECIMAL		5	// 1-5 are numbers; 6-7 are strings
-#define PERLNUM_VECTOR		6
-#define PERLNUM_V_VECTOR	7
-#define PERLNUM_BAD			8
-
-#define BACK_NONE		0	// lookback state for bareword disambiguation:
-#define BACK_OPERATOR	1	// whitespace/comments are insignificant
-#define BACK_KEYWORD	2	// operators/keywords are needed for disambiguation
-
-// all interpolated styles are different from their parent styles by a constant difference
-// we also assume SCE_PL_STRING_VAR is the interpolated style with the smallest value
-#define	INTERPOLATE_SHIFT	(SCE_PL_STRING_VAR - SCE_PL_STRING)
-
-static bool isPerlKeyword(unsigned int start, unsigned int end, WordList &keywords, LexAccessor &styler) {
-	// old-style keyword matcher; needed because GetCurrent() needs
-	// current segment to be committed, but we may abandon early...
-	char s[100];
-	unsigned int i, len = end - start;
-	if (len > 30) { len = 30; }
-	for (i = 0; i < len; i++, start++) s[i] = styler[start];
-	s[i] = '\0';
-	return keywords.InList(s);
+inline bool safeIswordchar(int ch) {
+    // bug 98001: iswordchar allows '.'
+    return ch < 0 || IsAlphaNumeric(ch) || ch == '_';
 }
 
-static int disambiguateBareword(LexAccessor &styler, unsigned int bk, unsigned int fw,
-        int backFlag, unsigned int backPos, unsigned int endPos) {
-	// identifiers are recognized by Perl as barewords under some
-	// conditions, the following attempts to do the disambiguation
-	// by looking backward and forward; result in 2 LSB
-	int result = 0;
-	bool moreback = false;		// true if passed newline/comments
-	bool brace = false;			// true if opening brace found
-	// if BACK_NONE, neither operator nor keyword, so skip test
-	if (backFlag == BACK_NONE)
-		return result;
-	// first look backwards past whitespace/comments to set EOL flag
-	// (some disambiguation patterns must be on a single line)
-	if (backPos <= static_cast<unsigned int>(styler.LineStart(styler.GetLine(bk))))
-		moreback = true;
-	// look backwards at last significant lexed item for disambiguation
-	bk = backPos - 1;
-	int ch = static_cast<unsigned char>(styler.SafeGetCharAt(bk));
-	if (ch == '{' && !moreback) {
-		// {bareword: possible variable spec
-		brace = true;
-	} else if ((ch == '&' && styler.SafeGetCharAt(bk - 1) != '&')
-	        // &bareword: subroutine call
-	        || styler.Match(bk - 1, "->")
-	        // ->bareword: part of variable spec
-	        || styler.Match(bk - 2, "sub")) {
-		// sub bareword: subroutine declaration
-		// (implied BACK_KEYWORD, no keywords end in 'sub'!)
-		result |= 1;
-	}
-	// next, scan forward after word past tab/spaces only;
-	// if ch isn't one of '[{(,' we can skip the test
-	if ((ch == '{' || ch == '(' || ch == '['|| ch == ',')
-	        && fw < endPos) {
-		while (ch = static_cast<unsigned char>(styler.SafeGetCharAt(fw)),
-		        IsASpaceOrTab(ch) && fw < endPos) {
-			fw++;
-		}
-		if ((ch == '}' && brace)
-		        // {bareword}: variable spec
-		        || styler.Match(fw, "=>")) {
-			// [{(, bareword=>: hash literal
-			result |= 2;
-		}
-	}
-	return result;
+inline bool safeIswordstart(int ch) {
+    // bug 98001: iswordchar allows '.' (and digits)
+    return ch < 0 || IsLowerCase(ch) || IsUpperCase(ch) || ch == '_';
+}
+    
+
+static inline void advanceOneChar(unsigned int& i, char&ch, char& chNext, char chNext2) {
+    i++;
+    ch = chNext;
+    chNext = chNext2;
 }
 
-static void skipWhitespaceComment(LexAccessor &styler, unsigned int &p) {
-	// when backtracking, we need to skip whitespace and comments
-	int style;
-	while ((p > 0) && (style = styler.StyleAt(p),
-	        style == SCE_PL_DEFAULT || style == SCE_PL_COMMENTLINE))
-		p--;
+static inline void retreatOneChar(unsigned int& i, char& chPrev, char& ch, char& chNext) {
+    i--;
+    chNext = ch;
+    ch = chPrev;
 }
 
-static int styleBeforeBracePair(LexAccessor &styler, unsigned int bk) {
-	// backtrack to find open '{' corresponding to a '}', balanced
-	// return significant style to be tested for '/' disambiguation
-	int braceCount = 1;
-	if (bk == 0)
-		return SCE_PL_DEFAULT;
-	while (--bk > 0) {
-		if (styler.StyleAt(bk) == SCE_PL_OPERATOR) {
-			int bkch = static_cast<unsigned char>(styler.SafeGetCharAt(bk));
-			if (bkch == ';') {	// early out
-				break;
-			} else if (bkch == '}') {
-				braceCount++;
-			} else if (bkch == '{') {
-				if (--braceCount == 0) break;
-			}
-		}
-	}
-	if (bk > 0 && braceCount == 0) {
-		// balanced { found, bk > 0, skip more whitespace/comments
-		bk--;
-		skipWhitespaceComment(styler, bk);
-		return styler.StyleAt(bk);
-	}
-	return SCE_PL_DEFAULT;
+// This is ASCII specific but is safe with chars >= 0x80
+
+static inline bool isEOLChar(char ch) {
+    return (ch == '\r') || (ch == '\n');
 }
 
-static int styleCheckIdentifier(LexAccessor &styler, unsigned int bk) {
-	// backtrack to classify sub-styles of identifier under test
-	// return sub-style to be tested for '/' disambiguation
-	if (styler.SafeGetCharAt(bk) == '>')	// inputsymbol, like <foo>
-		return 1;
-	// backtrack to check for possible "->" or "::" before identifier
-	while (bk > 0 && styler.StyleAt(bk) == SCE_PL_IDENTIFIER) {
-		bk--;
-	}
-	while (bk > 0) {
-		int bkstyle = styler.StyleAt(bk);
-		if (bkstyle == SCE_PL_DEFAULT
-		        || bkstyle == SCE_PL_COMMENTLINE) {
-			// skip whitespace, comments
-		} else if (bkstyle == SCE_PL_OPERATOR) {
-			// test for "->" and "::"
-			if (styler.Match(bk - 1, "->") || styler.Match(bk - 1, "::"))
-				return 2;
-		} else
-			return 3;	// bare identifier
-		bk--;
-	}
-	return 0;
+static inline bool isSingleCharOp(char ch) {
+    return strchr("rwxoRWXOezsfdlpSbctugkTBMAC", ch) != NULL;
 }
 
-static int podLineScan(LexAccessor &styler, unsigned int &pos, unsigned int endPos) {
-	// forward scan the current line to classify line for POD style
-	int state = -1;
-	while (pos < endPos) {
-		int ch = static_cast<unsigned char>(styler.SafeGetCharAt(pos));
-		if (ch == '\n' || ch == '\r') {
-			if (ch == '\r' && styler.SafeGetCharAt(pos + 1) == '\n') pos++;
-			break;
-		}
-		if (IsASpaceOrTab(ch)) {	// whitespace, take note
-			if (state == -1)
-				state = SCE_PL_DEFAULT;
-		} else if (state == SCE_PL_DEFAULT) {	// verbatim POD line
-			state = SCE_PL_POD_VERB;
-		} else if (state != SCE_PL_POD_VERB) {	// regular POD line
-			state = SCE_PL_POD;
-		}
-		pos++;
-	}
-	if (state == -1)
-		state = SCE_PL_DEFAULT;
-	return state;
+static inline bool isPerlOperator(char ch) {
+    return strchr("%^&*\\()-+=|{}[]:;<>,/?!.~",ch) != NULL;
 }
 
-static bool styleCheckSubPrototype(LexAccessor &styler, unsigned int bk) {
-	// backtrack to identify if we're starting a subroutine prototype
-	// we also need to ignore whitespace/comments:
-	// 'sub' [whitespace|comment] <identifier> [whitespace|comment]
-	styler.Flush();
-	skipWhitespaceComment(styler, bk);
-	if (bk == 0 || styler.StyleAt(bk) != SCE_PL_IDENTIFIER)	// check identifier
-		return false;
-	while (bk > 0 && (styler.StyleAt(bk) == SCE_PL_IDENTIFIER)) {
-		bk--;
-	}
-	skipWhitespaceComment(styler, bk);
-	if (bk < 2 || styler.StyleAt(bk) != SCE_PL_WORD	// check "sub" keyword
-	        || !styler.Match(bk - 2, "sub"))	// assume suffix is unique!
-		return false;
-	return true;
+static inline bool isHereDocStyle(int style) {
+    return style == SCE_PL_HERE_Q || style == SCE_PL_HERE_DELIM;
 }
 
-static int actualNumStyle(int numberStyle) {
-	if (numberStyle == PERLNUM_VECTOR || numberStyle == PERLNUM_V_VECTOR) {
-		return SCE_PL_STRING;
-	} else if (numberStyle == PERLNUM_BAD) {
-		return SCE_PL_ERROR;
-	}
-	return SCE_PL_NUMBER;
+// Assume high-bit chars are part of a utf-8 name, not part of
+// something like a non-breaking space or fancy hyphen
+
+static inline bool isSafeAlpha(char ch) {
+    return ((unsigned int) ch >= 128) || isalpha(ch);
 }
 
-static int opposite(int ch) {
-	if (ch == '(') return ')';
-	if (ch == '[') return ']';
-	if (ch == '{') return '}';
-	if (ch == '<') return '>';
-	return ch;
+static inline bool isSafeAlnum(char ch) {
+    return ((unsigned int) ch >= 128) || isalnum(ch) || ch == '_';
 }
 
-static bool IsCommentLine(int line, LexAccessor &styler) {
-	int pos = styler.LineStart(line);
-	int eol_pos = styler.LineStart(line + 1) - 1;
-	for (int i = pos; i < eol_pos; i++) {
-		char ch = styler[i];
-		int style = styler.StyleAt(i);
-		if (ch == '#' && style == SCE_PL_COMMENTLINE)
-			return true;
-		else if (!IsASpaceOrTab(ch))
-			return false;
-	}
-	return false;
+// Digits on the other hand don't have utf-8 representations.
+static inline bool isSafeDigit(char ch) {
+    return ((unsigned int) ch <= 127) && isdigit(ch);
 }
 
-static bool IsPackageLine(int line, LexAccessor &styler) {
-	int pos = styler.LineStart(line);
-	int style = styler.StyleAt(pos);
-	if (style == SCE_PL_WORD && styler.Match(pos, "package")) {
-		return true;
-	}
-	return false;
+static inline bool isSimpleWS(char ch) {
+    return (ch == ' ') || (ch == '\t');
 }
 
-static int PodHeadingLevel(int pos, LexAccessor &styler) {
-	int lvl = static_cast<unsigned char>(styler.SafeGetCharAt(pos + 5));
-	if (lvl >= '1' && lvl <= '4') {
-		return lvl - '0';
-	}
-	return 0;
+static inline char safeStyleAt(int pos, Accessor &styler) {
+    return ((char) (((unsigned int)styler.StyleAt(pos)) & 0x3f)); // 6 bits
 }
 
-// An individual named option for use in an OptionSet
+static inline int columnStartPos(int pos, Accessor &styler) {
+    return pos - styler.LineStart(styler.GetLine(pos));
+}
 
-// Options used for LexerPerl
-struct OptionsPerl {
-	bool fold;
-	bool foldComment;
-	bool foldCompact;
-	// Custom folding of POD and packages
-	bool foldPOD;            // fold.perl.pod
-	// Enable folding Pod blocks when using the Perl lexer.
-	bool foldPackage;        // fold.perl.package
-	// Enable folding packages when using the Perl lexer.
+static bool isFatCommaNext(Accessor &styler, unsigned int startIndex, unsigned int length) {
+    bool inComment = false;
+    unsigned int i;
+    for (i = startIndex;i < length;i++) {
+        char ch = styler.SafeGetCharAt(i);
+        if (inComment) {
+            if (isEOLChar(ch)) {
+                inComment = false;
+            }
+        } else if (ch == '=') {
+            if (styler.SafeGetCharAt(i+1) == '>') {
+                return true;
+            }
+        } else if (ch == '#') {
+            inComment = true;
+        } else if (!isspacechar(ch)) {
+            break;
+        }
+    }
 
-	bool foldCommentExplicit;
+    return false;
+}
 
-	bool foldAtElse;
+static int classifyWordPerl(unsigned int start, unsigned int end, unsigned int length,
+                            WordList &keywords, Accessor &styler,
+                            bool *p_BraceStartsBlock)
+{
+    char ch, s[51];
+    ch = styler[start];
+    bool wordIsNumber = (((unsigned int) ch) < 128
+                         && (isdigit(ch) || (ch == '.')));
+    bool isSimpleWord = true;
+    
+    // Copy the word into a local buffer.
+    unsigned int i;
+    for (i = 0; i < end - start + 1 && i < 50; i++) {
+        ch = styler[start+i];
+        if (isSimpleWord && !isSafeAlnum(ch) && !(i == 0 && ch == '-')) {
+            isSimpleWord = false;
+        }
+        s[i] = ch;
+    }
+    s[i] = '\0';
+    
+    // Choose and apply a colour style for the word.
+    if (p_BraceStartsBlock) {
+        *p_BraceStartsBlock = true;
+    }
+    char chAttr = SCE_PL_IDENTIFIER;
+    if (wordIsNumber) {
+        chAttr = SCE_PL_NUMBER;
+    } else if (isSimpleWord && isFatCommaNext(styler,end+1,length)) {
+        chAttr = SCE_PL_STRING_Q;
+    } else if (keywords.InList(s)) {
+        chAttr = SCE_PL_WORD;
+        if (p_BraceStartsBlock
+            && (!strcmp(s, "bless")
+                || !strcmp(s, "return")
+                || !strcmp(s, "ref"))) {
+            *p_BraceStartsBlock = false;
+        }
+    }
+    styler.ColourTo(end, chAttr);
+    return chAttr;
+}
 
-	OptionsPerl() {
-		fold = false;
-		foldComment = false;
-		foldCompact = true;
-		foldPOD = true;
-		foldPackage = true;
-		foldCommentExplicit = true;
-		foldAtElse = false;
-	}
+//precondition: styler[start..end] is a keyword
+
+static bool RE_CanFollowKeyword(unsigned int start, unsigned int end,
+                                Accessor &styler)
+{
+    char s[53];
+    unsigned int i;
+    // Copy the word into a local buffer.
+    s[0] = '|';
+    for (i = 0; i < end - start + 1 && i < 51; i++) {
+        s[i + 1] = styler[start+i];
+    }
+    s[i + 1] = '|';
+    s[i + 2] = '\0';
+    const char *no_RE_KwdList = 
+        "|while|if|unless|until|and|or|not|xor|split|grep|map|print|defined|";
+    return strstr(no_RE_KwdList, s) != NULL;
+}
+
+// Let's look back: if we see /(^|;(10))\s*\w+(5|11)\s(0)*<here>/, return true
+// Precondition: i points to the end of the text we're trying to match
+
+static bool afterLabel(int pos, Accessor &styler)
+{
+    char ch;
+    int style;
+    styler.Flush();
+    for (; pos >= 0; pos--) {
+        ch = styler.SafeGetCharAt(pos);
+        if (isSimpleWS(ch)) {
+            style = safeStyleAt(pos, styler);
+            if (style != SCE_PL_DEFAULT) {
+                return false;
+            }
+        } else {
+            break;
+        }
+    }
+    // at the start of the line ... report failure anyway
+    if (pos < 0) {
+        return false;
+    }
+    int curr_pos = pos;
+    for (; pos >= 0; pos--) {
+        style = safeStyleAt(pos, styler);
+        if (style != SCE_PL_WORD && style != SCE_PL_IDENTIFIER) {
+            break;
+        }
+    }
+    if (pos == curr_pos) {
+        // we didn't retreat, so we're aren't looking at a word
+        return false;
+    }
+    for (; pos >= 0; pos--) {
+        ch = styler.SafeGetCharAt(pos);
+        if (!isSimpleWS(ch)) {
+            break;
+        }
+    }
+    if (pos < 0) {
+        return true;
+    }
+    ch = styler.SafeGetCharAt(pos);
+    return strchr("\n:{}", ch) != NULL;
+}
+
+static inline bool isEndVar(char ch) {
+    return !isSafeAlnum(ch) && !strchr("#$_\'[{",ch);
+}
+
+static bool isMatch(Accessor &styler, int lengthDoc, int pos, const char *val) {
+    if ((pos + static_cast<int>(strlen(val))) >= lengthDoc) {
+        return false;
+    }
+    while (*val) {
+        if (*val != styler[pos++]) {
+            return false;
+        }
+        val++;
+    }
+    return true;
+}
+
+
+// It's harder to look forward than backward, but it's more correct:
+// Makes fewer assumptions about what scintilla innards are doing.
+
+static bool atStartOfFormatStmt(unsigned int &pos,
+                                int lengthDoc,
+                                Accessor &styler) 
+{
+    // <format:word> to left, match ws+, <word|ident>, ws*, '='
+    // First just match the chars.  If the chars match,
+    // paint them correctly, and return true.
+
+    int positions[5];
+    // {start, end of ws-1, end-of-ident, end of ws-2, '='
+
+    char ch;
+    positions[0] = pos;
+    ch = styler.SafeGetCharAt(pos);
+
+    if (pos + 3 >= (unsigned int)lengthDoc) {
+        return false;
+    }
+    
+    int testPos = pos + 1;
+
+    ch = styler.SafeGetCharAt(testPos);
+    if (!isSimpleWS(ch)) {
+        return false;
+    }
+
+    // Match <ws>
+    for (; testPos < lengthDoc; testPos++) {
+        ch = styler.SafeGetCharAt(testPos);
+        if (!isSimpleWS(ch)) {
+            break;
+        }
+    }
+    positions[1] = testPos - 1;
+
+    // Match <ident>
+    ch = styler.SafeGetCharAt(testPos);
+    if (!(isSafeAlpha(ch) || ch == '_')) {
+        return false;
+    }
+    for (testPos++; testPos < lengthDoc; testPos++) {
+        ch = styler.SafeGetCharAt(testPos);
+        if (!isSafeAlnum(ch)) {
+            break;
+        }
+    }
+    positions[2] = testPos - 1;
+    
+    // Match <ws?>
+    for (; testPos < lengthDoc; testPos++) {
+        ch = styler.SafeGetCharAt(testPos);
+        if (!isSimpleWS(ch)) {
+            break;
+        }
+    }
+    positions[3] = testPos - 1;
+
+    if (testPos >= lengthDoc) {
+        return false;
+    }
+    ch = styler.SafeGetCharAt(testPos);
+    if (ch == '=') {
+        positions[4] = testPos;
+    } else {
+        return false;
+    }
+
+    // Now color the line we matched based on the positions,
+    // and update the final state.
+    //
+    // Don't match the newline in this routine -- let the standard
+    // newline-handling code deal with it.
+
+    int styles[4] = {SCE_PL_DEFAULT,
+                     SCE_PL_IDENTIFIER,
+                     SCE_PL_DEFAULT,
+                     SCE_PL_OPERATOR
+    };
+    int idx;
+    styler.ColourTo(pos, SCE_PL_WORD);
+    for (idx = 0; idx < 4; idx++) {
+        if (positions[idx + 1] > positions[idx]) {
+            styler.ColourTo(positions[idx + 1], styles[idx]);
+        }
+    }
+    // Leave it pointing at the '='
+    pos = testPos;
+    styler.Flush();
+    return true;
+}
+
+/** inputsymbolScan
+ * look ahead to see if we have a glob expression (Camel 3rd pg. 83
+ * or `perldoc -f glob`
+ * Input: styler ref, pos ref, docLength
+ * Output: if we have a '>' on the same line, assume it's a glob expn.
+ *
+ * Note that we can resolve the ambiguity of '<' the following ways:
+ * If binaryOperatorExpected, then '<' can't start a glob expn.  Simple.
+ *
+ */
+static int inputsymbolScan(LexAccessor &styler, unsigned int pos, unsigned int endPos) {
+    // looks forward for matching > on same line; a bit ugly
+    unsigned int fw = pos;
+    while (++fw < endPos) {
+        int fwch = static_cast<unsigned char>(styler.SafeGetCharAt(fw));
+        if (fwch == '\r' || fwch == '\n') {
+            return 0;
+        } else if (fwch == '>') {
+            if (styler.Match(fw - 2, "<=>"))	// '<=>' case
+                return 0;
+            break;
+        }
+    }
+    return fw - pos;
+}
+
+static char opposite(char ch) {
+    if (ch == '(')
+        return ')';
+    if (ch == '[')
+        return ']';
+    if (ch == '{')
+        return '}';
+    if (ch == '<')
+        return '>';
+    return ch;
+}
+
+/* getNumUtf8ContinuationBytes
+ * Mask the char with a 1 in a spot to determine what kind of
+ * lead byte we have.  For example, any 7-bit value masked
+ * with 0x80 will always give 0.
+ * A 2-byte lead-byte masked with 0b11100000 => 0b11000000, etc.
+ *
+ * Return value: either number of internal utf8 bytes, or -1
+ * to indicate something went wrong, and further checking might be needed.
+ */
+static int getNumUtf8ContinuationBytes(char ch) {
+    unsigned int cval = (unsigned int) ch;
+    if ((cval & 0x80) == 0) return 0;         // 1000 0000  ==> 0000 0000
+    else if ((cval & 0xe0) == 0xc0) return 1; // 1110 0000  ==> 1100 0000
+    else if ((cval & 0xf0) == 0xe0) return 2; // 1111 0000  ==> 1110 0000
+    else if ((cval & 0xf8) == 0xf0) return 3; // 1111 1000  ==> 1111 0000
+    else if ((cval & 0xfc) == 0xf8) return 4; // 1111 1100  ==> 1111 1000
+    else if ((cval & 0xfe) == 0xfc) return 5; // 1111 1110  ==> 1111 1100
+    // Otherwise we're either at an internal byte or a non-utf8 char.
+    // Return -1 and let the caller decide what to do.
+    assert("Perl colorizer: Internal Error in getNumUtf8ContinuationBytes: didn't match anything" && 0);
+    return -1;
+}
+
+// Calculates the current fold level (for the relevant line) when the lexer has 
+// parsed up to the given index.
+int getFoldLevelModifier(Accessor& styler, int startIndex, int endIndex) {
+    int modifier = 0;
+    int index;
+    styler.Flush();
+    for (index = startIndex;index < endIndex;index++) {
+        int style = safeStyleAt(index, styler);
+        if (style == SCE_PL_OPERATOR || style == SCE_PL_VARIABLE_INDEXER) {
+            char ch = styler.SafeGetCharAt(index);
+            if (ch == '{' || ch == '(' || ch == '[') {
+                modifier++;
+            } else if (ch == '}' || ch == ')' || ch == ']') {
+                modifier--;
+            }
+        }
+    }
+    return modifier;
+}    
+
+/* Leading dashes are allowed only in some places before fat-commas,
+ * such as inside hash definitions.
+ * This code doesn't know which context it's called in, so will always
+ * report a string with a leading dash as a bareword.  If it isn't,
+ * the code is invalid.  Editor users will see an error indicator.
+ * Other clients of this code are unlikely to call this incorrectly,
+ * as they're most likely using it to analyze correct code.
+ */
+
+static bool isWordBeforeFatComma(Accessor &styler, unsigned int startIndex, 
+                                 unsigned int length) {
+    unsigned int i = startIndex;
+    // Allow a '-' at the start
+    if (i < length && styler.SafeGetCharAt(i) == '-') {
+        ++i;
+    }
+    for (; i < length; i++) {
+        char ch = styler.SafeGetCharAt(i);
+        if (!isSafeAlnum(ch)) {
+            break;
+        }
+    }
+    return isFatCommaNext(styler,i,length);
+}
+
+static bool isInterpolatingString(int style, char ch) {
+    switch(style) {
+    case SCE_PL_STRING_QQ:
+    case SCE_PL_STRING:
+    case SCE_PL_STRING_QX:
+    case SCE_PL_BACKTICKS:
+        return isSafeAlnum(ch) || ch == '_';
+    }
+    return false;
+}
+
+static void doInterpolateVariable(unsigned int&         i,
+                                  unsigned int          lengthDoc,
+                                  int                   state,
+                                  char&                 ch,
+                                  Accessor&             styler) {
+    // bug 34374: color interpolated variables
+    styler.ColourTo(i - 1, state);
+    int variableType = ch == '$' ? SCE_PL_SCALAR : SCE_PL_ARRAY;
+    // Enter a mini-mode to color scalars and arrays inside strings
+    while (++i < lengthDoc) {
+        ch = styler.SafeGetCharAt(i);
+        if (!isSafeAlnum(ch) && ch != '_') {
+            break;
+        }
+    }
+    styler.ColourTo(i - 1, variableType);
+}
+
+// support checking backwards for
+
+// You can't always look for styles, because the entire sequence hasn't been
+// restyled yet.  YOu need to do a lex analysis:
+
+// {[indexer], \s*, [-]?[a-zA-Z0-9_]+, \s*
+
+static bool followsStartIndexer(Accessor &styler, unsigned int index)
+{
+    char ch;
+    int style;
+    if (index > 0x0fffffff) return false;
+    long i = 0x0fffffff & index;
+    // First check for trailing default <anything> (since we haven't colorized it yet
+    for (; i >= 0; i--) {        
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            break;
+        }
+    }
+
+    // Now check for word-chars
+    // The '< 1' test is intended to select out
+    // negative values where char's range from 0 .. 255,
+    // and the 'ch >= 127' for where char's range over -128 .. 127
+    for (; i >= 0; i--) {        
+        ch = styler[i];
+        if (!isSafeAlnum(ch)) {
+            break;
+        }
+    }
+    // Optional leading '-'
+    if (i >= 0 && styler[i] == '-')
+        --i;
+
+    // Leading space
+    for (; i >= 0; i--) {        
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            break;
+        }
+    }
+
+    if (i < 0) {
+        return false;
+    }
+    style = safeStyleAt(i, styler);
+    if (style != SCE_PL_VARIABLE_INDEXER) {
+        return false;
+    }
+    ch = styler[i];
+    return (ch == '{');
+}
+
+/* Match <space>*, -? [\w\d_]+, <space>*, } */
+static bool lookingAtBareword(Accessor &styler, unsigned int index,
+                              unsigned int actualLengthDoc) 
+{
+    if (index > 0x0fffffff) return false;
+    char ch = ' ';
+    unsigned int i = (index & 0x0fffffff); // signed index
+    for (; i < actualLengthDoc; i++) {
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            break;
+        }
+    }
+    if (i < actualLengthDoc - 1 && ch == '-') {
+        ch = styler[++i];
+    }
+    // Make sure we have a character
+    if (i >= actualLengthDoc || !isSafeAlnum(ch)) {
+        return false;
+    }
+    for (i++; i < actualLengthDoc; i++) {
+        ch = styler[i];
+        if (!isSafeAlnum(ch)) {
+            break;
+        }
+    }
+    // Use the char set in the char-skipping loop
+    for(;;) {
+        if (!isspacechar(ch)) {
+            break;
+        }
+        if (i >= actualLengthDoc - 1) {
+            break;
+        }
+        ch = styler[++i];
+    }
+    return (i < actualLengthDoc && ch == '}');
+}
+
+static char colouriseBareword(Accessor &styler, unsigned int &i, int &state,
+                              unsigned int actualLengthDoc)
+{
+    // We're going to colorize everything here to avoid
+    // further complicating the state machine.
+
+    char ch = ' ';
+    for (i++; i < actualLengthDoc; i++) {
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            break;
+        }
+    }
+    // fprintf(stderr, "Color as default to posn %d\n", i - 1);
+    styler.ColourTo(i - 1, SCE_PL_DEFAULT);
+    if (ch == '-') {
+        ch = styler[++i];
+    }
+    for (; i < actualLengthDoc; i++) {
+        ch = styler[i];
+        if (!isSafeAlnum(ch)) {
+            break;
+        }
+    }
+    styler.ColourTo(i - 1, SCE_PL_STRING);
+    // fprintf(stderr, "Color as string to posn %d\n", i - 1);
+    for (; i < actualLengthDoc; i++) {
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            break;
+        }
+    }
+    styler.ColourTo(i - 1, SCE_PL_DEFAULT);
+    // fprintf(stderr, "Color as space to posn %d\n", i - 1);
+    i -= 1;
+    state = SCE_PL_DEFAULT;
+    return styler[i]; // The last char we found
+}
+
+static bool precedesIndexer(Accessor &styler, unsigned int index,
+                            unsigned int endPoint)
+{
+    if (index > 0x0fffffff) return false;
+    unsigned int i = 0x0fffffff & index;
+    if (i >= endPoint) {
+        return false;
+    }
+    char ch;
+    // Look for \s*\}, return false on anything else.
+    for (; i < endPoint; i++) {
+        ch = styler[i];
+        if (!isspacechar(ch)) {
+            return (ch == '}');
+            break;
+        }
+    }
+    return false;
+}
+
+
+static bool wordEndsHere(char chNext, char chNext2, bool no_namespace_op)
+{
+    // ".." is always an operator if preceded by a SCE_PL_WORD.
+    // "." is an operator unless we're inside a number thing
+    // Archaic Perl has quotes inside names
+    
+    if (chNext == '.') {
+        return true;
+    } else if (chNext == ':' && chNext2 == ':' && no_namespace_op) {
+        return false;
+    } else if (safeIswordchar(chNext)) {
+        return false;
+    } else if (chNext != '\'') {
+        return true;
+    } else {
+        return !safeIswordstart(chNext2);  // ada-like $pkg'member
+    }
+}
+
+// KOMODO -- interactive shell colorizing
+static bool isStdioChar(int style) {
+    switch (style) {
+        case SCE_PL_STDIN:
+        case SCE_PL_STDOUT:
+        case SCE_PL_STDERR:
+            return true;
+    }
+    return false;
+}
+
+static int prevNonNewlinePos(int line,
+                             Accessor &styler) {
+    if (line <= 0) return -1;
+    int lineStart = styler.LineStart(line);
+    if (lineStart == 0) return -1;
+    // Move to the previous line
+    int pos = lineStart - 1;
+    char ch = styler.SafeGetCharAt(pos);
+    while (pos > 0 && (ch == '\n' || ch == '\r')) {
+        ch = styler.SafeGetCharAt(--pos);
+    }
+    return pos;
+}
+
+/*
+ * This implementation just walks back up the
+ * buffer, since looking at line levels is way too error-prone.
+ * In Perl you can have long runs of blocks that are all at the
+ * same level given non-standard code formatting, like
+ *
+ * if (1 ...
+ *    ) { my %abc = { abc => map { if (2
+ *                                     ...) {
+ * ...
+ *
+ * This seems fast enough -- on cgi.pm it goes from line 40 to 3808
+ * without any noticeable dela.
+ */
+
+static int GetMatchingPos(int currPos, Accessor &styler)
+{
+    char currChar = styler.SafeGetCharAt(currPos);
+    if (currChar != '}') {
+        return -1;
+    }
+    int num_extra_closers = 1;
+    int direction = 0;
+    for (int i = currPos - 1; i >= 0; i--) {
+        char ch = styler.SafeGetCharAt(i);
+        if (ch == '{') {
+            direction = -1;
+        } else if (ch == '}') {
+            direction = +1;
+        } else {
+            direction = 0;
+        }
+        if (direction) {
+            switch ((int) safeStyleAt(i, styler)) {
+            case SCE_PL_OPERATOR:
+            case SCE_PL_VARIABLE_INDEXER:
+                num_extra_closers += direction;
+                if (num_extra_closers == 0) {
+                    return i;
+                }
+                break;
+            }
+        }
+    }
+    return -1;
+}
+
+static
+int GetMatchingStyle(int currPos, Accessor &styler)
+{
+    // We need to flush in case things above us changed, as this code uses styles.
+    styler.Flush();
+    int startPos = GetMatchingPos(currPos, styler);
+    if (startPos >= 0) {
+        int startStyle = safeStyleAt(startPos, styler);
+        return startStyle;
+    }
+    return SCE_PL_OPERATOR;
+}
+
+typedef int BracePoint;
+
+class BracePositionInfo {
+    public:
+    BracePositionInfo(int cap_=16) {
+        capacity = cap_;
+        p_BI = (BracePoint *) malloc(capacity * sizeof(BracePoint));
+        if (!p_BI) {
+            capacity = 0;
+        }
+        index = 0;
+    };
+    ~BracePositionInfo() {
+        if (p_BI) free ((void *) p_BI);
+    };
+    bool add(int style) {
+        if (capacity <= 0 || index < 0) {
+            return false;
+        } else if (capacity <= index) {
+            int new_cap = capacity;
+            while (new_cap <= index) {
+                new_cap = new_cap * 2;
+            }
+            // fprintf(stderr, "BracePositionInfo::add: about to realloc 0x%x from %d to %d bytes\n", p_BI, capacity, new_cap);
+            BracePoint *tmp =
+                (BracePoint *) realloc((void *) p_BI,
+                                      new_cap * sizeof(BracePoint));
+            if (!tmp) {
+                // Throw it *all* away
+                // fprintf(stderr, "BracePositionInfo::add: failed\n");
+                free ((void *) p_BI);
+                p_BI = 0;
+                index = capacity = 0;
+                return false;
+            } else {
+                p_BI = tmp;
+                capacity = new_cap;
+                // fprintf(stderr, "BracePositionInfo::add: worked, mem=0x%x, cap = %d\n", p_BI, capacity);
+            }
+        }
+        p_BI[index++] = style;
+        return true;
+    };
+    int getStyle(bool pop=true) {
+        if (!p_BI || index <= 0) {
+            return -1;
+        }
+        int style = p_BI[index - 1];
+        if (pop) {
+            index--;
+        }
+        return style;
+    };
+    
+    private:
+    BracePoint *p_BI;
+    int index;
+    int capacity;
 };
 
-static const char *const perlWordListDesc[] = {
-	"Keywords",
-	0
+// Move back to the start of the last statement. This may require passing 
+// through a here document body and/or a line declaring a here doc follows.
+
+static void synchronizeDocStart(unsigned int& startPos,
+                                unsigned int endPos,
+                                int& state,
+                                Accessor& styler)
+{
+    styler.Flush();
+    int style;
+    int pos = startPos;
+    int currLine = styler.GetLine(pos);
+    int lastLine = styler.GetLine(endPos);
+    int lineEndPos = (lastLine == currLine) ? styler.Length() : styler.LineStart(currLine + 1) - 1;
+    
+    while (currLine > 0) {
+        // Now look at the style before the previous line's EOL
+        int prevLine_PosBeforeEOL = prevNonNewlinePos(currLine, styler);
+        if (prevLine_PosBeforeEOL == -1) {
+            break;
+        }
+        style = safeStyleAt(prevLine_PosBeforeEOL, styler);
+        int lineStartPos = styler.LineStart(currLine);
+        // KOMODO -- interactive shell colorizing
+        if (isStdioChar(style)) {
+            // stop at start of line currLine
+            startPos = lineStartPos;
+            state = SCE_PL_DEFAULT;
+            return;
+        }
+        // If the previous newline style isn't default, keep moving back
+        int prevLineEndPos = lineStartPos - 1;
+
+        // Look at the style at the end of the previous line
+        style = safeStyleAt(prevLineEndPos, styler);
+        if (style != SCE_PL_DEFAULT) {
+            switch (style) {
+            case SCE_PL_POD:
+            case SCE_PL_DATASECTION:
+                // These always end the same, so we can stop in one.
+                // Otherwise we risk walking back through very long
+                // documents for no reason.
+                startPos = lineStartPos;
+                state = style;
+                return;
+            }
+            currLine -= 1;
+            lineEndPos = prevLineEndPos;
+            continue;
+        }            
+
+        // Now look at the first non-white token on this line
+        // and decide what to do.
+
+        int first_sig_pos;
+        for (first_sig_pos = lineStartPos; // first significant position
+             first_sig_pos < lineEndPos;
+             first_sig_pos++) {
+            int style = safeStyleAt(first_sig_pos, styler);
+            if (style != SCE_PL_DEFAULT) {
+                break;
+            }
+        }
+
+        int firstStyle = safeStyleAt(first_sig_pos, styler);
+        switch (firstStyle) {
+        case SCE_PL_COMMENTLINE:
+        case SCE_PL_NUMBER:
+        case SCE_PL_WORD:
+        case SCE_PL_OPERATOR:
+        case SCE_PL_IDENTIFIER:
+        case SCE_PL_SCALAR:
+        case SCE_PL_ARRAY:
+        case SCE_PL_HASH:
+        case SCE_PL_SYMBOLTABLE:
+        case SCE_PL_VARIABLE_INDEXER:
+            // Verify the char before this one is default EOL,
+            // then we know it's safe to break here,
+            // as the lexer will proceed in the default state.
+            startPos = lineStartPos;
+            state = SCE_PL_DEFAULT;
+            return;
+        }
+        currLine -= 1;
+        lineEndPos = prevLineEndPos;
+    }
+    startPos = 0;
+    state = SCE_PL_DEFAULT;
+}
+
+
+void ColourisePerlDoc(unsigned int startPos, int length, int , // initStyle
+                      WordList *keywordlists[], Accessor &styler)
+{
+
+    // Lexer for perl often has to backtrack to start of current style to determine
+    // which characters are being used as quotes, how deeply nested is the
+    // start position and what the termination string is for here documents
+
+    WordList &keywords = *keywordlists[0];
+    
+    class HereDocCls {
+    public:
+        int State;      // 0: '<<' encountered
+        // 1: collect the delimiter
+        // 2: here doc text (lines after the delimiter)
+        char Quote;     // the char after '<<'
+        bool Quoted;        // true if Quote in ('\'','"','`')
+        int DelimiterLength;    // strlen(Delimiter)
+        char Delimiter[256];    // the Delimiter, 256: sizeof PL_tokenbuf
+        bool HasSemiColon;
+        HereDocCls() {
+            State = 0;
+            DelimiterLength = 0;
+            Delimiter[0] = '\0';
+        }
+    };
+    HereDocCls HereDoc;
+
+    class QuoteCls {
+        public:
+        int  Rep;
+        int  Count;
+        char Up;
+        char Down;
+        QuoteCls() {
+            this->New(1);
+        }
+        void New(int r) {
+            Rep   = r;
+            Count = 0;
+            Up    = '\0';
+            Down  = '\0';
+        }
+        void Open(char u) {
+            Count++;
+            Up    = u;
+            Down  = opposite(Up);
+        }
+    };
+    QuoteCls Quote;
+    // Info on parsing numbers
+    int numDots = 0;
+    int numBase = 10;
+    int numExponents = 0;
+
+    bool preferRE = true;
+    unsigned int lengthDoc = startPos + length;
+    bool binaryOperatorExpected = false; // If true, a binary operator can follow.
+    bool braceStartsBlock = true; // Whether a brace starts a block or an indexed expression
+    int variableNestingCount = 0; // The number of unclosed '(' and '{' in the current variable name.
+
+#if 0
+    int origStartPos = startPos;
+#endif
+
+    bool hasVisibleChars = false;
+
+    int state;
+    synchronizeDocStart(startPos, lengthDoc, state, styler);
+    
+    int previousState = SCE_PL_DEFAULT; // Used to restore the original state after a comment.
+
+    if ((int) startPos < 0) {
+        startPos = 0;
+        state = SCE_PL_DEFAULT;
+    }
+#if 0
+    {
+        int origLine = styler.GetLine(origStartPos);
+        int newLine = styler.GetLine(startPos);
+        fprintf(stderr, "Synch: moved from [%d:%d:%d]=>(%d) to [%d:%d:%d], state %d\n",
+                origStartPos, origLine,
+                origStartPos - styler.LineStart(origLine),
+                lengthDoc,
+                startPos, newLine,
+                startPos - styler.LineStart(newLine),
+                state);
+        int targetPos = lengthDoc - 1;
+        int targetLine = styler.GetLine(targetPos);
+        fprintf(stderr, "Color chars upto [%d:%d:%d] (%d chars)\n",
+                targetPos, targetLine, targetPos - styler.LineStart(targetLine),
+                lengthDoc - startPos);
+    }
+#endif
+
+    // Work on this in case we hit an unmatched close-brace.
+    BracePositionInfo *p_BraceInfo = new BracePositionInfo();
+
+    // fprintf(stderr, "Starting lexing at pos %d (line %d)\n", startPos, styler.GetLine(startPos));
+
+    // Variables to allow folding.
+    bool fold = styler.GetPropertyInt("fold") != 0;
+    int lineCurrent = styler.GetLine(startPos);
+    int levelPrev = 0, levelCurrent = 0;
+
+    // Properties
+    bool no_namespace_op = styler.GetPropertyInt("double_colons_are_names") != 0;
+    // bool be_verbose = strchr(styler.GetProperties(), 'v') != NULL;
+    {
+        // We need to modify the starting levels. Curly braces on the current or 
+        // previous lines affect their respective level because the level of a line 
+        // is calculated from its starting level.
+        int startOfCurrent = styler.LineStart(lineCurrent);
+        if (lineCurrent > 0) { 
+            int startOfPrev = styler.LineStart(lineCurrent-1);
+            levelPrev = ((styler.LevelAt(lineCurrent-1)
+                          & SC_FOLDLEVELNUMBERMASK
+                          & ~SC_FOLDLEVELBASE)
+                         + getFoldLevelModifier(styler,startOfPrev,startOfCurrent));
+            if (levelPrev < 0) {
+                levelPrev = 0;
+            }
+        }
+        levelCurrent = levelPrev + getFoldLevelModifier(styler,startOfCurrent,startPos);
+        if (levelCurrent < 0) {
+            levelCurrent =  0;
+        }
+    }
+    
+    // Get the styler and the character variables ready to go.
+    styler.StartAt(startPos);
+    char chPrev = styler.SafeGetCharAt(startPos - 1);
+    char chNext = styler.SafeGetCharAt(startPos);
+    styler.StartSegment(startPos);
+    static int q_states[] = {SCE_PL_STRING_QQ,
+                             SCE_PL_STRING_QR,
+                             SCE_PL_STRING_QW,
+                             SCE_PL_STRING_QX};
+    static const char* q_chars = "qrwx";
+
+    unsigned int i;
+    unsigned int actualLengthDoc = styler.Length();
+    for (i = startPos; i < lengthDoc; i++) {
+        char ch = chNext;
+        chNext = styler.SafeGetCharAt(i + 1);
+        char chNext2 = styler.SafeGetCharAt(i + 2);
+
+        if (styler.IsLeadByte(ch)) {
+            chNext = chNext2;
+            chPrev = ' ';
+            i += 1;
+            continue;
+        }
+        
+        // skip on DOS/Windows
+        // This has been here since day 1 but it's a bad idea as
+        // it can result in lexing of the previous item to bleed
+        // over the \r
+        //
+        // Obsolete code left in for documentation purposes:
+        // if (ch == '\r' && chNext == '\n') {
+        // continue;
+        // }
+
+        if (fold) {
+    
+            // Apply folding at the end of the line (if required).
+            if (ch == '\n' || (ch == '\r' && chNext != '\n')) {
+                int lev = levelPrev;
+                if (lev < 0 || lev > 0x3ff)
+                    lev = 0;
+                if (!hasVisibleChars) {
+                    lev |= SC_FOLDLEVELWHITEFLAG;
+                }
+                if (levelCurrent > levelPrev && i < lengthDoc - 1) {
+                    lev |= SC_FOLDLEVELHEADERFLAG;
+                }
+                styler.SetLevel(lineCurrent, lev | SC_FOLDLEVELBASE);
+                lineCurrent++;
+                levelPrev = (levelCurrent > 0) ? levelCurrent : 0;
+                hasVisibleChars = false;
+            } else if (!hasVisibleChars && !isspacechar(ch)) {
+                hasVisibleChars = true;
+            }
+        }
+        
+        if (HereDoc.State == 1 && isEOLChar(ch)) {
+            // Begin of here-doc (the line after the here-doc delimiter):
+            // Move back skipping whitespace, looking for semi-colon or start
+            char hch;
+            HereDoc.HasSemiColon = false;
+            int j = i - 1;
+            if (styler.SafeGetCharAt(j) == 10) j--;
+            if (styler.SafeGetCharAt(j) == 13) j--;
+            for (; j > 0 && (unsigned int) j > startPos; j--) {
+              hch = styler.SafeGetCharAt(j);
+              if (isEOLChar(hch)) {
+                break;
+              } else if (hch == ';') {
+                HereDoc.HasSemiColon = true;
+                break;
+              } else if (hch == ' ' || hch == '\t') {
+                 // continue;
+              } else {
+                break;
+              }
+            }
+            HereDoc.State = 2;
+            styler.ColourTo(i-1, state);
+            if (HereDoc.Quoted && state == SCE_PL_HERE_DELIM) {
+                // Missing quote at end of string! We are stricter than perl.
+                state = SCE_PL_ERROR;
+            } else {
+                state = SCE_PL_HERE_Q;
+            }
+        }
+        
+        // Skip over styles that have been set as stdio
+        {
+            // KOMODO -- interactive shell colorizing
+            int origStyle = safeStyleAt(i, styler);
+            if (isStdioChar(origStyle)) {
+                styler.ColourTo(i - 1, state);
+                while (++i < lengthDoc) {
+                    int style = safeStyleAt(i, styler);
+                    if (!isStdioChar(style)) {
+                        break;
+                    }
+                }
+                if (i < lengthDoc) {
+                    chPrev = styler.SafeGetCharAt(i - 1);
+                    chNext = styler[i];
+                    i--;
+                }
+                styler.StartSegment(i);
+                state = SCE_PL_DEFAULT;
+                continue;
+            }
+        }
+
+        if (state == SCE_PL_DEFAULT) {
+            if (isSafeDigit(ch)) {
+                styler.ColourTo(i - 1, state);
+                state = SCE_PL_NUMBER;
+                if (ch == '0') {
+                    if (chNext == 'x' || chNext == 'X') {
+                        // Perl 5.14: 0X and 0B are now supported.
+                        numBase = 16;
+                        // Move to the next char, 'x' isn't allowed inside a number
+                        advanceOneChar(i, ch, chNext, chNext2);
+                    } else if (chNext == 'b' || chNext == 'B') {
+                        numBase = 2;
+                        // 'b' isn't allowed either
+                        advanceOneChar(i, ch, chNext, chNext2);
+                    } else {
+                        numBase = 8;
+                    }
+                } else {
+                    numDots = 0;
+                    numExponents = 0;
+                    numBase = 10;
+                }
+            } else if (safeIswordstart(ch)) {
+                binaryOperatorExpected = false;
+                styler.ColourTo(i - 1, state);
+                styler.Flush();
+                if (i > 0 && followsStartIndexer(styler, i - 1)) {
+                    preferRE = false;
+                    
+                    // Watch out for single-char barewords
+                    // And also watch out for q-strings in this context
+                    if (ch == 'q') {
+                        if (!safeIswordchar(chNext)) {
+                            if (precedesIndexer(styler, i + 1, lengthDoc)) {
+                                // color preceding string,
+                                // go to default
+                                styler.ColourTo(i, SCE_PL_STRING);
+                                // stay in state = SCE_PL_DEFAULT;
+                            } else {
+                                state = SCE_PL_STRING_Q;
+                                Quote.New(1);
+                            }
+                        } else if (strchr(q_chars, chNext) && !safeIswordchar(chNext2)) {
+                             if (precedesIndexer(styler, i + 2, lengthDoc)) {
+                                 // color preceding string,
+                                 // go to default
+                                 styler.ColourTo(i + 1, SCE_PL_STRING);
+                                 // stay in state = SCE_PL_DEFAULT;
+                             } else {
+                                 const char *hit = strchr(q_chars, chNext);
+                                 if (hit != NULL) {
+                                     state = q_states[hit - q_chars];
+                                 } else {
+                                     state = SCE_PL_STRING_QQ;
+                                 }
+                                 Quote.New(1);
+                             }
+                             advanceOneChar(i, ch, chNext, chNext2);
+                        } else {
+                            state = SCE_PL_WORD;
+                        }
+                    } else if (!safeIswordchar(chNext)) {
+                        styler.ColourTo(i, SCE_PL_STRING);
+                        braceStartsBlock = true;
+                    } else {
+                        state = SCE_PL_WORD;
+                    }
+                    // Look for keyword-like things that are followed
+                    // by fat commas.  You might think this doesn't always
+                    // work, but Perl doesn't allow
+                    // q=>...=
+                    // qq=>...=
+                    // s=>...=...=
+                    // tr=>...=...=
+                    // y=>...=...=
+
+                } else if (ch == 's' && !isSafeAlnum(chNext) && !isEOLChar(chNext)) {
+                    if (isFatCommaNext(styler, i + 1, lengthDoc)) {
+                        styler.ColourTo(i, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_REGSUBST;
+                        Quote.New(2);
+                    }
+                } else if (ch == 'x' && !isSafeAlnum(chNext)) {
+                    if (isFatCommaNext(styler, i + 1, lengthDoc)) {
+                        styler.ColourTo(i, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        styler.ColourTo(i, SCE_PL_OPERATOR);
+                    }
+                } else if (ch == 'm' && !isSafeAlnum(chNext)) {
+                    if (isFatCommaNext(styler, i + 1, lengthDoc)) {
+                        styler.ColourTo(i, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_REGEX;
+                        Quote.New(1);
+                    }
+                } else if (ch == 'q' && !isSafeAlnum(chNext)) {
+                    if (isFatCommaNext(styler, i + 1, lengthDoc)) {
+                        styler.ColourTo(i, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_STRING_Q;
+                        Quote.New(1);
+                    }
+                } else if (ch == 'y' && !isSafeAlnum(chNext)) {
+                    if (isFatCommaNext(styler, i + 1, lengthDoc)) {
+                        styler.ColourTo(i, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_REGSUBST;
+                        Quote.New(2);
+                    }
+                } else if (ch == 't' && chNext == 'r' && !isSafeAlnum(chNext2)) {
+                    if (isFatCommaNext(styler, i + 2, lengthDoc)) {
+                        styler.ColourTo(i + 1, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_REGSUBST;
+                        Quote.New(2);
+                    }
+                    advanceOneChar(i, ch, chNext, chNext2);
+                } else if (ch == 'q' && (chNext == 'q' || chNext == 'r' || chNext == 'w' || chNext == 'x') && !isSafeAlnum(chNext2)) {
+                    if (isFatCommaNext(styler, i + 2, lengthDoc)) {
+                        styler.ColourTo(i + 1, SCE_PL_STRING_Q);
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        const char *hit = strchr(q_chars, chNext);
+                        if (hit != NULL) {
+                            state = q_states[hit - q_chars];
+                        }
+                        Quote.New(1);
+                    }
+                    advanceOneChar(i, ch, chNext, chNext2);
+
+                } else {
+                    preferRE = false;
+                    if (wordEndsHere(chNext, chNext2, no_namespace_op)) {
+                        // We need that if length of word == 1!
+                        // This test is copied from the SCE_PL_WORD handler.
+                        int wordStart = styler.GetStartSegment();
+                        if (classifyWordPerl(wordStart, i, lengthDoc,
+                                             keywords, styler, &braceStartsBlock) == SCE_PL_WORD)
+                        {               
+                            preferRE = RE_CanFollowKeyword(wordStart,i,styler);
+                        } else {
+                            binaryOperatorExpected = true;
+                        }
+                        state = SCE_PL_DEFAULT;
+                    } else {
+                        state = SCE_PL_WORD;
+                    }
+                }
+            } else if (ch == '#') {
+                styler.ColourTo(i - 1, state);
+                previousState = state;
+                state = SCE_PL_COMMENTLINE;
+            
+            } else if (ch == '\"') {
+                styler.ColourTo(i - 1, state);
+                state = SCE_PL_STRING;
+                Quote.New(1);
+                Quote.Open(ch);
+            } else if (ch == '\'') {
+                // Don't handle archaic calls.
+                if (chPrev != '&') {
+                    styler.ColourTo(i - 1, state);
+                    state = SCE_PL_CHARACTER;
+                    Quote.New(1);
+                    Quote.Open(ch);
+                }
+            } else if (ch == '`') {
+                styler.ColourTo(i - 1, state);
+                state = SCE_PL_BACKTICKS;
+                Quote.New(1);
+                Quote.Open(ch);
+
+            // Handle all the variable indicators.
+            } else if (ch == '$' || ch == '%' || ch == '@') {
+                preferRE = false;
+                binaryOperatorExpected = true;
+                styler.ColourTo(i - 1, state);
+                int variableType = 
+                    (ch == '$') ? SCE_PL_SCALAR : (ch == '%') ? SCE_PL_HASH : SCE_PL_ARRAY;
+                if (i == lengthDoc - 1) {
+                    // Prevent a crash.
+                    preferRE = true;
+                    binaryOperatorExpected = false;
+                    braceStartsBlock = true;
+                    state = SCE_PL_OPERATOR;
+                } else if (chNext == '{' && chNext2 == '^') {
+                    // New builtins are coming in as ${^DESCRIPTION}
+                    // To simplify brace-matching color the ${ as op,
+                    // the inners as scalar, and the close-} will be
+                    // colored as an op.
+                    levelCurrent++;
+                    i += 2;
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+                    chNext = styler.SafeGetCharAt(i+1);
+                    state = variableType;
+                    p_BraceInfo->add(SCE_PL_OPERATOR);
+                } else if (isSafeAlnum(chNext) || chNext == '_' || chNext == '{') {
+                    state = variableType;
+                } else if (chNext == ':' && chNext2 == ':') {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    state = variableType;
+                } else if (chNext == '^' && isSafeAlnum(chNext2)) {
+                    i += 2;
+                    chNext = styler.SafeGetCharAt(i+1);
+                    styler.ColourTo(i, variableType);
+                } else if (ch == '$' && chNext == '#') {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    state = SCE_PL_SCALAR;
+                } else if (ch == '$' && chNext == '$') {
+                    // $$ is a scalar if it isn't followed by '$' or varstart
+                    // otherwise it's the start of a longer scalar thing,
+                    // involving 2+ dereferences.
+                    // Helpful thing -- the 'x' operator requires white-space
+                    //
+                    // $$ x ... != $$x ...
+                    // So if $$ is followed by neither '$' nor var name,
+                    // it's atomic.  Otherwise we have a sequence of '$'
+                    // which must eventually be followed by a brace or varname
+                    //
+                    // And we let ${...} be colored separately.
+                    
+                    if (chNext2 == '$') {
+                        i += 2;
+                        while ((chNext = styler.SafeGetCharAt(i + 1)) == '$') {
+                            i++;
+                        }
+                        state = SCE_PL_SCALAR;
+                    } else if (isSafeAlpha(chNext2) || chNext2 == '_') {
+                        advanceOneChar(i, ch, chNext, chNext2);
+                        state = SCE_PL_SCALAR;
+                    } else {
+                        advanceOneChar(i, ch, chNext, chNext2);
+                        styler.ColourTo(i, variableType);
+                        state = SCE_PL_DEFAULT;
+                        braceStartsBlock = true;
+                    }
+                } else if (ch == '@' && chNext == '$') {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    state = SCE_PL_ARRAY;
+                } else if (ch == '%' && chNext == '$') {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    state = SCE_PL_HASH;
+                } else if (ispunct(chNext)) {
+                    if (chNext == '{') {
+                        p_BraceInfo->add(SCE_PL_VARIABLE_INDEXER);
+                        levelCurrent++;
+                    }
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    styler.ColourTo(i, variableType);
+                    braceStartsBlock = false;
+                } else {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+                    preferRE = true;
+                    binaryOperatorExpected = false;
+                    braceStartsBlock = true;
+                }
+
+            } else if (ch == '*') {
+                styler.ColourTo(i - 1, state);
+                if (chNext == '*') {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+                    braceStartsBlock = true;
+                } else if (isSafeAlpha(chNext) || chNext == '_' || chNext == '{') {
+                    preferRE = false;
+                    state = SCE_PL_SYMBOLTABLE;
+                } else if (chNext == ':' && chNext2 == ':') {
+                    preferRE = false;
+                    i++;
+                    state = SCE_PL_SYMBOLTABLE;
+                } else {
+                    binaryOperatorExpected = false;
+                    styler.ColourTo(i,SCE_PL_OPERATOR);
+                    braceStartsBlock = true;
+                }
+                
+            } else if ((ch == '/' || ch == '?') && preferRE) {
+                styler.ColourTo(i - 1, state);
+                state = SCE_PL_REGEX;
+                Quote.New(1);
+                Quote.Open(ch);
+
+            } else if (ch == '<') {
+                // Recognise the '<<' symbol - either a here document or a left bit-shift operator.
+                if (chNext == '<') {
+                    styler.ColourTo(i - 1, state);
+                    advanceOneChar(i, ch, chNext, chNext2);
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+
+                    // It sucks, but we need to look both backwards and
+                    // forwards to disambiguate here docs.
+                    //
+                    // Requirements for '<<' to be a here doc op
+                    // After:
+                    // space | quote | apos | letter _ '_'
+                    //
+                    // Before:
+                    // skip spaces, get one of:
+                    // op style
+                    // ident
+
+                    // Don't look at binaryOperatorExpected, etc.
+                    // They don't give enough info
+
+                    bool couldBeHereDoc = false;
+
+                    if (chNext2 == '\''
+                        || chNext2 == '"'
+                        || chNext2 == '_'
+                        || chNext2 == '`'
+                        || isSafeAlpha(chNext2)) {
+                        couldBeHereDoc = true;
+                    } else if (chNext2 == ' ') {
+                        // Look ahead -- if we hit a newline, it's not
+                        // If we hit a digit or scalar, it isn't
+                        // If we hit a string, it isn't
+                        // If we hit an operator, it's hard to say...
+                        int inext;
+                        char inextChar;
+                        // Watch out for those border situations.
+                        for (inext = i + 2; inext < (int) actualLengthDoc; inext++) {
+                            inextChar = styler.SafeGetCharAt(inext);
+                            if (inextChar == ' ' || inextChar == '\t') {
+                                continue;
+                            } else {
+                                if (isEOLChar(inextChar)) {
+                                // nothing left to do
+                                } else if (isSafeAlnum(inextChar) || inextChar == '_') {
+                                // nothing left to do
+                                } else {
+                                    switch(inextChar) {
+                                        case '@':
+                                        case '$':
+                                        case '(':
+                                            // nothing left to do
+                                            break;
+                                            // These two are ambiguous, so turn it on
+                                            // Use parens to turn off here-doc
+                                        case '-':
+                                        case '+':
+                                            couldBeHereDoc = true;
+                                            break;
+                                            
+                                        case '"':
+                                        case '\'':
+                                            // This gets more complicated
+                                            // If the first char after the quote
+                                            // is EOL, not a here-doc
+                                            // If it's a digit, not a here-doc
+                                            // Otherwise assume it is, and
+                                            // ignore space between
+                                            // << and the quoted target.
+                                            // Whatever happens, we're breaking
+                                            // at this point.
+                                            if (inext < (int) actualLengthDoc - 1) {
+                                                char inext2Char = styler.SafeGetCharAt(inext + 1);
+                                                if (inext2Char == '\r'
+                                                    || inext2Char == '\n') {
+                                                    // not a here doc
+                                                } else if (isSafeDigit(inext2Char)) {
+                                                    // not a here doc
+                                                } else {
+                                                    couldBeHereDoc = true;
+                                                }
+                                            }
+                                            break;
+                                            
+                                        default:
+                                            // Most other chars indicate something
+                                            // like <<[string] op...
+                                            couldBeHereDoc = true;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                
+                    if (couldBeHereDoc) {
+                        // Look back to see what else we have
+                        int prevStyle;
+                        int iprev;
+                        char iprevChar;
+                        styler.Flush();
+                        for (iprev = i - 2; iprev >= 0; iprev--) {
+                            prevStyle = safeStyleAt(iprev, styler);
+                            if (prevStyle == SCE_PL_DEFAULT) {
+                                iprevChar = styler.SafeGetCharAt(iprev);
+                                if ((unsigned int) iprevChar < 128 && isspace(iprevChar)) {
+                                    continue;
+                                } else {
+                                    couldBeHereDoc = false;
+                                    break;
+                                }
+                            } else {
+                                switch (prevStyle) {
+                                    case SCE_PL_OPERATOR:
+                                    case SCE_PL_VARIABLE_INDEXER:
+                                        // Make sure it isn't a space colored as op
+                                        // due to context.
+                                        iprevChar = styler.SafeGetCharAt(iprev);
+                                        if ((unsigned int) iprevChar < 128 && isspace(iprevChar)) {
+                                            continue;
+                                        } else {
+                                            couldBeHereDoc = true;
+                                        }
+                                        break;
+                                    case SCE_PL_WORD:
+                                    case SCE_PL_IDENTIFIER:
+                                        // Assume word|ident << string starts a here-doc
+                                    case SCE_PL_HERE_DELIM:
+                                        // Two here-docs in a row that aren't stacked
+                                        // (see bug 76004).
+                                        couldBeHereDoc = true;
+                                        break;
+                                    
+                                    case SCE_PL_SCALAR:
+                                        iprev -= 1;
+                                        styler.Flush();
+                                        while (iprev > 0 &&
+                                               safeStyleAt(iprev, styler) == SCE_PL_SCALAR){
+                                            iprev -= 1;
+                                        }
+                                        while (styler.SafeGetCharAt(iprev) == ' ') {
+                                            iprev -= 1;
+                                        }
+                                        prevStyle = safeStyleAt(iprev, styler);
+                                        if (prevStyle == SCE_PL_WORD
+                                            || prevStyle == SCE_PL_IDENTIFIER) {
+                                            couldBeHereDoc = true;
+                                        } else {
+                                            couldBeHereDoc = false;
+                                        }
+                                        break;
+                                    
+                                    default:
+                                        couldBeHereDoc = false;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    if (couldBeHereDoc) {
+                        state = SCE_PL_HERE_DELIM;
+                        HereDoc.State = 0;
+                    }
+
+                } else {
+                    styler.ColourTo(i-1, state);
+                    // Check for glob expressions first
+                    bool doDefaultHandling = true;
+                    if (chNext == '=') {
+                        if (chNext2 == '>') {
+                            i += 2;
+                            chNext = styler.SafeGetCharAt(i + 1);
+                        } else {
+                            advanceOneChar(i, ch, chNext, chNext2);
+                        }
+                    } else if (!binaryOperatorExpected) {
+                        if (chNext == '>') {
+                            // <> reads from argv, returns a value in scalar context
+                            advanceOneChar(i, ch, chNext, chNext2);
+                            styler.ColourTo(i, SCE_PL_OPERATOR);
+                            preferRE = false;
+                            binaryOperatorExpected = true;
+                            braceStartsBlock = false;
+                            doDefaultHandling = false;
+                        } else {
+                            int numCharsToSkip = inputsymbolScan(styler, i + 1, lengthDoc);
+                            if (numCharsToSkip > 0) {
+                                i += numCharsToSkip + 1;
+                                styler.ColourTo(i, SCE_PL_STRING);
+                                ch = styler.SafeGetCharAt(i);
+                                chNext = styler.SafeGetCharAt(i + 1);
+                                preferRE = false;
+                                binaryOperatorExpected = true;
+                                braceStartsBlock = false;
+                                doDefaultHandling = false;
+                                // Stay in default state.
+                            }
+                        }
+                    }
+                    if (doDefaultHandling) {
+                        preferRE = false;
+                        binaryOperatorExpected = false;
+                        braceStartsBlock = true;
+                        // Leave state at default for all interpretations but glob
+                        styler.ColourTo(i,SCE_PL_OPERATOR);
+                    }
+                }
+            } else if (ch == '=' && isSafeAlpha(chNext) && (i == 0 || isEOLChar(chPrev))) {
+                styler.ColourTo(i - 1, state);
+                state = SCE_PL_POD;
+                levelCurrent++;
+            } else if (ch == '-' && chPrev != '-' && !binaryOperatorExpected && 
+                       isWordBeforeFatComma(styler,i+1,lengthDoc)) {
+                styler.ColourTo(i-1, state);
+                state = SCE_PL_WORD;
+                braceStartsBlock = true;
+            } else if (ch == '-' && chNext == '>') {
+                styler.ColourTo(i-1,state);
+                styler.ColourTo(i+1,SCE_PL_OPERATOR);
+                advanceOneChar(i, ch, chNext, chNext2);
+                state = SCE_PL_UNKNOWN_FIELD;
+                braceStartsBlock = false;
+            } else if (ch == '-' && isSingleCharOp(chNext) && !isSafeAlnum(chNext2)) {
+                styler.ColourTo(i - 1, state);
+                styler.ColourTo(i + 1, SCE_PL_WORD);
+                state = SCE_PL_DEFAULT;
+                preferRE = false;
+                binaryOperatorExpected = false;
+                braceStartsBlock = true;
+                advanceOneChar(i, ch, chNext, chNext2);
+            } else if (ch == '=' && chNext == '>') {
+                styler.ColourTo(i - 1, state);
+                styler.ColourTo(i + 1, SCE_PL_OPERATOR);
+                preferRE = false;
+                binaryOperatorExpected = false;
+                braceStartsBlock = false;
+                advanceOneChar(i, ch, chNext, chNext2);
+            } else if (ch == ':' && chNext == ':' && no_namespace_op) {
+                preferRE = true;
+                binaryOperatorExpected = true;
+                braceStartsBlock = true;
+                styler.ColourTo(i - 1, state);
+                if (safeIswordstart(chNext2)) {
+                    state = SCE_PL_WORD;
+                } else {
+                    styler.ColourTo(i + 1, SCE_PL_IDENTIFIER);
+                }
+                advanceOneChar(i, ch, chNext, chNext2);
+            } else if (ch == '.') {
+                styler.ColourTo(i - 1, state);
+                // Now what we do next depends on what follows
+                if (isSafeDigit(chNext)) {
+                    state = SCE_PL_NUMBER;
+                    numDots = 1;
+                    numExponents = 0;
+                    numBase = 10;
+                } else {
+                    if (chNext == '.') {
+                        if (chNext2 == '.') {
+                            ch = chNext2;
+                            chNext = styler.SafeGetCharAt(i + 3);
+                            i += 2;
+                        } else {
+                            advanceOneChar(i, ch, chNext, chNext2);
+                        }
+                    }
+                    // Either it's a concat op or a flip op
+                    preferRE = true;
+                    braceStartsBlock = false;
+                    binaryOperatorExpected = false;
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+                    // And stay in default state
+                }
+            } else if (isPerlOperator(ch)) {
+                if (ch == ')' || ch == ']' || (ch == '}' && variableNestingCount)) {
+                    preferRE = false;
+                } else {
+                    preferRE = true;
+                }
+                
+                styler.ColourTo(i - 1, state);
+                int operatorType = SCE_PL_OPERATOR;
+
+                // If this is an open bracket operator, start a fold.
+                if (ch == '[') {
+                    operatorType = SCE_PL_VARIABLE_INDEXER;
+                    variableNestingCount++;
+                    braceStartsBlock = false;
+                    binaryOperatorExpected = false;
+                    levelCurrent++;
+                } else if (ch == '{') {
+                    bool look_for_bareword = false;
+                    if (!braceStartsBlock) {
+                        operatorType = SCE_PL_VARIABLE_INDEXER;
+                        variableNestingCount++;
+                        look_for_bareword = (variableNestingCount == 1);
+                    }
+                    p_BraceInfo->add(operatorType);
+                    levelCurrent++;
+                    binaryOperatorExpected = false;
+                    if (look_for_bareword && lookingAtBareword(styler, i + 1, actualLengthDoc)) {
+                        // fprintf(stderr, "Looking at a bareword after a brace at posn %d\n", i);
+                        styler.ColourTo(i, SCE_PL_VARIABLE_INDEXER);
+                        ch = colouriseBareword(styler, i, state, actualLengthDoc);
+                        chNext = styler.SafeGetCharAt(i + 1);
+                    }
+                } else if (ch == '(') {
+                    binaryOperatorExpected = false;
+                    levelCurrent++;
+                    braceStartsBlock = false;
+                // If this is a close bracket operator, end the previous fold.
+                } else if (ch == ']') {
+                    if (variableNestingCount) {
+                        operatorType = SCE_PL_VARIABLE_INDEXER;
+                        variableNestingCount--;
+                        binaryOperatorExpected = true;
+                        preferRE = false;
+                        braceStartsBlock = false;
+                    
+                        if (chNext == '-' && chNext2 == '>') {
+                            state = SCE_PL_UNKNOWN_FIELD;
+                        }
+
+                    } else {
+                        binaryOperatorExpected = false;
+                    }
+                    if (levelCurrent > 0) {
+                        levelCurrent--;
+                    }
+                } else if (ch == '}') {
+                    operatorType = p_BraceInfo->getStyle();
+                    if (operatorType == -1) {
+                        // fprintf(stderr, " op type: %d\n", operatorType);
+                        operatorType = GetMatchingStyle(i, styler);
+                        // fprintf(stderr, "GetMatchingStyle(%d) => %d\n", i, operatorType);
+                    }
+                    // Keep this updated
+                    if (operatorType == SCE_PL_VARIABLE_INDEXER) {
+                        if (variableNestingCount > 0) {
+                            variableNestingCount--;
+                        }
+                        binaryOperatorExpected = true;
+                        preferRE = false;
+                        if (chNext == '-' && chNext2 == '>') {
+                            state = SCE_PL_UNKNOWN_FIELD;
+                        }
+                    } else {
+                        binaryOperatorExpected = false;
+                    }
+                    if (levelCurrent > 0) {
+                        levelCurrent--;
+                    }
+                    braceStartsBlock = false;
+                } else if (ch == ')') {
+                    binaryOperatorExpected = true;
+                    braceStartsBlock = true;
+                    if (levelCurrent > 0) {
+                        levelCurrent--;
+                    }
+                } else {
+                    // Analyze the other operators
+                    bool initiallyBinaryOperatorExpected = binaryOperatorExpected;
+                    binaryOperatorExpected = false;
+                    switch (ch) {
+                        case '=':
+                        case ',':
+                        case '\\':
+                        case '?':
+                            braceStartsBlock = false;
+                            break;
+                            
+                        case '&':
+                            // Bug 101817: [^&]&{...} => subref or bit-and hash
+                            //             [^&]&&{...} => anon hash
+                            //             [^&]&&&{...} => && subref
+                            //             [^&]&&&&{...} *** not allowed
+                            // Note that "&{" is ambiguous, so we need to see
+                            // whether we're expecting a binary operator.
+                            if (initiallyBinaryOperatorExpected) {
+                                // We just processed a name, so this can't be a name
+                                braceStartsBlock = true;
+                            } else if (chPrev != '&' || i < 2) {
+                                // ... &name or &{name}
+                                braceStartsBlock = false;
+                            } else if (styler.SafeGetCharAt(i - 2) != '&') {
+                                // We have exactly two '&'s in a row
+                                braceStartsBlock = true;
+                            } else {
+                                // We have (at least) three '&'s in a row
+                                braceStartsBlock = false;
+                            }
+                            break;
+
+                        case '|':
+                            // Both '||' and '|' (bit-or) take an anon-hash on RHS
+                            braceStartsBlock = true;
+                            break;
+
+                        case ':':
+                            // If we're in a ternary operator, bSB is false
+                            // If we're after a label, it doesn't.
+                            // Let's look back: if we see /(^|;(10))\s*\w+(5|11)<here>/,
+                            // assume it's a label.  Otherwise it's ternary
+                            braceStartsBlock = afterLabel(i - 1, styler);
+                            break;
+
+                        case '+':
+                        case '-':
+                            // If we're followed by the same char,
+                            // handle preferRE etc differently
+                            if (chNext == ch) {
+                                binaryOperatorExpected = true;
+                                preferRE = false;
+                                braceStartsBlock = true;
+                                advanceOneChar(i, ch, chNext, chNext2);
+                            }
+                            break;
+                        
+                        case '/':
+                            if (chNext == '/') {
+                                // Perl 5.10 definedness or-operator
+                                advanceOneChar(i, ch, chNext, chNext2);
+                            }
+                            braceStartsBlock = true;
+                            break;
+
+                        default:
+                            braceStartsBlock = true;
+                            break;
+                    }
+                }
+                styler.ColourTo(i, operatorType);
+            }
+        } else if (state == SCE_PL_WORD) {
+            if (ch == ':' && chNext == ':' && no_namespace_op) {
+                // Skip over the namespace separator
+                if (!safeIswordstart(chNext2)) {
+                    // The word ends here
+                    preferRE = true;
+                    binaryOperatorExpected = true;
+                    braceStartsBlock = true;
+                    styler.ColourTo(i, SCE_PL_IDENTIFIER);
+                    state = SCE_PL_DEFAULT;
+                }
+                ch = chNext2;
+                chNext = styler.SafeGetCharAt(i + 3);
+                i += 2;
+            } else if (wordEndsHere(chNext, chNext2, no_namespace_op)) {
+                styler.Flush();
+                // Be strict in what we'll color bare
+                if ((i == lengthDoc - 1 || chNext == '}')
+                    && followsStartIndexer(styler, i - 1)) {
+                    styler.ColourTo(i, SCE_PL_STRING);
+                    state = SCE_PL_DEFAULT;
+                } else {
+                    bool doDefault = false;
+                    unsigned int kwdStartPos = styler.GetStartSegment();
+                    char sequenceStartChar = styler[kwdStartPos];
+                    if (sequenceStartChar == '_') {
+                        if (isMatch(styler, lengthDoc, kwdStartPos, "__DATA__")) {
+                            styler.ColourTo(i, SCE_PL_DATASECTION);
+                            state = SCE_PL_DATASECTION;
+                        } else if (isMatch(styler, lengthDoc, kwdStartPos, "__END__")) {
+                            styler.ColourTo(i, SCE_PL_DATASECTION);
+                            state = SCE_PL_DATASECTION;
+                        } else {
+                            doDefault = true;
+                        }
+                    } else if (kwdStartPos + 5 == i
+                               && sequenceStartChar == 'f'
+                               && isMatch(styler, lengthDoc, kwdStartPos, "format")
+                               && atStartOfFormatStmt(i, lengthDoc, styler)) {
+                        state = SCE_PL_FORMAT;
+                        // Don't need to set chNext2
+                        ch = styler.SafeGetCharAt(i);
+                        chNext = styler.SafeGetCharAt(i + 1);
+                    } else {
+                        doDefault = true;
+                    }
+                    if (doDefault) {
+                        state = SCE_PL_DEFAULT;
+                        ch = ' ';
+                    
+                        // Recognise the beginning of a subroutine - enter the SUB state.
+                        if (kwdStartPos+2 == i && isMatch(styler, lengthDoc, kwdStartPos, "sub")) { 
+                            for (unsigned int j = i+1;j < lengthDoc;j++) {
+                                char c = styler.SafeGetCharAt(j);
+                                if (!isspacechar(c)) {
+                                    if (isSafeAlpha(c) || c == '_' || c == '{' || c == ';' || c == '(') {
+                                        styler.ColourTo(i,SCE_PL_WORD);
+                                        state = SCE_PL_SUB;
+                                    } else {
+                                        styler.ColourTo(i,SCE_PL_IDENTIFIER);
+                                    }
+                                    break;
+                                }
+                            }
+                            styler.ColourTo(i,SCE_PL_WORD);
+                            braceStartsBlock = true;
+                         
+                            // Colour the word as a number, identifier or keyword.
+                        } else if (classifyWordPerl(kwdStartPos,i,lengthDoc,keywords,styler, &braceStartsBlock) == SCE_PL_WORD) {             
+                            preferRE = RE_CanFollowKeyword(kwdStartPos,i,styler);
+
+                        } else {
+                            binaryOperatorExpected = true;
+                            braceStartsBlock = true;
+                        }
+                    }
+                }
+            }
+        } else if (state == SCE_PL_NUMBER) {
+            bool restyle = false;
+            if (isSafeDigit(ch) || ch == '_') {
+                // Keep going
+            } else if (numBase == 10) {
+                if (ch == '.') {
+                    restyle = !(++numDots == 1 && numExponents == 0 && chNext != '.');
+                } else if (ch == 'e' || ch == 'E') {
+                    restyle = !(++numExponents == 1);
+                } else if (ch == '-' && (chPrev == 'e' || chPrev == 'E')) {
+                    // Keep going
+                } else {
+                    restyle = true;
+                }
+            } else if (numBase == 16 && strchr("abcdefABCDEF", ch)) {
+                // Keep going
+            } else {
+                restyle = true;
+            }
+            if (restyle) {
+                styler.ColourTo(i - 1, state);
+                // Retry with this character.
+                // Special-case handling of newlines due to how folding works
+                if (ch == '\n' || ch == '\r') {
+                    // Default is fine, no need to do anything else.
+                } else if (ch == '.' && chNext != '.') {
+                    // Special case this, otherwise something like
+                    // 0x3.4 will be colorized as two contiguous numbers
+                    styler.ColourTo(i, SCE_PL_OPERATOR);
+                } else {
+                    retreatOneChar(i, chPrev, ch, chNext);
+                }
+                state = SCE_PL_DEFAULT;
+                preferRE = false;
+                binaryOperatorExpected = true;
+                braceStartsBlock = true;
+            }
+        } else if (state == SCE_PL_COMMENTLINE) {
+            if (isEOLChar(ch)) {
+                styler.ColourTo(i - 1, state);
+                state = previousState;
+            }
+        } else if (state == SCE_PL_HERE_DELIM) {
+            //
+            // From perldata.pod:
+            // ------------------
+            // A line-oriented form of quoting is based on the shell ``here-doc''
+            // syntax.
+            // Following a << you specify a string to terminate the quoted material,
+            // and all lines following the current line down to the terminating
+            // string are the value of the item.
+            // The terminating string may be either an identifier (a word),
+            // or some quoted text.
+            // If quoted, the type of quotes you use determines the treatment of
+            // the text, just as in regular quoting.
+            // An unquoted identifier works like double quotes.
+            // There must be no space between the << and the identifier.
+            // (If you put a space it will be treated as a null identifier,
+            // which is valid, and matches the first empty line.)
+            // The terminating string must appear by itself (unquoted and with no
+            // surrounding whitespace) on the terminating line.
+            //
+            if (HereDoc.State == 0) { // '<<' encountered
+                HereDoc.State = 1;
+                HereDoc.Quote = ch;
+                HereDoc.Quoted = false;
+                HereDoc.DelimiterLength = 0;
+                HereDoc.Delimiter[HereDoc.DelimiterLength] = '\0';
+                
+                // A quoted here-doc delimiter.
+                if (ch == '\'' || ch == '"' || ch == '`') { 
+                    HereDoc.Quoted = true;
+                
+                   // TODO: does this need to be handled differently? as a ref?
+                } else if (chNext == '\\') {
+            
+                   // An unquoted here-doc delimiter.
+                } else if (isSafeAlnum(ch)) {
+                    HereDoc.Delimiter[HereDoc.DelimiterLength++] = ch;
+                    HereDoc.Delimiter[HereDoc.DelimiterLength] = '\0';
+                
+                // deprecated here-doc delimiter
+                } else if (isspacechar(ch)) {
+                    styler.ColourTo(i, state);
+                    state = SCE_PL_DEFAULT;
+                    braceStartsBlock = true;
+                }
+
+            } else if (HereDoc.State == 1) { // collect the delimiter
+                if (HereDoc.Quoted) { // a quoted here-doc delimiter
+                    if (ch == HereDoc.Quote) { // closing quote => end of delimiter
+                        styler.ColourTo(i, state);
+                        state = SCE_PL_DEFAULT;
+                        binaryOperatorExpected = true;
+                        braceStartsBlock = true;
+                    } else {
+                        if (ch == '\\' && chNext == HereDoc.Quote) { // escaped quote
+                            advanceOneChar(i, ch, chNext, chNext2);
+                        }
+                        HereDoc.Delimiter[HereDoc.DelimiterLength++] = ch;
+                        HereDoc.Delimiter[HereDoc.DelimiterLength] = '\0';
+                    }
+                } else { // an unquoted here-doc delimiter
+                    if (isSafeAlnum(ch)) {
+                        HereDoc.Delimiter[HereDoc.DelimiterLength++] = ch;
+                        HereDoc.Delimiter[HereDoc.DelimiterLength] = '\0';
+                    } else {
+                        styler.ColourTo(i - 1, state);
+                        state = SCE_PL_DEFAULT;
+                        braceStartsBlock = true;
+                        // Retry with this character.
+                        retreatOneChar(i, chPrev, ch, chNext);
+                    }
+                }
+                if (HereDoc.DelimiterLength >= static_cast<int>(sizeof(HereDoc.Delimiter)) - 1) {
+                    styler.ColourTo(i - 1, state);
+                    state = SCE_PL_ERROR;
+                    braceStartsBlock = true;
+                }
+            }
+
+        } else if (HereDoc.State == 2 && isEOLChar(chPrev)) {
+
+            // Look for a blank line to end a space delimited here document.
+            if (isspacechar(HereDoc.Quote) && isEOLChar(ch)) {
+                styler.ColourTo(i - 1, state);
+                styler.ColourTo(i, SCE_PL_HERE_DELIM);
+                state = SCE_PL_DEFAULT;
+                HereDoc.State = 0;
+                preferRE = HereDoc.HasSemiColon;
+                HereDoc.HasSemiColon = false;
+                braceStartsBlock = true;
+            
+            // Look for the here document's delimiter.
+            } else if (isMatch(styler, lengthDoc, i, HereDoc.Delimiter)) {
+                styler.ColourTo(i - 1, state);
+                i += HereDoc.DelimiterLength - 1;
+                chNext = styler.SafeGetCharAt(i + 1);
+                if (isEOLChar(chNext)) {
+                    styler.ColourTo(i, SCE_PL_HERE_DELIM);
+                    state = SCE_PL_DEFAULT;
+                    HereDoc.State = 0;
+                    preferRE = HereDoc.HasSemiColon;
+                    HereDoc.HasSemiColon = false;
+                    braceStartsBlock = true;
+                }
+            }
+            
+        } else if (state == SCE_PL_SCALAR || state == SCE_PL_ARRAY || state == SCE_PL_HASH || 
+                   state == SCE_PL_SYMBOLTABLE) { 
+            
+            // Recognise if the variable is indexed.
+            if (ch == '{' || ch == '[') {
+                styler.ColourTo(i-1, state);
+                styler.ColourTo(i, SCE_PL_VARIABLE_INDEXER);
+                variableNestingCount++;
+                binaryOperatorExpected = false;
+                levelCurrent++;
+                if (ch == '{') {
+                    p_BraceInfo->add(SCE_PL_VARIABLE_INDEXER);
+                }
+                state = SCE_PL_DEFAULT;
+                braceStartsBlock = false;
+                if (lookingAtBareword(styler, i + 1, actualLengthDoc)) {
+                    // fprintf(stderr, "Looking at a bareword after a brace indexer at posn %d\n", i);
+                    ch = colouriseBareword(styler, i, state, actualLengthDoc);
+                    chNext = styler.SafeGetCharAt(i + 1);
+                }
+            
+            // Skip over the namespace symbol.
+            } else if (chNext == ':' && chNext2 == ':') {
+                if (no_namespace_op) {
+                    ch = chNext2;
+                    chNext = styler.SafeGetCharAt(i + 3);
+                    i += 2;
+                } else {
+                    advanceOneChar(i, ch, chNext, chNext2);
+                }
+            } else if (ch == '-' && chNext == '>') {
+                styler.ColourTo(i-1,state);
+                styler.ColourTo(i+1,SCE_PL_OPERATOR);
+                advanceOneChar(i, ch, chNext, chNext2);
+                state = SCE_PL_UNKNOWN_FIELD;
+                braceStartsBlock = false;
+                
+            // If the next character is not a legal variable character, colour 
+            // the preceding variable name and return to the default state.
+            } else if (isspacechar(chNext) || 
+                       (isEndVar(chNext) && (chNext != '-' || chNext2 != '>'))) {
+                styler.ColourTo(i, state);
+                state = SCE_PL_DEFAULT;
+                binaryOperatorExpected = true;
+                braceStartsBlock = !isspacechar(chNext);
+                if (ch == '(') {
+                    levelCurrent++;
+                } else if (strchr(")]}", ch) && levelCurrent > 0) {
+                    levelCurrent--;
+                }
+            }
+
+        } else if (state == SCE_PL_UNKNOWN_FIELD) {
+            // after --> 
+            if (ch == '{' || ch == '[') {
+                styler.ColourTo(i, SCE_PL_VARIABLE_INDEXER);
+                variableNestingCount++;
+                binaryOperatorExpected = false;
+                levelCurrent++;
+                if (ch == '{') {
+                    p_BraceInfo->add(SCE_PL_VARIABLE_INDEXER);
+                }
+                state = SCE_PL_DEFAULT;
+                braceStartsBlock = false;
+                if (lookingAtBareword(styler, i + 1, actualLengthDoc)) {
+                    ch = colouriseBareword(styler, i, state, actualLengthDoc);
+                    chNext = styler.SafeGetCharAt(i + 1);
+                }
+            } else if (ch == '(') {
+                // It's a function name, using indirect accessor
+                // notation:
+                // $obj->[selector]->(args) ===
+                // &{$obj->[selector]}(args)
+                styler.ColourTo(i, SCE_PL_OPERATOR);
+                binaryOperatorExpected = false;
+                state = SCE_PL_DEFAULT;
+                braceStartsBlock = false;
+                levelCurrent++;
+            } else if (safeIswordstart(ch)) {
+                // It's a function name
+                styler.ColourTo(i - 1, state);
+                binaryOperatorExpected = true;
+                if (!safeIswordchar(chNext)) {
+                    state = SCE_PL_DEFAULT;
+                } else {
+                    state = SCE_PL_WORD;
+                }
+                braceStartsBlock = false;
+            } else if (ch == '-' && chNext == '>') {
+                // Another arrow?  Color it as an operator, and stay here.
+                styler.ColourTo(i+1,SCE_PL_OPERATOR);
+                advanceOneChar(i, ch, chNext, chNext2);
+                braceStartsBlock = false;
+            } else if (isspacechar(ch)) {
+                // Color it blank, stay for another round.
+                styler.ColourTo(i, SCE_PL_DEFAULT);
+                braceStartsBlock = false;
+            } else if (ch == '$' || ch == '%' || ch == '@') {
+                // Move to default state and retry
+                styler.ColourTo(i - 1, SCE_PL_DEFAULT);
+                state = SCE_PL_DEFAULT;
+                retreatOneChar(i, chPrev, ch, chNext);
+            } else {
+                // Give up: go to default state.
+                state = SCE_PL_DEFAULT;
+                braceStartsBlock = true;
+                if (strchr(")]}", ch) && levelCurrent > 0) {
+                    levelCurrent--;
+                }
+            }
+        } else if (state == SCE_PL_POD) {
+            if (ch == '=' && isEOLChar(chPrev) && isMatch(styler, lengthDoc, i, "=cut")) {
+                i += 3;
+                styler.ColourTo(i, state);
+                state = SCE_PL_COMMENTLINE;
+                braceStartsBlock = true;
+                if (levelCurrent > 0) {
+                    levelCurrent--;
+                }
+                ch = styler.SafeGetCharAt(i);
+                chNext = styler.SafeGetCharAt(i + 1);
+            }
+
+        
+        // Continue parsing a reg exp ...
+        } else if (state == SCE_PL_REGEX || state == SCE_PL_STRING_QR) {
+            if (!Quote.Up && !isspacechar(ch)) {
+                Quote.Open(ch);
+            } else if (ch == '\\' && Quote.Up != '\\') {
+                // TODO: Is it safe to skip *every* escaped char?
+                i++;
+                ch = chNext;
+                chNext = styler.SafeGetCharAt(i + 1);
+            } else {
+                if (ch == Quote.Down /*&& chPrev != '\\'*/) {
+                    Quote.Count--;
+                    if (Quote.Count == 0) {
+                        Quote.Rep--;
+                        if (Quote.Up == Quote.Down) {
+                            Quote.Count++;
+                        }
+                    }
+                    if (!isSafeAlpha(chNext)) {
+                        if (Quote.Rep <= 0) {
+                            styler.ColourTo(i, state);
+                            state = SCE_PL_DEFAULT;
+                            preferRE = false;
+                            braceStartsBlock = true;
+                        }
+                    }
+                } else if (ch == Quote.Up /*&& chPrev != '\\'*/) {
+                    Quote.Count++;
+                } else if (!isSafeAlpha(chNext)) {
+                    if (Quote.Rep <= 0) {
+                        styler.ColourTo(i, state);
+                        state = SCE_PL_DEFAULT;
+                        preferRE = false;
+                        braceStartsBlock = true;
+                    }
+                } else if ((ch == '$' || ch == '@')
+                           && isInterpolatingString(SCE_PL_STRING, chNext)) {
+                    doInterpolateVariable(i, lengthDoc, state, ch, styler);
+                    retreatOneChar(i, chPrev, ch, chNext);
+                }
+            }
+        } else if (state == SCE_PL_REGSUBST) {
+            if (!Quote.Up && !isspacechar(ch)) {
+                Quote.Open(ch);
+            } else if (ch == '\\' && Quote.Up != '\\') {
+                // TODO: Is it safe to skip *every* escaped char?
+                i++;
+                ch = chNext;
+                chNext = styler.SafeGetCharAt(i + 1);
+            } else {
+                if (Quote.Count == 0 && Quote.Rep == 1) {
+                    /* We matched something like s(...) or tr{...}
+                    * and are looking for the next matcher characters,
+                    * which could be either bracketed ({...}) or non-bracketed
+                    * (/.../).
+                    *
+                    * Number-signs are problematic.  If they occur after
+                    * the close of the first part, treat them like
+                    * a Quote.Up char, even if they actually start comments.
+                    *
+                    * If we find an alnum, we end the regsubst, and punt.
+                    *
+                    * Eric Promislow   ericp@activestate.com  Aug 9,2000
+                    */
+                    if (isspacechar(ch)) {
+                        // Keep going
+                    }
+                    else if (ch != '_' && isSafeAlnum(ch)) {
+                        // Don't allow an underscore here
+                        styler.ColourTo(i, state);
+                        state = SCE_PL_DEFAULT;
+                        preferRE = false;
+                        braceStartsBlock = true;
+                        ch = ' ';
+                    } else {
+                        Quote.Open(ch);
+                    }
+                } else if (ch == Quote.Down /*&& chPrev != '\\'*/) {
+                    Quote.Count--;
+                    if (Quote.Count == 0) {
+                        Quote.Rep--;
+                    }
+                    if (!isSafeAlpha(chNext)) {
+                        if (Quote.Rep <= 0) {
+                            styler.ColourTo(i, state);
+                            state = SCE_PL_DEFAULT;
+                            preferRE = false;
+                            braceStartsBlock = true;
+                            ch = ' ';
+                        }
+                    }
+                    if (Quote.Up == Quote.Down) {
+                        Quote.Count++;
+                    }
+                } else if (ch == Quote.Up /*&& chPrev != '\\'*/) {
+                    Quote.Count++;
+                } else if (!isSafeAlpha(chNext)) {
+                    if (Quote.Rep <= 0) {
+                        styler.ColourTo(i, state);
+                        state = SCE_PL_DEFAULT;
+                        braceStartsBlock = true;
+                        preferRE = false;
+                        ch = ' ';
+                    }
+                } else if ((ch == '$' || ch == '@')
+                           && Quote.Rep == 2
+                           && isInterpolatingString(SCE_PL_STRING, chNext)) {
+                    doInterpolateVariable(i, lengthDoc, state, ch, styler);
+                    retreatOneChar(i, chPrev, ch, chNext);
+                }
+            }
+
+        // Quotes of all kinds...
+        } else if (state == SCE_PL_STRING_Q || state == SCE_PL_STRING_QQ || 
+                   state == SCE_PL_STRING_QX || state == SCE_PL_STRING_QW ||
+                   state == SCE_PL_STRING || state == SCE_PL_CHARACTER ||
+                   state == SCE_PL_BACKTICKS) {
+            if (!Quote.Down && !isspacechar(ch)) {
+                Quote.Open(ch);
+            } else if (ch == '\\' && Quote.Up != '\\') {
+                // TODO: Is it save to skip *every* escaped char?
+                i++;
+                ch = chNext;
+                chNext = styler.SafeGetCharAt(i + 1);
+            } else if (ch == Quote.Down) {
+                Quote.Count--;
+                if (Quote.Count == 0) {
+                    Quote.Rep--;
+                    if (Quote.Rep <= 0) {
+                        int numBytesToSkip = getNumUtf8ContinuationBytes(ch);
+                        if (numBytesToSkip <= 0) {
+                            // Do nothing
+                        } else if (numBytesToSkip == 1) {
+                            advanceOneChar(i, ch, chNext, chNext2);
+                        } else {
+                            i += numBytesToSkip;
+                            ch = styler.SafeGetCharAt(i);
+                            chNext = styler.SafeGetCharAt(i + 1);
+                        }
+                        styler.ColourTo(i, state);
+                        state = SCE_PL_DEFAULT;
+                        braceStartsBlock = true;
+                    }
+                    if (Quote.Up == Quote.Down) {
+                        Quote.Count++;
+                    }
+                    preferRE = false;
+                }
+            } else if (ch == Quote.Up) {
+                Quote.Count++;
+            } else if ((ch == '$' || ch == '@')
+                       && isInterpolatingString(state, chNext)) {
+                doInterpolateVariable(i, lengthDoc, state, ch, styler);
+                retreatOneChar(i, chPrev, ch, chNext);
+            }
+
+        // Handle the beginning of a subroutine.
+        } else if (state == SCE_PL_SUB) {
+            
+            // The end of subroutine state. Switch either back to normal mode or 
+            // subroutine argument mode.
+            if (ch == '(' || ch == '{' || ch == ';') {
+                styler.ColourTo(i - 1, SCE_PL_IDENTIFIER);
+                styler.ColourTo(i, SCE_PL_OPERATOR);
+                if (ch == '(') {
+                    state = SCE_PL_SUB_ARGS;
+                    braceStartsBlock = true;
+                    levelCurrent++;
+                } else {
+                    if (ch =='{') {
+                        levelCurrent++;
+                        braceStartsBlock = false;
+                        p_BraceInfo->add(SCE_PL_OPERATOR);
+                    } else {
+                        braceStartsBlock = true;
+                    }
+                    state = SCE_PL_DEFAULT;
+                }
+
+            // Switch temporarily to COMMENTLINE state if a # is encountered.
+            } else if (ch == '#') {
+                styler.ColourTo(i - 1, SCE_PL_IDENTIFIER);
+                previousState = state;
+                state = SCE_PL_COMMENTLINE;
+                braceStartsBlock = true;
+            }
+            
+        // Handle the arguments of a subroutine.
+        } else if (state == SCE_PL_SUB_ARGS) {
+            if (ch == ')') {
+                styler.ColourTo(i - 1, SCE_PL_DEFAULT);
+                styler.ColourTo(i, SCE_PL_OPERATOR);
+                state = SCE_PL_DEFAULT;
+                if (levelCurrent > 0) {
+                    levelCurrent--;
+                }
+                braceStartsBlock = true;
+            }
+        } else if (state == SCE_PL_FORMAT) {
+            if (ch == '.' && isEOLChar(chPrev) && isEOLChar(chNext)) {
+                styler.ColourTo(i, state);
+                state = SCE_PL_DEFAULT;
+            }
+        }
+
+        if (state == SCE_PL_ERROR) {
+            break;
+        }
+        chPrev = ch;
+    }
+    if (state == SCE_PL_SUB) {
+        state = SCE_PL_IDENTIFIER;
+        braceStartsBlock = true;
+    } else if (state == SCE_PL_SUB_ARGS) {
+        state = SCE_PL_DEFAULT;
+        braceStartsBlock = true;
+    }
+    styler.ColourTo(lengthDoc - 1, state);
+
+    //Fill in the real level of the next line, keeping the current flags as they will be filled in later
+    if (fold) {
+        int flagsNext = styler.LevelAt(lineCurrent) & ~SC_FOLDLEVELNUMBERMASK;
+        if (levelPrev < 0 || levelPrev >= 0x3ff) {
+            levelPrev = 0;
+        }
+        styler.SetLevel(lineCurrent, levelPrev | flagsNext | SC_FOLDLEVELBASE);
+    }
+    styler.Flush();
+    delete p_BraceInfo;
+}
+
+static void FoldPerlDoc(unsigned int startPos, int length, int, WordList *[],
+                        Accessor &styler) {
+    bool foldComment = styler.GetPropertyInt("fold.comment") != 0;
+    bool foldCompact = styler.GetPropertyInt("fold.compact", 1) != 0;
+    bool foldAtElse = styler.GetPropertyInt("fold.at.else", 1) != 0;
+    unsigned int endPos = startPos + length;
+    int state;
+    synchronizeDocStart(startPos, endPos, state, styler);
+    
+    int visibleChars = 0;
+    int lineCurrent = styler.GetLine(startPos);
+
+#if 0
+    // Synchronize: if the previous line is a POD or here doc, move up one
+    if (lineCurrent > 0) {
+        int prevLineStartPos = styler.LineStart(lineCurrent - 1);
+        if (safeStyleAt(prevLineStartPos, styler) == SCE_PL_POD) {
+            startPos = prevLineStartPos;
+            lineCurrent -= 1;
+        }
+    }
+#endif
+            
+    int levelPrev = styler.LevelAt(lineCurrent) & SC_FOLDLEVELNUMBERMASK;
+    int levelCurrent = levelPrev;
+    int levelMinPrev = levelPrev;
+    int lengthDoc = styler.Length();
+    char chNext = styler[startPos];
+    int styleNext = safeStyleAt(startPos, styler);
+    for (unsigned int i = startPos; i < endPos; i++) {
+        char ch = chNext;
+        chNext = styler.SafeGetCharAt(i + 1);
+        int style = styleNext;
+        styleNext = safeStyleAt(i + 1, styler);
+        bool atEOL = (ch == '\r' && chNext != '\n') || (ch == '\n');
+        if (foldComment && (style == SCE_PL_COMMENTLINE)) {
+            if ((ch == '/') && (chNext == '/')) {
+                char chNext2 = styler.SafeGetCharAt(i + 2);
+                if (chNext2 == '{') {
+                    if (levelMinPrev > levelCurrent) {
+                        levelMinPrev = levelCurrent;
+                    }
+                    levelCurrent++;
+                } else if (levelCurrent > 0 && chNext2 == '}') {
+                    levelCurrent--;
+                }
+            }
+        } else if (style == SCE_PL_OPERATOR || style == SCE_PL_VARIABLE_INDEXER) {
+            if (strchr("{[(", ch)) {
+                if (levelMinPrev > levelCurrent) {
+                    levelMinPrev = levelCurrent;
+                }
+                levelCurrent++;
+            } else if (levelCurrent > 0 && strchr(")]}", ch)) {
+                levelCurrent--;
+            }
+        } else if (style == SCE_PL_POD && ch == '=') {
+            // Check the previous line
+            if (lineCurrent == 0
+                || safeStyleAt(styler.LineStart(lineCurrent - 1), styler) != SCE_PL_POD) {
+                levelCurrent++;
+            } else if (levelCurrent > 0) {
+                int nextLinePos = styler.LineStart(lineCurrent + 1);
+                if (nextLinePos < lengthDoc
+                    && safeStyleAt(nextLinePos, styler) != SCE_PL_POD) {
+                    levelCurrent--;
+                }
+            }
+        }
+        if (atEOL) {
+            int levelUse = foldAtElse ? levelMinPrev : levelPrev;
+            if (levelUse < 0) {
+                levelUse = 0;
+            }
+            int lev = levelUse;
+            if (visibleChars == 0 && foldCompact)
+                lev |= SC_FOLDLEVELWHITEFLAG;
+            if ((levelCurrent > levelUse) && (visibleChars > 0))
+                lev |= SC_FOLDLEVELHEADERFLAG;
+            if (lev != styler.LevelAt(lineCurrent)) {
+                styler.SetLevel(lineCurrent, lev);
+            }
+            lineCurrent++;
+            levelMinPrev = levelPrev = levelCurrent;
+            visibleChars = 0;
+        }
+        if (!isspacechar(ch))
+            visibleChars++;
+    }
+    // Fill in the real level of the next line, keeping the current flags as they will be filled in later
+    int flagsNext = styler.LevelAt(lineCurrent) & ~SC_FOLDLEVELNUMBERMASK;
+    styler.SetLevel(lineCurrent, levelPrev | flagsNext);
+    styler.Flush();
+}
+
+static const char * const perlWordListDesc[] = {
+    "Keywords",
+    0
 };
 
-struct OptionSetPerl : public OptionSet<OptionsPerl> {
-	OptionSetPerl() {
-		DefineProperty("fold", &OptionsPerl::fold);
-
-		DefineProperty("fold.comment", &OptionsPerl::foldComment);
-
-		DefineProperty("fold.compact", &OptionsPerl::foldCompact);
-
-		DefineProperty("fold.perl.pod", &OptionsPerl::foldPOD,
-		        "Set to 0 to disable folding Pod blocks when using the Perl lexer.");
-
-		DefineProperty("fold.perl.package", &OptionsPerl::foldPackage,
-		        "Set to 0 to disable folding packages when using the Perl lexer.");
-
-		DefineProperty("fold.perl.comment.explicit", &OptionsPerl::foldCommentExplicit,
-		        "Set to 0 to disable explicit folding.");
-
-		DefineProperty("fold.perl.at.else", &OptionsPerl::foldAtElse,
-		               "This option enables Perl folding on a \"} else {\" line of an if statement.");
-
-		DefineWordListSets(perlWordListDesc);
-	}
-};
-
-class LexerPerl : public ILexer {
-	CharacterSet setWordStart;
-	CharacterSet setWord;
-	CharacterSet setSpecialVar;
-	CharacterSet setControlVar;
-	WordList keywords;
-	OptionsPerl options;
-	OptionSetPerl osPerl;
-public:
-	LexerPerl() :
-		setWordStart(CharacterSet::setAlpha, "_", 0x80, true),
-		setWord(CharacterSet::setAlphaNum, "_", 0x80, true),
-		setSpecialVar(CharacterSet::setNone, "\"$;<>&`'+,./\\%:=~!?@[]"),
-		setControlVar(CharacterSet::setNone, "ACDEFHILMNOPRSTVWX") {
-	}
-	virtual ~LexerPerl() {
-	}
-	void SCI_METHOD Release() {
-		delete this;
-	}
-	int SCI_METHOD Version() const {
-		return lvOriginal;
-	}
-	const char *SCI_METHOD PropertyNames() {
-		return osPerl.PropertyNames();
-	}
-	int SCI_METHOD PropertyType(const char *name) {
-		return osPerl.PropertyType(name);
-	}
-	const char *SCI_METHOD DescribeProperty(const char *name) {
-		return osPerl.DescribeProperty(name);
-	}
-	int SCI_METHOD PropertySet(const char *key, const char *val);
-	const char *SCI_METHOD DescribeWordListSets() {
-		return osPerl.DescribeWordListSets();
-	}
-	int SCI_METHOD WordListSet(int n, const char *wl);
-	void SCI_METHOD Lex(unsigned int startPos, int length, int initStyle, IDocument *pAccess);
-	void SCI_METHOD Fold(unsigned int startPos, int length, int initStyle, IDocument *pAccess);
-
-	void *SCI_METHOD PrivateCall(int, void *) {
-		return 0;
-	}
-
-	static ILexer *LexerFactoryPerl() {
-		return new LexerPerl();
-	}
-	int InputSymbolScan(StyleContext &sc);
-	void InterpolateSegment(StyleContext &sc, int maxSeg, bool isPattern=false);
-};
-
-int SCI_METHOD LexerPerl::PropertySet(const char *key, const char *val) {
-	if (osPerl.PropertySet(&options, key, val)) {
-		return 0;
-	}
-	return -1;
-}
-
-int SCI_METHOD LexerPerl::WordListSet(int n, const char *wl) {
-	WordList *wordListN = 0;
-	switch (n) {
-	case 0:
-		wordListN = &keywords;
-		break;
-	}
-	int firstModification = -1;
-	if (wordListN) {
-		WordList wlNew;
-		wlNew.Set(wl);
-		if (*wordListN != wlNew) {
-			wordListN->Set(wl);
-			firstModification = 0;
-		}
-	}
-	return firstModification;
-}
-
-int LexerPerl::InputSymbolScan(StyleContext &sc) {
-	// forward scan for matching > on same line; file handles
-	int c, sLen = 0;
-	while ((c = sc.GetRelativeCharacter(++sLen)) != 0) {
-		if (c == '\r' || c == '\n') {
-			return 0;
-		} else if (c == '>') {
-			if (sc.Match("<=>"))	// '<=>' case
-				return 0;
-			return sLen;
-		}
-	}
-	return 0;
-}
-
-void LexerPerl::InterpolateSegment(StyleContext &sc, int maxSeg, bool isPattern) {
-	// interpolate a segment (with no active backslashes or delimiters within)
-	// switch in or out of an interpolation style or continue current style
-	// commit variable patterns if found, trim segment, repeat until done
-	while (maxSeg > 0) {
-		bool isVar = false;
-		int sLen = 0;
-		if ((maxSeg > 1) && (sc.ch == '$' || sc.ch == '@')) {
-			// $#[$]*word [$@][$]*word (where word or {word} is always present)
-			bool braces = false;
-			sLen = 1;
-			if (sc.ch == '$' && sc.chNext == '#') {	// starts with $#
-				sLen++;
-			}
-			while ((maxSeg > sLen) && (sc.GetRelativeCharacter(sLen) == '$'))	// >0 $ dereference within
-				sLen++;
-			if ((maxSeg > sLen) && (sc.GetRelativeCharacter(sLen) == '{')) {	// { start for {word}
-				sLen++;
-				braces = true;
-			}
-			if (maxSeg > sLen) {
-				int c = sc.GetRelativeCharacter(sLen);
-				if (setWordStart.Contains(c)) {	// word (various)
-					sLen++;
-					isVar = true;
-					while (maxSeg > sLen) {
-						if (!setWord.Contains(sc.GetRelativeCharacter(sLen)))
-							break;
-						sLen++;
-					}
-				} else if (braces && IsADigit(c) && (sLen == 2)) {	// digit for ${digit}
-					sLen++;
-					isVar = true;
-				}
-			}
-			if (braces) {
-				if ((maxSeg > sLen) && (sc.GetRelativeCharacter(sLen) == '}')) {	// } end for {word}
-					sLen++;
-				} else
-					isVar = false;
-			}
-		}
-		if (!isVar && (maxSeg > 1)) {	// $- or @-specific variable patterns
-			int c = sc.chNext;
-			if (sc.ch == '$') {
-				sLen = 1;
-				if (IsADigit(c)) {	// $[0-9] and slurp trailing digits
-					sLen++;
-					isVar = true;
-					while ((maxSeg > sLen) && IsADigit(sc.GetRelativeCharacter(sLen)))
-						sLen++;
-				} else if (setSpecialVar.Contains(c)) {	// $ special variables
-					sLen++;
-					isVar = true;
-				} else if (!isPattern && ((c == '(') || (c == ')') || (c == '|'))) {	// $ additional
-					sLen++;
-					isVar = true;
-				} else if (c == '^') {	// $^A control-char style
-					sLen++;
-					if ((maxSeg > sLen) && setControlVar.Contains(sc.GetRelativeCharacter(sLen))) {
-						sLen++;
-						isVar = true;
-					}
-				}
-			} else if (sc.ch == '@') {
-				sLen = 1;
-				if (!isPattern && ((c == '+') || (c == '-'))) {	// @ specials non-pattern
-					sLen++;
-					isVar = true;
-				}
-			}
-		}
-		if (isVar) {	// commit as interpolated variable or normal character
-			if (sc.state < SCE_PL_STRING_VAR)
-				sc.SetState(sc.state + INTERPOLATE_SHIFT);
-			sc.Forward(sLen);
-			maxSeg -= sLen;
-		} else {
-			if (sc.state >= SCE_PL_STRING_VAR)
-				sc.SetState(sc.state - INTERPOLATE_SHIFT);
-			sc.Forward();
-			maxSeg--;
-		}
-	}
-	if (sc.state >= SCE_PL_STRING_VAR)
-		sc.SetState(sc.state - INTERPOLATE_SHIFT);
-}
-
-void SCI_METHOD LexerPerl::Lex(unsigned int startPos, int length, int initStyle, IDocument *pAccess) {
-	LexAccessor styler(pAccess);
-
-	// keywords that forces /PATTERN/ at all times; should track vim's behaviour
-	WordList reWords;
-	reWords.Set("elsif if split while");
-
-	// charset classes
-	CharacterSet setSingleCharOp(CharacterSet::setNone, "rwxoRWXOezsfdlpSbctugkTBMAC");
-	// lexing of "%*</" operators is non-trivial; these are missing in the set below
-	CharacterSet setPerlOperator(CharacterSet::setNone, "^&\\()-+=|{}[]:;>,?!.~");
-	CharacterSet setQDelim(CharacterSet::setNone, "qrwx");
-	CharacterSet setModifiers(CharacterSet::setAlpha);
-	CharacterSet setPreferRE(CharacterSet::setNone, "*/<%");
-	// setArray and setHash also accepts chars for special vars like $_,
-	// which are then truncated when the next char does not match setVar
-	CharacterSet setVar(CharacterSet::setAlphaNum, "#$_'", 0x80, true);
-	CharacterSet setArray(CharacterSet::setAlpha, "#$_+-", 0x80, true);
-	CharacterSet setHash(CharacterSet::setAlpha, "#$_!^+-", 0x80, true);
-	CharacterSet &setPOD = setModifiers;
-	CharacterSet setNonHereDoc(CharacterSet::setDigits, "=$@");
-	CharacterSet setHereDocDelim(CharacterSet::setAlphaNum, "_");
-	CharacterSet setSubPrototype(CharacterSet::setNone, "\\[$@%&*+];");
-	// for format identifiers
-	CharacterSet setFormatStart(CharacterSet::setAlpha, "_=");
-	CharacterSet &setFormat = setHereDocDelim;
-
-	// Lexer for perl often has to backtrack to start of current style to determine
-	// which characters are being used as quotes, how deeply nested is the
-	// start position and what the termination string is for HERE documents.
-
-	class HereDocCls {	// Class to manage HERE doc sequence
-	public:
-		int State;
-		// 0: '<<' encountered
-		// 1: collect the delimiter
-		// 2: here doc text (lines after the delimiter)
-		int Quote;		// the char after '<<'
-		bool Quoted;		// true if Quote in ('\'','"','`')
-		int DelimiterLength;	// strlen(Delimiter)
-		char *Delimiter;	// the Delimiter, 256: sizeof PL_tokenbuf
-		HereDocCls() {
-			State = 0;
-			Quote = 0;
-			Quoted = false;
-			DelimiterLength = 0;
-			Delimiter = new char[HERE_DELIM_MAX];
-			Delimiter[0] = '\0';
-		}
-		void Append(int ch) {
-			Delimiter[DelimiterLength++] = static_cast<char>(ch);
-			Delimiter[DelimiterLength] = '\0';
-		}
-		~HereDocCls() {
-			delete []Delimiter;
-		}
-	};
-	HereDocCls HereDoc;		// TODO: FIFO for stacked here-docs
-
-	class QuoteCls {	// Class to manage quote pairs
-	public:
-		int Rep;
-		int Count;
-		int Up, Down;
-		QuoteCls() {
-			New(1);
-		}
-		void New(int r = 1) {
-			Rep   = r;
-			Count = 0;
-			Up    = '\0';
-			Down  = '\0';
-		}
-		void Open(int u) {
-			Count++;
-			Up    = u;
-			Down  = opposite(Up);
-		}
-	};
-	QuoteCls Quote;
-
-	// additional state for number lexing
-	int numState = PERLNUM_DECIMAL;
-	int dotCount = 0;
-
-	unsigned int endPos = startPos + length;
-
-	// Backtrack to beginning of style if required...
-	// If in a long distance lexical state, backtrack to find quote characters.
-	// Includes strings (may be multi-line), numbers (additional state), format
-	// bodies, as well as POD sections.
-	if (initStyle == SCE_PL_HERE_Q
-	    || initStyle == SCE_PL_HERE_QQ
-	    || initStyle == SCE_PL_HERE_QX
-	    || initStyle == SCE_PL_FORMAT
-	    || initStyle == SCE_PL_HERE_QQ_VAR
-	    || initStyle == SCE_PL_HERE_QX_VAR
-	   ) {
-		// backtrack through multiple styles to reach the delimiter start
-		int delim = (initStyle == SCE_PL_FORMAT) ? SCE_PL_FORMAT_IDENT:SCE_PL_HERE_DELIM;
-		while ((startPos > 1) && (styler.StyleAt(startPos) != delim)) {
-			startPos--;
-		}
-		startPos = styler.LineStart(styler.GetLine(startPos));
-		initStyle = styler.StyleAt(startPos - 1);
-	}
-	if (initStyle == SCE_PL_STRING
-	    || initStyle == SCE_PL_STRING_QQ
-	    || initStyle == SCE_PL_BACKTICKS
-	    || initStyle == SCE_PL_STRING_QX
-	    || initStyle == SCE_PL_REGEX
-	    || initStyle == SCE_PL_STRING_QR
-	    || initStyle == SCE_PL_REGSUBST
-	    || initStyle == SCE_PL_STRING_VAR
-	    || initStyle == SCE_PL_STRING_QQ_VAR
-	    || initStyle == SCE_PL_BACKTICKS_VAR
-	    || initStyle == SCE_PL_STRING_QX_VAR
-	    || initStyle == SCE_PL_REGEX_VAR
-	    || initStyle == SCE_PL_STRING_QR_VAR
-	    || initStyle == SCE_PL_REGSUBST_VAR
-	   ) {
-		// for interpolation, must backtrack through a mix of two different styles
-		int otherStyle = (initStyle >= SCE_PL_STRING_VAR) ?
-			initStyle - INTERPOLATE_SHIFT : initStyle + INTERPOLATE_SHIFT;
-		while (startPos > 1) {
-			int st = styler.StyleAt(startPos - 1);
-			if ((st != initStyle) && (st != otherStyle))
-				break;
-			startPos--;
-		}
-		initStyle = SCE_PL_DEFAULT;
-	} else if (initStyle == SCE_PL_STRING_Q
-	        || initStyle == SCE_PL_STRING_QW
-	        || initStyle == SCE_PL_XLAT
-	        || initStyle == SCE_PL_CHARACTER
-	        || initStyle == SCE_PL_NUMBER
-	        || initStyle == SCE_PL_IDENTIFIER
-	        || initStyle == SCE_PL_ERROR
-	        || initStyle == SCE_PL_SUB_PROTOTYPE
-	   ) {
-		while ((startPos > 1) && (styler.StyleAt(startPos - 1) == initStyle)) {
-			startPos--;
-		}
-		initStyle = SCE_PL_DEFAULT;
-	} else if (initStyle == SCE_PL_POD
-	        || initStyle == SCE_PL_POD_VERB
-	          ) {
-		// POD backtracking finds preceding blank lines and goes back past them
-		int ln = styler.GetLine(startPos);
-		if (ln > 0) {
-			initStyle = styler.StyleAt(styler.LineStart(--ln));
-			if (initStyle == SCE_PL_POD || initStyle == SCE_PL_POD_VERB) {
-				while (ln > 0 && styler.GetLineState(ln) == SCE_PL_DEFAULT)
-					ln--;
-			}
-			startPos = styler.LineStart(++ln);
-			initStyle = styler.StyleAt(startPos - 1);
-		} else {
-			startPos = 0;
-			initStyle = SCE_PL_DEFAULT;
-		}
-	}
-
-	// backFlag, backPos are additional state to aid identifier corner cases.
-	// Look backwards past whitespace and comments in order to detect either
-	// operator or keyword. Later updated as we go along.
-	int backFlag = BACK_NONE;
-	unsigned int backPos = startPos;
-	if (backPos > 0) {
-		backPos--;
-		skipWhitespaceComment(styler, backPos);
-		if (styler.StyleAt(backPos) == SCE_PL_OPERATOR)
-			backFlag = BACK_OPERATOR;
-		else if (styler.StyleAt(backPos) == SCE_PL_WORD)
-			backFlag = BACK_KEYWORD;
-		backPos++;
-	}
-
-	StyleContext sc(startPos, endPos - startPos, initStyle, styler, static_cast<char>(STYLE_MAX));
-
-	for (; sc.More(); sc.Forward()) {
-
-		// Determine if the current state should terminate.
-		switch (sc.state) {
-		case SCE_PL_OPERATOR:
-			sc.SetState(SCE_PL_DEFAULT);
-			backFlag = BACK_OPERATOR;
-			backPos = sc.currentPos;
-			break;
-		case SCE_PL_IDENTIFIER:		// identifier, bareword, inputsymbol
-			if ((!setWord.Contains(sc.ch) && sc.ch != '\'')
-			        || sc.Match('.', '.')
-			        || sc.chPrev == '>') {	// end of inputsymbol
-				sc.SetState(SCE_PL_DEFAULT);
-			}
-			break;
-		case SCE_PL_WORD:		// keyword, plus special cases
-			if (!setWord.Contains(sc.ch)) {
-				char s[100];
-				sc.GetCurrent(s, sizeof(s));
-				if ((strcmp(s, "__DATA__") == 0) || (strcmp(s, "__END__") == 0)) {
-					sc.ChangeState(SCE_PL_DATASECTION);
-				} else {
-					if ((strcmp(s, "format") == 0)) {
-						sc.SetState(SCE_PL_FORMAT_IDENT);
-						HereDoc.State = 0;
-					} else {
-						sc.SetState(SCE_PL_DEFAULT);
-					}
-					backFlag = BACK_KEYWORD;
-					backPos = sc.currentPos;
-				}
-			}
-			break;
-		case SCE_PL_SCALAR:
-		case SCE_PL_ARRAY:
-		case SCE_PL_HASH:
-		case SCE_PL_SYMBOLTABLE:
-			if (sc.Match(':', ':')) {	// skip ::
-				sc.Forward();
-			} else if (!setVar.Contains(sc.ch)) {
-				if (sc.LengthCurrent() == 1) {
-					// Special variable: $(, $_ etc.
-					sc.Forward();
-				}
-				sc.SetState(SCE_PL_DEFAULT);
-			}
-			break;
-		case SCE_PL_NUMBER:
-			// if no early break, number style is terminated at "(go through)"
-			if (sc.ch == '.') {
-				if (sc.chNext == '.') {
-					// double dot is always an operator (go through)
-				} else if (numState <= PERLNUM_FLOAT_EXP) {
-					// non-decimal number or float exponent, consume next dot
-					sc.SetState(SCE_PL_OPERATOR);
-					break;
-				} else {	// decimal or vectors allows dots
-					dotCount++;
-					if (numState == PERLNUM_DECIMAL) {
-						if (dotCount <= 1)	// number with one dot in it
-							break;
-						if (IsADigit(sc.chNext)) {	// really a vector
-							numState = PERLNUM_VECTOR;
-							break;
-						}
-						// number then dot (go through)
-					} else if (IsADigit(sc.chNext))	// vectors
-						break;
-					// vector then dot (go through)
-				}
-			} else if (sc.ch == '_') {
-				// permissive underscoring for number and vector literals
-				break;
-			} else if (numState == PERLNUM_DECIMAL) {
-				if (sc.ch == 'E' || sc.ch == 'e') {	// exponent, sign
-					numState = PERLNUM_FLOAT_EXP;
-					if (sc.chNext == '+' || sc.chNext == '-') {
-						sc.Forward();
-					}
-					break;
-				} else if (IsADigit(sc.ch))
-					break;
-				// number then word (go through)
-			} else if (numState == PERLNUM_HEX) {
-				if (IsADigit(sc.ch, 16))
-					break;
-			} else if (numState == PERLNUM_VECTOR || numState == PERLNUM_V_VECTOR) {
-				if (IsADigit(sc.ch))	// vector
-					break;
-				if (setWord.Contains(sc.ch) && dotCount == 0) {	// change to word
-					sc.ChangeState(SCE_PL_IDENTIFIER);
-					break;
-				}
-				// vector then word (go through)
-			} else if (IsADigit(sc.ch)) {
-				if (numState == PERLNUM_FLOAT_EXP) {
-					break;
-				} else if (numState == PERLNUM_OCTAL) {
-					if (sc.ch <= '7') break;
-				} else if (numState == PERLNUM_BINARY) {
-					if (sc.ch <= '1') break;
-				}
-				// mark invalid octal, binary numbers (go through)
-				numState = PERLNUM_BAD;
-				break;
-			}
-			// complete current number or vector
-			sc.ChangeState(actualNumStyle(numState));
-			sc.SetState(SCE_PL_DEFAULT);
-			break;
-		case SCE_PL_COMMENTLINE:
-			if (sc.atLineEnd) {
-				sc.SetState(SCE_PL_DEFAULT);
-			}
-			break;
-		case SCE_PL_HERE_DELIM:
-			if (HereDoc.State == 0) { // '<<' encountered
-				int delim_ch = sc.chNext;
-				int ws_skip = 0;
-				HereDoc.State = 1;	// pre-init HERE doc class
-				HereDoc.Quote = sc.chNext;
-				HereDoc.Quoted = false;
-				HereDoc.DelimiterLength = 0;
-				HereDoc.Delimiter[HereDoc.DelimiterLength] = '\0';
-				if (IsASpaceOrTab(delim_ch)) {
-					// skip whitespace; legal only for quoted delimiters
-					unsigned int i = sc.currentPos + 1;
-					while ((i < endPos) && IsASpaceOrTab(delim_ch)) {
-						i++;
-						delim_ch = static_cast<unsigned char>(styler.SafeGetCharAt(i));
-					}
-					ws_skip = i - sc.currentPos - 1;
-				}
-				if (delim_ch == '\'' || delim_ch == '"' || delim_ch == '`') {
-					// a quoted here-doc delimiter; skip any whitespace
-					sc.Forward(ws_skip + 1);
-					HereDoc.Quote = delim_ch;
-					HereDoc.Quoted = true;
-				} else if ((ws_skip == 0 && setNonHereDoc.Contains(sc.chNext))
-				        || ws_skip > 0) {
-					// left shift << or <<= operator cases
-					// restore position if operator
-					sc.ChangeState(SCE_PL_OPERATOR);
-					sc.ForwardSetState(SCE_PL_DEFAULT);
-					backFlag = BACK_OPERATOR;
-					backPos = sc.currentPos;
-					HereDoc.State = 0;
-				} else {
-					// specially handle initial '\' for identifier
-					if (ws_skip == 0 && HereDoc.Quote == '\\')
-						sc.Forward();
-					// an unquoted here-doc delimiter, no special handling
-					// (cannot be prefixed by spaces/tabs), or
-					// symbols terminates; deprecated zero-length delimiter
-				}
-			} else if (HereDoc.State == 1) { // collect the delimiter
-				backFlag = BACK_NONE;
-				if (HereDoc.Quoted) { // a quoted here-doc delimiter
-					if (sc.ch == HereDoc.Quote) { // closing quote => end of delimiter
-						sc.ForwardSetState(SCE_PL_DEFAULT);
-					} else if (!sc.atLineEnd) {
-						if (sc.Match('\\', static_cast<char>(HereDoc.Quote))) { // escaped quote
-							sc.Forward();
-						}
-						if (sc.ch != '\r') {	// skip CR if CRLF
-							int i = 0;			// else append char, possibly an extended char
-							while (i < sc.width) {
-								HereDoc.Append(static_cast<unsigned char>(styler.SafeGetCharAt(sc.currentPos + i)));
-								i++;
-							}
-						}
-					}
-				} else { // an unquoted here-doc delimiter, no extended charsets
-					if (setHereDocDelim.Contains(sc.ch)) {
-						HereDoc.Append(sc.ch);
-					} else {
-						sc.SetState(SCE_PL_DEFAULT);
-					}
-				}
-				if (HereDoc.DelimiterLength >= HERE_DELIM_MAX - 1) {
-					sc.SetState(SCE_PL_ERROR);
-					HereDoc.State = 0;
-				}
-			}
-			break;
-		case SCE_PL_HERE_Q:
-		case SCE_PL_HERE_QQ:
-		case SCE_PL_HERE_QX:
-			// also implies HereDoc.State == 2
-			sc.Complete();
-			if (HereDoc.DelimiterLength == 0 || sc.Match(HereDoc.Delimiter)) {
-				int c = sc.GetRelative(HereDoc.DelimiterLength);
-				if (c == '\r' || c == '\n') {	// peek first, do not consume match
-					sc.ForwardBytes(HereDoc.DelimiterLength);
-					sc.SetState(SCE_PL_DEFAULT);
-					backFlag = BACK_NONE;
-					HereDoc.State = 0;
-					if (!sc.atLineEnd)
-						sc.Forward();
-					break;
-				}
-			}
-			if (sc.state == SCE_PL_HERE_Q) {	// \EOF and 'EOF' non-interpolated
-				while (!sc.atLineEnd)
-					sc.Forward();
-				break;
-			}
-			while (!sc.atLineEnd) {		// "EOF" and `EOF` interpolated
-				int c, sLen = 0, endType = 0;
-				while ((c = sc.GetRelativeCharacter(sLen)) != 0) {
-					// scan to break string into segments
-					if (c == '\\') {
-						endType = 1; break;
-					} else if (c == '\r' || c == '\n') {
-						endType = 2; break;
-					}
-					sLen++;
-				}
-				if (sLen > 0)	// process non-empty segments
-					InterpolateSegment(sc, sLen);
-				if (endType == 1) {
-					sc.Forward();
-					// \ at end-of-line does not appear to have any effect, skip
-					if (sc.ch != '\r' && sc.ch != '\n')
-						sc.Forward();
-				} else if (endType == 2) {
-					if (!sc.atLineEnd)
-						sc.Forward();
-				}
-			}
-			break;
-		case SCE_PL_POD:
-		case SCE_PL_POD_VERB: {
-				unsigned int fw = sc.currentPos;
-				int ln = styler.GetLine(fw);
-				if (sc.atLineStart && sc.Match("=cut")) {	// end of POD
-					sc.SetState(SCE_PL_POD);
-					sc.Forward(4);
-					sc.SetState(SCE_PL_DEFAULT);
-					styler.SetLineState(ln, SCE_PL_POD);
-					break;
-				}
-				int pod = podLineScan(styler, fw, endPos);	// classify POD line
-				styler.SetLineState(ln, pod);
-				if (pod == SCE_PL_DEFAULT) {
-					if (sc.state == SCE_PL_POD_VERB) {
-						unsigned int fw2 = fw;
-						while (fw2 < (endPos - 1) && pod == SCE_PL_DEFAULT) {
-							fw = fw2++;	// penultimate line (last blank line)
-							pod = podLineScan(styler, fw2, endPos);
-							styler.SetLineState(styler.GetLine(fw2), pod);
-						}
-						if (pod == SCE_PL_POD) {	// truncate verbatim POD early
-							sc.SetState(SCE_PL_POD);
-						} else
-							fw = fw2;
-					}
-				} else {
-					if (pod == SCE_PL_POD_VERB	// still part of current paragraph
-					        && (styler.GetLineState(ln - 1) == SCE_PL_POD)) {
-						pod = SCE_PL_POD;
-						styler.SetLineState(ln, pod);
-					} else if (pod == SCE_PL_POD
-					        && (styler.GetLineState(ln - 1) == SCE_PL_POD_VERB)) {
-						pod = SCE_PL_POD_VERB;
-						styler.SetLineState(ln, pod);
-					}
-					sc.SetState(pod);
-				}
-				sc.ForwardBytes(fw - sc.currentPos);	// commit style
-			}
-			break;
-		case SCE_PL_REGEX:
-		case SCE_PL_STRING_QR:
-			if (Quote.Rep <= 0) {
-				if (!setModifiers.Contains(sc.ch))
-					sc.SetState(SCE_PL_DEFAULT);
-			} else if (!Quote.Up && !IsASpace(sc.ch)) {
-				Quote.Open(sc.ch);
-			} else {
-				int c, sLen = 0, endType = 0;
-				while ((c = sc.GetRelativeCharacter(sLen)) != 0) {
-					// scan to break string into segments
-					if (IsASpace(c)) {
-						break;
-					} else if (c == '\\' && Quote.Up != '\\') {
-						endType = 1; break;
-					} else if (c == Quote.Down) {
-						Quote.Count--;
-						if (Quote.Count == 0) {
-							Quote.Rep--;
-							break;
-						}
-					} else if (c == Quote.Up)
-						Quote.Count++;
-					sLen++;
-				}
-				if (sLen > 0) {	// process non-empty segments
-					if (Quote.Up != '\'') {
-						InterpolateSegment(sc, sLen, true);
-					} else		// non-interpolated path
-						sc.Forward(sLen);
-				}
-				if (endType == 1)
-					sc.Forward();
-			}
-			break;
-		case SCE_PL_REGSUBST:
-		case SCE_PL_XLAT:
-			if (Quote.Rep <= 0) {
-				if (!setModifiers.Contains(sc.ch))
-					sc.SetState(SCE_PL_DEFAULT);
-			} else if (!Quote.Up && !IsASpace(sc.ch)) {
-				Quote.Open(sc.ch);
-			} else {
-				int c, sLen = 0, endType = 0;
-				bool isPattern = (Quote.Rep == 2);
-				while ((c = sc.GetRelativeCharacter(sLen)) != 0) {
-					// scan to break string into segments
-					if (c == '\\' && Quote.Up != '\\') {
-						endType = 2; break;
-					} else if (Quote.Count == 0 && Quote.Rep == 1) {
-						// We matched something like s(...) or tr{...}, Perl 5.10
-						// appears to allow almost any character for use as the
-						// next delimiters. Whitespace and comments are accepted in
-						// between, but we'll limit to whitespace here.
-						// For '#', if no whitespace in between, it's a delimiter.
-						if (IsASpace(c)) {
-							// Keep going
-						} else if (c == '#' && IsASpaceOrTab(sc.GetRelativeCharacter(sLen - 1))) {
-							endType = 3;
-						} else
-							Quote.Open(c);
-						break;
-					} else if (c == Quote.Down) {
-						Quote.Count--;
-						if (Quote.Count == 0) {
-							Quote.Rep--;
-							endType = 1;
-						}
-						if (Quote.Up == Quote.Down)
-							Quote.Count++;
-						if (endType == 1)
-							break;
-					} else if (c == Quote.Up) {
-						Quote.Count++;
-					} else if (IsASpace(c))
-						break;
-					sLen++;
-				}
-				if (sLen > 0) {	// process non-empty segments
-					if (sc.state == SCE_PL_REGSUBST && Quote.Up != '\'') {
-						InterpolateSegment(sc, sLen, isPattern);
-					} else		// non-interpolated path
-						sc.Forward(sLen);
-				}
-				if (endType == 2) {
-					sc.Forward();
-				} else if (endType == 3)
-					sc.SetState(SCE_PL_DEFAULT);
-			}
-			break;
-		case SCE_PL_STRING_Q:
-		case SCE_PL_STRING_QQ:
-		case SCE_PL_STRING_QX:
-		case SCE_PL_STRING_QW:
-		case SCE_PL_STRING:
-		case SCE_PL_CHARACTER:
-		case SCE_PL_BACKTICKS:
-			if (!Quote.Down && !IsASpace(sc.ch)) {
-				Quote.Open(sc.ch);
-			} else {
-				int c, sLen = 0, endType = 0;
-				while ((c = sc.GetRelativeCharacter(sLen)) != 0) {
-					// scan to break string into segments
-					if (IsASpace(c)) {
-						break;
-					} else if (c == '\\' && Quote.Up != '\\') {
-						endType = 2; break;
-					} else if (c == Quote.Down) {
-						Quote.Count--;
-						if (Quote.Count == 0) {
-							endType = 3; break;
-						}
-					} else if (c == Quote.Up)
-						Quote.Count++;
-					sLen++;
-				}
-				if (sLen > 0) {	// process non-empty segments
-					switch (sc.state) {
-					case SCE_PL_STRING:
-					case SCE_PL_STRING_QQ:
-					case SCE_PL_BACKTICKS:
-						InterpolateSegment(sc, sLen);
-						break;
-					case SCE_PL_STRING_QX:
-						if (Quote.Up != '\'') {
-							InterpolateSegment(sc, sLen);
-							break;
-						}
-						// (continued for ' delim)
-					default:	// non-interpolated path
-						sc.Forward(sLen);
-					}
-				}
-				if (endType == 2) {
-					sc.Forward();
-				} else if (endType == 3)
-					sc.ForwardSetState(SCE_PL_DEFAULT);
-			}
-			break;
-		case SCE_PL_SUB_PROTOTYPE: {
-				int i = 0;
-				// forward scan; must all be valid proto characters
-				while (setSubPrototype.Contains(sc.GetRelative(i)))
-					i++;
-				if (sc.GetRelative(i) == ')') {	// valid sub prototype
-					sc.ForwardBytes(i);
-					sc.ForwardSetState(SCE_PL_DEFAULT);
-				} else {
-					// abandon prototype, restart from '('
-					sc.ChangeState(SCE_PL_OPERATOR);
-					sc.SetState(SCE_PL_DEFAULT);
-				}
-			}
-			break;
-		case SCE_PL_FORMAT: {
-				sc.Complete();
-				if (sc.Match('.')) {
-					sc.Forward();
-					if (sc.atLineEnd || ((sc.ch == '\r' && sc.chNext == '\n')))
-						sc.SetState(SCE_PL_DEFAULT);
-				}
-				while (!sc.atLineEnd)
-					sc.Forward();
-			}
-			break;
-		case SCE_PL_ERROR:
-			break;
-		}
-		// Needed for specific continuation styles (one follows the other)
-		switch (sc.state) {
-			// continued from SCE_PL_WORD
-		case SCE_PL_FORMAT_IDENT:
-			// occupies HereDoc state 3 to avoid clashing with HERE docs
-			if (IsASpaceOrTab(sc.ch)) {		// skip whitespace
-				sc.ChangeState(SCE_PL_DEFAULT);
-				while (IsASpaceOrTab(sc.ch) && !sc.atLineEnd)
-					sc.Forward();
-				sc.SetState(SCE_PL_FORMAT_IDENT);
-			}
-			if (setFormatStart.Contains(sc.ch)) {	// identifier or '='
-				if (sc.ch != '=') {
-					do {
-						sc.Forward();
-					} while (setFormat.Contains(sc.ch));
-				}
-				while (IsASpaceOrTab(sc.ch) && !sc.atLineEnd)
-					sc.Forward();
-				if (sc.ch == '=') {
-					sc.ForwardSetState(SCE_PL_DEFAULT);
-					HereDoc.State = 3;
-				} else {
-					// invalid identifier; inexact fallback, but hey
-					sc.ChangeState(SCE_PL_IDENTIFIER);
-					sc.SetState(SCE_PL_DEFAULT);
-				}
-			} else {
-				sc.ChangeState(SCE_PL_DEFAULT);	// invalid identifier
-			}
-			backFlag = BACK_NONE;
-			break;
-		}
-
-		// Must check end of HereDoc states here before default state is handled
-		if (HereDoc.State == 1 && sc.atLineEnd) {
-			// Begin of here-doc (the line after the here-doc delimiter):
-			// Lexically, the here-doc starts from the next line after the >>, but the
-			// first line of here-doc seem to follow the style of the last EOL sequence
-			int st_new = SCE_PL_HERE_QQ;
-			HereDoc.State = 2;
-			if (HereDoc.Quoted) {
-				if (sc.state == SCE_PL_HERE_DELIM) {
-					// Missing quote at end of string! We are stricter than perl.
-					// Colour here-doc anyway while marking this bit as an error.
-					sc.ChangeState(SCE_PL_ERROR);
-				}
-				switch (HereDoc.Quote) {
-				case '\'':
-					st_new = SCE_PL_HERE_Q;
-					break;
-				case '"' :
-					st_new = SCE_PL_HERE_QQ;
-					break;
-				case '`' :
-					st_new = SCE_PL_HERE_QX;
-					break;
-				}
-			} else {
-				if (HereDoc.Quote == '\\')
-					st_new = SCE_PL_HERE_Q;
-			}
-			sc.SetState(st_new);
-		}
-		if (HereDoc.State == 3 && sc.atLineEnd) {
-			// Start of format body.
-			HereDoc.State = 0;
-			sc.SetState(SCE_PL_FORMAT);
-		}
-
-		// Determine if a new state should be entered.
-		if (sc.state == SCE_PL_DEFAULT) {
-			if (IsADigit(sc.ch) ||
-			        (IsADigit(sc.chNext) && (sc.ch == '.' || sc.ch == 'v'))) {
-				sc.SetState(SCE_PL_NUMBER);
-				backFlag = BACK_NONE;
-				numState = PERLNUM_DECIMAL;
-				dotCount = 0;
-				if (sc.ch == '0') {		// hex,bin,octal
-					if (sc.chNext == 'x' || sc.chNext == 'X') {
-						numState = PERLNUM_HEX;
-					} else if (sc.chNext == 'b' || sc.chNext == 'B') {
-						numState = PERLNUM_BINARY;
-					} else if (IsADigit(sc.chNext)) {
-						numState = PERLNUM_OCTAL;
-					}
-					if (numState != PERLNUM_DECIMAL) {
-						sc.Forward();
-					}
-				} else if (sc.ch == 'v') {		// vector
-					numState = PERLNUM_V_VECTOR;
-				}
-			} else if (setWord.Contains(sc.ch)) {
-				// if immediately prefixed by '::', always a bareword
-				sc.SetState(SCE_PL_WORD);
-				if (sc.chPrev == ':' && sc.GetRelative(-2) == ':') {
-					sc.ChangeState(SCE_PL_IDENTIFIER);
-				}
-				unsigned int bk = sc.currentPos;
-				unsigned int fw = sc.currentPos + 1;
-				// first check for possible quote-like delimiter
-				if (sc.ch == 's' && !setWord.Contains(sc.chNext)) {
-					sc.ChangeState(SCE_PL_REGSUBST);
-					Quote.New(2);
-				} else if (sc.ch == 'm' && !setWord.Contains(sc.chNext)) {
-					sc.ChangeState(SCE_PL_REGEX);
-					Quote.New();
-				} else if (sc.ch == 'q' && !setWord.Contains(sc.chNext)) {
-					sc.ChangeState(SCE_PL_STRING_Q);
-					Quote.New();
-				} else if (sc.ch == 'y' && !setWord.Contains(sc.chNext)) {
-					sc.ChangeState(SCE_PL_XLAT);
-					Quote.New(2);
-				} else if (sc.Match('t', 'r') && !setWord.Contains(sc.GetRelative(2))) {
-					sc.ChangeState(SCE_PL_XLAT);
-					Quote.New(2);
-					sc.Forward();
-					fw++;
-				} else if (sc.ch == 'q' && setQDelim.Contains(sc.chNext)
-				        && !setWord.Contains(sc.GetRelative(2))) {
-					if (sc.chNext == 'q') sc.ChangeState(SCE_PL_STRING_QQ);
-					else if (sc.chNext == 'x') sc.ChangeState(SCE_PL_STRING_QX);
-					else if (sc.chNext == 'r') sc.ChangeState(SCE_PL_STRING_QR);
-					else sc.ChangeState(SCE_PL_STRING_QW);	// sc.chNext == 'w'
-					Quote.New();
-					sc.Forward();
-					fw++;
-				} else if (sc.ch == 'x' && (sc.chNext == '=' ||	// repetition
-				        !setWord.Contains(sc.chNext) ||
-				        (IsADigit(sc.chPrev) && IsADigit(sc.chNext)))) {
-					sc.ChangeState(SCE_PL_OPERATOR);
-				}
-				// if potentially a keyword, scan forward and grab word, then check
-				// if it's really one; if yes, disambiguation test is performed
-				// otherwise it is always a bareword and we skip a lot of scanning
-				if (sc.state == SCE_PL_WORD) {
-					while (setWord.Contains(static_cast<unsigned char>(styler.SafeGetCharAt(fw))))
-						fw++;
-					if (!isPerlKeyword(styler.GetStartSegment(), fw, keywords, styler)) {
-						sc.ChangeState(SCE_PL_IDENTIFIER);
-					}
-				}
-				// if already SCE_PL_IDENTIFIER, then no ambiguity, skip this
-				// for quote-like delimiters/keywords, attempt to disambiguate
-				// to select for bareword, change state -> SCE_PL_IDENTIFIER
-				if (sc.state != SCE_PL_IDENTIFIER && bk > 0) {
-					if (disambiguateBareword(styler, bk, fw, backFlag, backPos, endPos))
-						sc.ChangeState(SCE_PL_IDENTIFIER);
-				}
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '#') {
-				sc.SetState(SCE_PL_COMMENTLINE);
-			} else if (sc.ch == '\"') {
-				sc.SetState(SCE_PL_STRING);
-				Quote.New();
-				Quote.Open(sc.ch);
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '\'') {
-				if (sc.chPrev == '&' && setWordStart.Contains(sc.chNext)) {
-					// Archaic call
-					sc.SetState(SCE_PL_IDENTIFIER);
-				} else {
-					sc.SetState(SCE_PL_CHARACTER);
-					Quote.New();
-					Quote.Open(sc.ch);
-				}
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '`') {
-				sc.SetState(SCE_PL_BACKTICKS);
-				Quote.New();
-				Quote.Open(sc.ch);
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '$') {
-				sc.SetState(SCE_PL_SCALAR);
-				if (sc.chNext == '{') {
-					sc.ForwardSetState(SCE_PL_OPERATOR);
-				} else if (IsASpace(sc.chNext)) {
-					sc.ForwardSetState(SCE_PL_DEFAULT);
-				} else {
-					sc.Forward();
-					if (sc.Match('`', '`') || sc.Match(':', ':')) {
-						sc.Forward();
-					}
-				}
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '@') {
-				sc.SetState(SCE_PL_ARRAY);
-				if (setArray.Contains(sc.chNext)) {
-					// no special treatment
-				} else if (sc.chNext == ':' && sc.GetRelative(2) == ':') {
-					sc.ForwardBytes(2);
-				} else if (sc.chNext == '{' || sc.chNext == '[') {
-					sc.ForwardSetState(SCE_PL_OPERATOR);
-				} else {
-					sc.ChangeState(SCE_PL_OPERATOR);
-				}
-				backFlag = BACK_NONE;
-			} else if (setPreferRE.Contains(sc.ch)) {
-				// Explicit backward peeking to set a consistent preferRE for
-				// any slash found, so no longer need to track preferRE state.
-				// Find first previous significant lexed element and interpret.
-				// A few symbols shares this code for disambiguation.
-				bool preferRE = false;
-				bool isHereDoc = sc.Match('<', '<');
-				bool hereDocSpace = false;		// for: SCALAR [whitespace] '<<'
-				unsigned int bk = (sc.currentPos > 0) ? sc.currentPos - 1: 0;
-				sc.Complete();
-				styler.Flush();
-				if (styler.StyleAt(bk) == SCE_PL_DEFAULT)
-					hereDocSpace = true;
-				skipWhitespaceComment(styler, bk);
-				if (bk == 0) {
-					// avoid backward scanning breakage
-					preferRE = true;
-				} else {
-					int bkstyle = styler.StyleAt(bk);
-					int bkch = static_cast<unsigned char>(styler.SafeGetCharAt(bk));
-					switch (bkstyle) {
-					case SCE_PL_OPERATOR:
-						preferRE = true;
-						if (bkch == ')' || bkch == ']') {
-							preferRE = false;
-						} else if (bkch == '}') {
-							// backtrack by counting balanced brace pairs
-							// needed to test for variables like ${}, @{} etc.
-							bkstyle = styleBeforeBracePair(styler, bk);
-							if (bkstyle == SCE_PL_SCALAR
-							        || bkstyle == SCE_PL_ARRAY
-							        || bkstyle == SCE_PL_HASH
-							        || bkstyle == SCE_PL_SYMBOLTABLE
-							        || bkstyle == SCE_PL_OPERATOR) {
-								preferRE = false;
-							}
-						} else if (bkch == '+' || bkch == '-') {
-							if (bkch == static_cast<unsigned char>(styler.SafeGetCharAt(bk - 1))
-							        && bkch != static_cast<unsigned char>(styler.SafeGetCharAt(bk - 2)))
-								// exceptions for operators: unary suffixes ++, --
-								preferRE = false;
-						}
-						break;
-					case SCE_PL_IDENTIFIER:
-						preferRE = true;
-						bkstyle = styleCheckIdentifier(styler, bk);
-						if ((bkstyle == 1) || (bkstyle == 2)) {
-							// inputsymbol or var with "->" or "::" before identifier
-							preferRE = false;
-						} else if (bkstyle == 3) {
-							// bare identifier, test cases follows:
-							if (sc.ch == '/') {
-								// if '/', /PATTERN/ unless digit/space immediately after '/'
-								// if '//', always expect defined-or operator to follow identifier
-								if (IsASpace(sc.chNext) || IsADigit(sc.chNext) || sc.chNext == '/')
-									preferRE = false;
-							} else if (sc.ch == '*' || sc.ch == '%') {
-								if (IsASpace(sc.chNext) || IsADigit(sc.chNext) || sc.Match('*', '*'))
-									preferRE = false;
-							} else if (sc.ch == '<') {
-								if (IsASpace(sc.chNext) || sc.chNext == '=')
-									preferRE = false;
-							}
-						}
-						break;
-					case SCE_PL_SCALAR:		// for $var<< case:
-						if (isHereDoc && hereDocSpace)	// if SCALAR whitespace '<<', *always* a HERE doc
-							preferRE = true;
-						break;
-					case SCE_PL_WORD:
-						preferRE = true;
-						// for HERE docs, always true
-						if (sc.ch == '/') {
-							// adopt heuristics similar to vim-style rules:
-							// keywords always forced as /PATTERN/: split, if, elsif, while
-							// everything else /PATTERN/ unless digit/space immediately after '/'
-							// for '//', defined-or favoured unless special keywords
-							unsigned int bkend = bk + 1;
-							while (bk > 0 && styler.StyleAt(bk - 1) == SCE_PL_WORD) {
-								bk--;
-							}
-							if (isPerlKeyword(bk, bkend, reWords, styler))
-								break;
-							if (IsASpace(sc.chNext) || IsADigit(sc.chNext) || sc.chNext == '/')
-								preferRE = false;
-						} else if (sc.ch == '*' || sc.ch == '%') {
-							if (IsASpace(sc.chNext) || IsADigit(sc.chNext) || sc.Match('*', '*'))
-								preferRE = false;
-						} else if (sc.ch == '<') {
-							if (IsASpace(sc.chNext) || sc.chNext == '=')
-								preferRE = false;
-						}
-						break;
-
-						// other styles uses the default, preferRE=false
-					case SCE_PL_POD:
-					case SCE_PL_HERE_Q:
-					case SCE_PL_HERE_QQ:
-					case SCE_PL_HERE_QX:
-						preferRE = true;
-						break;
-					}
-				}
-				backFlag = BACK_NONE;
-				if (isHereDoc) {	// handle '<<', HERE doc
-					if (preferRE) {
-						sc.SetState(SCE_PL_HERE_DELIM);
-						HereDoc.State = 0;
-					} else {		// << operator
-						sc.SetState(SCE_PL_OPERATOR);
-						sc.Forward();
-					}
-				} else if (sc.ch == '*') {	// handle '*', typeglob
-					if (preferRE) {
-						sc.SetState(SCE_PL_SYMBOLTABLE);
-						if (sc.chNext == ':' && sc.GetRelative(2) == ':') {
-							sc.ForwardBytes(2);
-						} else if (sc.chNext == '{') {
-							sc.ForwardSetState(SCE_PL_OPERATOR);
-						} else {
-							sc.Forward();
-						}
-					} else {
-						sc.SetState(SCE_PL_OPERATOR);
-						if (sc.chNext == '*') 	// exponentiation
-							sc.Forward();
-					}
-				} else if (sc.ch == '%') {	// handle '%', hash
-					if (preferRE) {
-						sc.SetState(SCE_PL_HASH);
-						if (setHash.Contains(sc.chNext)) {
-							sc.Forward();
-						} else if (sc.chNext == ':' && sc.GetRelative(2) == ':') {
-							sc.ForwardBytes(2);
-						} else if (sc.chNext == '{') {
-							sc.ForwardSetState(SCE_PL_OPERATOR);
-						} else {
-							sc.ChangeState(SCE_PL_OPERATOR);
-						}
-					} else {
-						sc.SetState(SCE_PL_OPERATOR);
-					}
-				} else if (sc.ch == '<') {	// handle '<', inputsymbol
-					if (preferRE) {
-						// forward scan
-						int i = InputSymbolScan(sc);
-						if (i > 0) {
-							sc.SetState(SCE_PL_IDENTIFIER);
-							sc.Forward(i);
-						} else {
-							sc.SetState(SCE_PL_OPERATOR);
-						}
-					} else {
-						sc.SetState(SCE_PL_OPERATOR);
-					}
-				} else {			// handle '/', regexp
-					if (preferRE) {
-						sc.SetState(SCE_PL_REGEX);
-						Quote.New();
-						Quote.Open(sc.ch);
-					} else {		// / and // operators
-						sc.SetState(SCE_PL_OPERATOR);
-						if (sc.chNext == '/') {
-							sc.Forward();
-						}
-					}
-				}
-			} else if (sc.ch == '='		// POD
-			        && setPOD.Contains(sc.chNext)
-			        && sc.atLineStart) {
-				sc.SetState(SCE_PL_POD);
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '-' && setWordStart.Contains(sc.chNext)) {	// extended '-' cases
-				unsigned int bk = sc.currentPos;
-				unsigned int fw = 2;
-				if (setSingleCharOp.Contains(sc.chNext) &&	// file test operators
-				        !setWord.Contains(sc.GetRelative(2))) {
-					sc.SetState(SCE_PL_WORD);
-				} else {
-					// nominally a minus and bareword; find extent of bareword
-					while (setWord.Contains(sc.GetRelative(fw)))
-						fw++;
-					sc.SetState(SCE_PL_OPERATOR);
-				}
-				// force to bareword for hash key => or {variable literal} cases
-				if (disambiguateBareword(styler, bk, bk + fw, backFlag, backPos, endPos) & 2) {
-					sc.ChangeState(SCE_PL_IDENTIFIER);
-				}
-				backFlag = BACK_NONE;
-			} else if (sc.ch == '(' && sc.currentPos > 0) {	// '(' or subroutine prototype
-				sc.Complete();
-				if (styleCheckSubPrototype(styler, sc.currentPos - 1)) {
-					sc.SetState(SCE_PL_SUB_PROTOTYPE);
-					backFlag = BACK_NONE;
-				} else {
-					sc.SetState(SCE_PL_OPERATOR);
-				}
-			} else if (setPerlOperator.Contains(sc.ch)) {	// operators
-				sc.SetState(SCE_PL_OPERATOR);
-				if (sc.Match('.', '.')) {	// .. and ...
-					sc.Forward();
-					if (sc.chNext == '.') sc.Forward();
-				}
-			} else if (sc.ch == 4 || sc.ch == 26) {		// ^D and ^Z ends valid perl source
-				sc.SetState(SCE_PL_DATASECTION);
-			} else {
-				// keep colouring defaults
-				sc.Complete();
-			}
-		}
-	}
-	sc.Complete();
-	if (sc.state == SCE_PL_HERE_Q
-	        || sc.state == SCE_PL_HERE_QQ
-	        || sc.state == SCE_PL_HERE_QX
-	        || sc.state == SCE_PL_FORMAT) {
-		styler.ChangeLexerState(sc.currentPos, styler.Length());
-	}
-	sc.Complete();
-}
-
-#define PERL_HEADFOLD_SHIFT		4
-#define PERL_HEADFOLD_MASK		0xF0
-
-void SCI_METHOD LexerPerl::Fold(unsigned int startPos, int length, int /* initStyle */, IDocument *pAccess) {
-
-	if (!options.fold)
-		return;
-
-	LexAccessor styler(pAccess);
-
-	unsigned int endPos = startPos + length;
-	int visibleChars = 0;
-	int lineCurrent = styler.GetLine(startPos);
-
-	// Backtrack to previous line in case need to fix its fold status
-	if (startPos > 0) {
-		if (lineCurrent > 0) {
-			lineCurrent--;
-			startPos = styler.LineStart(lineCurrent);
-		}
-	}
-
-	int levelPrev = SC_FOLDLEVELBASE;
-	if (lineCurrent > 0)
-		levelPrev = styler.LevelAt(lineCurrent - 1) >> 16;
-	int levelCurrent = levelPrev;
-	char chNext = styler[startPos];
-	char chPrev = styler.SafeGetCharAt(startPos - 1);
-	int styleNext = styler.StyleAt(startPos);
-	// Used at end of line to determine if the line was a package definition
-	bool isPackageLine = false;
-	int podHeading = 0;
-	for (unsigned int i = startPos; i < endPos; i++) {
-		char ch = chNext;
-		chNext = styler.SafeGetCharAt(i + 1);
-		int style = styleNext;
-		styleNext = styler.StyleAt(i + 1);
-		int stylePrevCh = (i) ? styler.StyleAt(i - 1):SCE_PL_DEFAULT;
-		bool atEOL = (ch == '\r' && chNext != '\n') || (ch == '\n');
-		bool atLineStart = ((chPrev == '\r') || (chPrev == '\n')) || i == 0;
-		// Comment folding
-		if (options.foldComment && atEOL && IsCommentLine(lineCurrent, styler)) {
-			if (!IsCommentLine(lineCurrent - 1, styler)
-			        && IsCommentLine(lineCurrent + 1, styler))
-				levelCurrent++;
-			else if (IsCommentLine(lineCurrent - 1, styler)
-			        && !IsCommentLine(lineCurrent + 1, styler))
-				levelCurrent--;
-		}
-		// {} [] block folding
-		if (style == SCE_PL_OPERATOR) {
-			if (ch == '{') {
-				if (options.foldAtElse && levelCurrent < levelPrev)
-					--levelPrev;
-				levelCurrent++;
-			} else if (ch == '}') {
-				levelCurrent--;
-			}
-			if (ch == '[') {
-				if (options.foldAtElse && levelCurrent < levelPrev)
-					--levelPrev;
-				levelCurrent++;
-			} else if (ch == ']') {
-				levelCurrent--;
-			}
-		}
-		// POD folding
-		if (options.foldPOD && atLineStart) {
-			if (style == SCE_PL_POD) {
-				if (stylePrevCh != SCE_PL_POD && stylePrevCh != SCE_PL_POD_VERB)
-					levelCurrent++;
-				else if (styler.Match(i, "=cut"))
-					levelCurrent = (levelCurrent & ~PERL_HEADFOLD_MASK) - 1;
-				else if (styler.Match(i, "=head"))
-					podHeading = PodHeadingLevel(i, styler);
-			} else if (style == SCE_PL_DATASECTION) {
-				if (ch == '=' && IsASCII(chNext) && isalpha(chNext) && levelCurrent == SC_FOLDLEVELBASE)
-					levelCurrent++;
-				else if (styler.Match(i, "=cut") && levelCurrent > SC_FOLDLEVELBASE)
-					levelCurrent = (levelCurrent & ~PERL_HEADFOLD_MASK) - 1;
-				else if (styler.Match(i, "=head"))
-					podHeading = PodHeadingLevel(i, styler);
-				// if package used or unclosed brace, level > SC_FOLDLEVELBASE!
-				// reset needed as level test is vs. SC_FOLDLEVELBASE
-				else if (stylePrevCh != SCE_PL_DATASECTION)
-					levelCurrent = SC_FOLDLEVELBASE;
-			}
-		}
-		// package folding
-		if (options.foldPackage && atLineStart) {
-			if (IsPackageLine(lineCurrent, styler)
-			        && !IsPackageLine(lineCurrent + 1, styler))
-				isPackageLine = true;
-		}
-
-		//heredoc folding
-		switch (style) {
-		case SCE_PL_HERE_QQ :
-		case SCE_PL_HERE_Q :
-		case SCE_PL_HERE_QX :
-			switch (stylePrevCh) {
-			case SCE_PL_HERE_QQ :
-			case SCE_PL_HERE_Q :
-			case SCE_PL_HERE_QX :
-				//do nothing;
-				break;
-			default :
-				levelCurrent++;
-				break;
-			}
-			break;
-		default:
-			switch (stylePrevCh) {
-			case SCE_PL_HERE_QQ :
-			case SCE_PL_HERE_Q :
-			case SCE_PL_HERE_QX :
-				levelCurrent--;
-				break;
-			default :
-				//do nothing;
-				break;
-			}
-			break;
-		}
-
-		//explicit folding
-		if (options.foldCommentExplicit && style == SCE_PL_COMMENTLINE && ch == '#') {
-			if (chNext == '{') {
-				levelCurrent++;
-			} else if (levelCurrent > SC_FOLDLEVELBASE  && chNext == '}') {
-				levelCurrent--;
-			}
-		}
-
-		if (atEOL) {
-			int lev = levelPrev;
-			// POD headings occupy bits 7-4, leaving some breathing room for
-			// non-standard practice -- POD sections stuck in blocks, etc.
-			if (podHeading > 0) {
-				levelCurrent = (lev & ~PERL_HEADFOLD_MASK) | (podHeading << PERL_HEADFOLD_SHIFT);
-				lev = levelCurrent - 1;
-				lev |= SC_FOLDLEVELHEADERFLAG;
-				podHeading = 0;
-			}
-			// Check if line was a package declaration
-			// because packages need "special" treatment
-			if (isPackageLine) {
-				lev = SC_FOLDLEVELBASE | SC_FOLDLEVELHEADERFLAG;
-				levelCurrent = SC_FOLDLEVELBASE + 1;
-				isPackageLine = false;
-			}
-			lev |= levelCurrent << 16;
-			if (visibleChars == 0 && options.foldCompact)
-				lev |= SC_FOLDLEVELWHITEFLAG;
-			if ((levelCurrent > levelPrev) && (visibleChars > 0))
-				lev |= SC_FOLDLEVELHEADERFLAG;
-			if (lev != styler.LevelAt(lineCurrent)) {
-				styler.SetLevel(lineCurrent, lev);
-			}
-			lineCurrent++;
-			levelPrev = levelCurrent;
-			visibleChars = 0;
-		}
-		if (!isspacechar(ch))
-			visibleChars++;
-		chPrev = ch;
-	}
-	// Fill in the real level of the next line, keeping the current flags as they will be filled in later
-	int flagsNext = styler.LevelAt(lineCurrent) & ~SC_FOLDLEVELNUMBERMASK;
-	styler.SetLevel(lineCurrent, levelPrev | flagsNext);
-}
-
-LexerModule lmPerl(SCLEX_PERL, LexerPerl::LexerFactoryPerl, "perl", perlWordListDesc);
+LexerModule lmPerl(SCLEX_PERL, ColourisePerlDoc, "perl", FoldPerlDoc, perlWordListDesc);

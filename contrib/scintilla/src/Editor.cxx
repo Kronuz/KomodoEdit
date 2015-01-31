@@ -147,6 +147,7 @@ Editor::Editor() {
 	horizontalScrollBarVisible = true;
 	scrollWidth = 2000;
 	verticalScrollBarVisible = true;
+	useCustomScrollBars = false;
 	endAtLastLine = true;
 	caretSticky = SC_CARETSTICKY_OFF;
 	marginOptions = SC_MARGINOPTION_NONE;
@@ -437,8 +438,8 @@ int Editor::LineFromLocation(Point pt) const {
 void Editor::SetTopLine(int topLineNew) {
 	if ((topLine != topLineNew) && (topLineNew >= 0)) {
 		topLine = topLineNew;
-		ContainerNeedsUpdate(SC_UPDATE_V_SCROLL);
 	}
+	ContainerNeedsUpdate(SC_UPDATE_V_SCROLL);
 	posTopLine = pdoc->LineStart(cs.DocFromDisplay(topLine));
 }
 
@@ -447,6 +448,10 @@ void Editor::SetTopLine(int topLineNew) {
  * @return true if calling code should stop drawing.
  */
 bool Editor::AbandonPaint() {
+	// KOMODO performance - never abandon paint - just leave as is... there
+	//                      will always be another paint.
+	//                      Bug 97330, bug 97214.
+	return false;
 	if ((paintState == painting) && !paintingAllText) {
 		paintState = paintAbandoned;
 	}
@@ -2315,6 +2320,7 @@ bool Editor::NotifyUpdateUI() {
 		SCNotification scn = {};
 		scn.nmhdr.code = SCN_UPDATEUI;
 		scn.updated = needUpdateUI;
+		scn.length = GetTextRectangle().Width();
 		NotifyParent(scn);
 		needUpdateUI = 0;
 		return true;
@@ -5869,6 +5875,37 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 		else
 			return pdoc->StyleAt(static_cast<int>(wParam));
 
+	case SCI_FINDSTYLEBACKWARDS:
+		{
+			int style = static_cast<int>(wParam);
+			int pos = lParam;
+			// search backwards
+			for (; pos >= 0; pos--) {
+				if (pdoc->StyleAt(pos) == style)
+					return pos;
+				
+			}
+			// Not found.
+			return -1;
+		}
+		break;
+
+	case SCI_FINDSTYLEFORWARDS:
+		{
+			int style = static_cast<int>(wParam);
+			int pos = lParam;
+			int max = pdoc->Length();
+			// search forwards
+			for (; pos < max; pos++) {
+				if (pdoc->StyleAt(pos) == style)
+					return pos;
+				
+			}
+			// Not found.
+			return -1;
+		}
+		break;
+
 	case SCI_REDO:
 		Redo();
 		break;
@@ -6251,6 +6288,17 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_FINDCOLUMN:
 		return pdoc->FindColumn(static_cast<int>(wParam), static_cast<int>(lParam));
+	
+	case SCI_SETUSECUSTOMSCROLLBARS:
+		if (useCustomScrollBars != (wParam != 0)) {
+			useCustomScrollBars = wParam != 0;
+			SetScrollBars();
+			ReconfigureScrollBars();
+		}
+		break;
+
+	case SCI_GETUSECUSTOMSCROLLBARS:
+		return useCustomScrollBars;
 
 	case SCI_SETHSCROLLBAR :
 		if (horizontalScrollBarVisible != (wParam != 0)) {
@@ -6718,7 +6766,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case SCI_SETSELBACK:
-		vs.selColours.back = ColourOptional(wParam, lParam);
+		vs.selColours.back = vs.selBackground2 = ColourOptional(wParam, lParam);
 		vs.selAdditionalBackground = ColourDesired(static_cast<long>(lParam));
 		InvalidateStyleRedraw();
 		break;
@@ -7205,6 +7253,52 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 	case SCI_CLEARREPRESENTATION:
 		reprs.ClearRepresentation(reinterpret_cast<const char *>(wParam));
 		break;
+	
+	// ACTIVESTATE Komodo-only function.
+	case SCI_POSITIONATCHAR:
+		// The 'false' is to ensure CRLF is treated at _two_ chars
+		// instead of one, as MovePositionOutsideChar (the underlying
+		// function) would otherwise do. (E.g., for the find system
+		// which must treat CRLF as two characters).
+		return pdoc->GetBytePositionForCharOffset(wParam, lParam, false);
+
+	case SCI_POSITIONATCOLUMN:
+		return pdoc->FindColumn(wParam, lParam);
+
+	case SCI_SETDRAGPOSITION:
+		SetDragPosition(SelectionPosition(wParam));
+		break;
+
+	case SCI_GETDRAGPOSITION:
+		return posDrag.Position();
+
+	case SCI_STOPTIMERS: // This patch from stop_timers.patch
+		SetTicking(false);
+		SetIdle(false);
+		break;
+
+	case SCI_SETREJECTSELECTIONCLAIM: // bug 97956
+		rejectSelectionClaim = wParam;
+		break;
+
+	case SCI_GETREJECTSELECTIONCLAIM: //  bug 97956
+		return rejectSelectionClaim;
+
+	case SCI_SETSUPPRESSDRAGDROP: // bug 97159
+		suppressDragDrop = wParam;
+		break;
+
+	case SCI_GETSUPPRESSDRAGDROP: //  bug 97159
+		return suppressDragDrop;
+
+	case SCI_SETSUPPRESSZOOMONSCROLLWHEEL: // bug 98938
+		suppressZoomOnScrollWheel = wParam;
+		break;
+
+	case SCI_GETSUPPRESSZOOMONSCROLLWHEEL: //  bug 98938
+		return suppressZoomOnScrollWheel;
+
+	// END ACTIVESTATE
 
 	case SCI_STARTRECORD:
 		recordingMacro = true;
@@ -7312,6 +7406,22 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_GETPASTECONVERTENDINGS:
 		return convertPastes ? 1 : 0;
+	
+	case SCI_GETLOGPIXELSX: { // bug 100492
+			AutoSurface surface(this);
+			if (surface) {
+				return surface->LogPixelsX();
+			}
+			return 72;
+		}
+
+	case SCI_GETLOGPIXELSY: { // bug 100492
+			AutoSurface surface(this);
+			if (surface) {
+				return surface->LogPixelsY();
+			}
+			return 72;
+		}
 
 	case SCI_GETCHARACTERPOINTER:
 		return reinterpret_cast<sptr_t>(pdoc->BufferPointer());
@@ -7672,6 +7782,10 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_GETIDENTIFIER:
 		return GetCtrlID();
+
+	case SCI_RELEASEMOUSECAPTURE:
+		SetMouseCapture(false);
+		break;
 
 	case SCI_SETTECHNOLOGY:
 		// No action by default

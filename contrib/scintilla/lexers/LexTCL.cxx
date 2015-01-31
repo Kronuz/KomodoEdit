@@ -1,9 +1,11 @@
-// Scintilla source code edit control
-/** @file LexTCL.cxx
- ** Lexer for TCL language.
- **/
-// Copyright 1998-2001 by Andre Arpin <arpin@kingston.net>
-// The License.txt file describes the conditions under which this software may be distributed.
+/*  -*- tab-width: 8; indent-tabs-mode: t -*-
+ * Scintilla source code edit control
+ * @file LexTcl.cxx
+ * Lexer for Tcl.
+ */
+// Copyright (c) 2001-2006 ActiveState Software Inc.
+// The License.txt file describes the conditions under which this software may
+// be distributed.
 
 #include <stdlib.h>
 #include <string.h>
@@ -27,344 +29,558 @@
 using namespace Scintilla;
 #endif
 
-// Extended to accept accented characters
-static inline bool IsAWordChar(int ch) {
-	return ch >= 0x80 ||
-        (isalnum(ch) || ch == '_' || ch ==':' || ch=='.'); // : name space separator
+#if 1	// No Debug
+#define colourString(end, state, styler) styler.ColourTo(end, state)
+#else	// Debug color printfs
+#define colourString(end, state, styler) \
+	describeString(end, state, styler), styler.ColourTo(end, state)
+
+static char *stateToString(int state) {
+    switch (state) {
+    case SCE_TCL_DEFAULT:	return "default";
+    case SCE_TCL_NUMBER:	return "number";
+    case SCE_TCL_WORD:		return "word";
+    case SCE_TCL_COMMENT:	return "comment";
+    case SCE_TCL_STRING:	return "string";
+    case SCE_TCL_CHARACTER:	return "character";
+    case SCE_TCL_LITERAL:	return "literal";
+    case SCE_TCL_OPERATOR:	return "operator";
+    case SCE_TCL_IDENTIFIER:	return "identifier";
+    case SCE_TCL_EOL:		return "eol";
+    case SCE_TCL_VARIABLE:	return "variable";
+    case SCE_TCL_ARRAY:		return "array";
+    default:			return "unknown";
+    }
 }
 
-static inline bool IsAWordStart(int ch) {
-	return ch >= 0x80 || (ch ==':' || isalpha(ch) || ch == '_');
+static void describeString(int end, int state, Accessor &styler) {
+    char s[1024];
+    int start = styler.GetStartSegment();
+    int len = end - start + 1;
+
+    if (!len) { return; }
+
+    for (int i = 0; i < len && i < 100; i++) {
+	s[i] = styler[start + i];
+	s[i + 1] = '\0';
+    }
+
+    int start_line = styler.GetLine(start);
+    int start_pos = start - styler.LineStart(start_line);
+    int end_line = styler.GetLine(end);
+    int end_pos = end - styler.LineStart(end_line);
+
+    fprintf(stderr, "%s [%d] [(%d:%d)=>(%d:%d)]:\t'%s'\n",
+	    stateToString(state), len,
+	    start_line, start_pos,
+	    end_line, end_pos,
+	    s); fflush(stderr);
+}
+#endif
+
+static inline bool isTclOperator(char ch) {
+    // Fix bug 74850 -- the backslash acts as an operator outside strings
+    // Otherwise other code processors won't see escaped things, esp. \{ and \}
+    return strchr("(){}[];!%^&*-=+|<>?/\\", ch) != NULL;
 }
 
-static inline bool IsANumberChar(int ch) {
-	// Not exactly following number definition (several dots are seen as OK, etc.)
-	// but probably enough in most cases.
-	return (ch < 0x80) &&
-	       (IsADigit(ch, 0x10) || toupper(ch) == 'E' ||
-	        ch == '.' || ch == '-' || ch == '+');
+static void classifyWordTcl(int start,
+			    int end,
+			    WordList &keywords,
+			    Accessor &styler) {
+    char s[100];
+    char chAttr;
+    bool wordIsNumber = isdigit(styler[start]) || (styler[start] == '.');
+
+    for (int i = 0; i < end - start + 1 && i < 40; i++) {
+	s[i] = styler[start + i];
+	s[i + 1] = '\0';
+    }
+
+    if (wordIsNumber) {
+	chAttr = SCE_TCL_NUMBER;
+    } else if (keywords.InList(s)) {
+	chAttr = SCE_TCL_WORD;
+    } else {
+	// was default, but that should be reserved for white-space,
+	// and we had to see an alpha-char to get here
+	chAttr = SCE_TCL_IDENTIFIER;
+    }
+
+    colourString(end, chAttr, styler);
 }
 
-static void ColouriseTCLDoc(unsigned int startPos, int length, int , WordList *keywordlists[], Accessor &styler) {
-#define  isComment(s) (s==SCE_TCL_COMMENT || s==SCE_TCL_COMMENTLINE || s==SCE_TCL_COMMENT_BOX || s==SCE_TCL_BLOCK_COMMENT)
-	bool foldComment = styler.GetPropertyInt("fold.comment") != 0;
-	bool commentLevel = false;
-    bool subBrace = false; // substitution begin with a brace ${.....}
-	enum tLineState {LS_DEFAULT, LS_OPEN_COMMENT, LS_OPEN_DOUBLE_QUOTE, LS_COMMENT_BOX, LS_MASK_STATE = 0xf,
-        LS_COMMAND_EXPECTED = 16, LS_BRACE_ONLY = 32 } lineState = LS_DEFAULT;
-	bool prevSlash = false;
-	int currentLevel = 0;
-    bool expected = 0;
-    bool subParen = 0;
+// KOMODO  see if a style is one of our IO styles
+static inline bool IsIOStyle(int style) {
+	return style == SCE_TCL_STDIN ||
+		style == SCE_TCL_STDOUT ||
+		style == SCE_TCL_STDERR;
+}
 
-	int currentLine = styler.GetLine(startPos);
-    if (currentLine > 0)
-        currentLine--;
-	length += startPos - styler.LineStart(currentLine);
-	// make sure lines overlap
-	startPos = styler.LineStart(currentLine);
+// By default there are 5 style bits, plenty for Tcl
+#define STYLE_MASK 31
+#define actual_style(style) (style & STYLE_MASK)
 
-	WordList &keywords = *keywordlists[0];
-	WordList &keywords2 = *keywordlists[1];
-	WordList &keywords3 = *keywordlists[2];
-	WordList &keywords4 = *keywordlists[3];
-	WordList &keywords5 = *keywordlists[4];
-	WordList &keywords6 = *keywordlists[5];
-	WordList &keywords7 = *keywordlists[6];
-    WordList &keywords8 = *keywordlists[7];
-    WordList &keywords9 = *keywordlists[8];
+static inline bool isSafeAlnum(char ch) {
+    return ((unsigned int) ch >= 128) || isalnum(ch) || ch == '_';
+}
 
-	if (currentLine > 0) {
-        int ls = styler.GetLineState(currentLine - 1);
-		lineState = tLineState(ls & LS_MASK_STATE);
-		expected = LS_COMMAND_EXPECTED == tLineState(ls & LS_COMMAND_EXPECTED);
-        subBrace = LS_BRACE_ONLY == tLineState(ls & LS_BRACE_ONLY);
-		currentLevel = styler.LevelAt(currentLine - 1) >> 17;
-		commentLevel = (styler.LevelAt(currentLine - 1) >> 16) & 1;
-	} else
-		styler.SetLevel(0, SC_FOLDLEVELBASE | SC_FOLDLEVELHEADERFLAG);
-	bool visibleChars = false;
+static inline void advanceOneChar(int& i, char&ch, char& chNext, char chNext2) {
+    i++;
+    ch = chNext;
+    chNext = chNext2;
+}
 
-	int previousLevel = currentLevel;
-    StyleContext sc(startPos, length, SCE_TCL_DEFAULT, styler);
-	for (; ; sc.Forward()) {
-next:
-        if (sc.ch=='\r' && sc.chNext == '\n') // only ignore \r on PC process on the mac
-            continue;
-        bool atEnd = !sc.More();  // make sure we coloured the last word
-        if (lineState != LS_DEFAULT) {
-            sc.SetState(SCE_TCL_DEFAULT);
-            if (lineState == LS_OPEN_COMMENT)
-                sc.SetState(SCE_TCL_COMMENTLINE);
-            else if (lineState == LS_OPEN_DOUBLE_QUOTE)
-                sc.SetState(SCE_TCL_IN_QUOTE);
-            else if (lineState == LS_COMMENT_BOX && (sc.ch == '#' || (sc.ch == ' ' && sc.chNext=='#')))
-                sc.SetState(SCE_TCL_COMMENT_BOX);
-            lineState = LS_DEFAULT;
-        }
-        if (subBrace) { // ${ overrides every thing even \ except }
-            if (sc.ch == '}') {
-                subBrace = false;
-                sc.SetState(SCE_TCL_OPERATOR);
-                sc.ForwardSetState(SCE_TCL_DEFAULT);
-                goto next;
-            }
-            else
-                sc.SetState(SCE_TCL_SUB_BRACE);
-            if (!sc.atLineEnd)
-                continue;
-        } else if (sc.state == SCE_TCL_DEFAULT || sc.state ==SCE_TCL_OPERATOR) {
-            expected &= isspacechar(static_cast<unsigned char>(sc.ch)) || IsAWordStart(sc.ch) || sc.ch =='#';
-        } else if (sc.state == SCE_TCL_SUBSTITUTION) {
-            switch(sc.ch) {
-            case '(':
-                subParen=true;
-                sc.SetState(SCE_TCL_OPERATOR);
-                sc.ForwardSetState(SCE_TCL_SUBSTITUTION);
-                continue;
-            case ')':
-                sc.SetState(SCE_TCL_OPERATOR);
-                subParen=false;
-                continue;
-            case '$':
-                continue;
-            case ',':
-                sc.SetState(SCE_TCL_OPERATOR);
-                if (subParen)
-                    sc.ForwardSetState(SCE_TCL_SUBSTITUTION);
-                continue;
-            default :
-                // maybe spaces should be allowed ???
-                if (!IsAWordChar(sc.ch)) { // probably the code is wrong
-                    sc.SetState(SCE_TCL_DEFAULT);
-                    subParen = 0;
-                }
-                break;
-            }
-        } else if (isComment(sc.state)) {
-        } else if (!IsAWordChar(sc.ch)) {
-            if ((sc.state == SCE_TCL_IDENTIFIER && expected) ||  sc.state == SCE_TCL_MODIFIER) {
-                char w[100];
-                char *s=w;
-                sc.GetCurrent(w, sizeof(w));
-                if (w[strlen(w)-1]=='\r')
-                    w[strlen(w)-1]=0;
-                while(*s == ':') // ignore leading : like in ::set a 10
-                    ++s;
-                bool quote = sc.state == SCE_TCL_IN_QUOTE;
-                if (commentLevel  || expected) {
-                    if (keywords.InList(s)) {
-                        sc.ChangeState(quote ? SCE_TCL_WORD_IN_QUOTE : SCE_TCL_WORD);
-                    } else if (keywords2.InList(s)) {
-                        sc.ChangeState(quote ? SCE_TCL_WORD_IN_QUOTE : SCE_TCL_WORD2);
-                    } else if (keywords3.InList(s)) {
-                        sc.ChangeState(quote ? SCE_TCL_WORD_IN_QUOTE : SCE_TCL_WORD3);
-                    } else if (keywords4.InList(s)) {
-                        sc.ChangeState(quote ? SCE_TCL_WORD_IN_QUOTE : SCE_TCL_WORD4);
-                    } else if (sc.GetRelative(-static_cast<int>(strlen(s))-1) == '{' &&
-                        keywords5.InList(s) && sc.ch == '}') { // {keyword} exactly no spaces
-                            sc.ChangeState(SCE_TCL_EXPAND);
-                    }
-                    if (keywords6.InList(s)) {
-                        sc.ChangeState(SCE_TCL_WORD5);
-                    } else if (keywords7.InList(s)) {
-                        sc.ChangeState(SCE_TCL_WORD6);
-                    } else if (keywords8.InList(s)) {
-                        sc.ChangeState(SCE_TCL_WORD7);
-                    } else if (keywords9.InList(s)) {
-                        sc.ChangeState(SCE_TCL_WORD8);
-                    }
-                }
-                expected = false;
-                sc.SetState(quote ? SCE_TCL_IN_QUOTE : SCE_TCL_DEFAULT);
-            } else if (sc.state == SCE_TCL_MODIFIER || sc.state == SCE_TCL_IDENTIFIER) {
-                sc.SetState(SCE_TCL_DEFAULT);
-            }
-        }
-		if (atEnd)
-			break;
-        if (sc.atLineEnd) {
-            lineState = LS_DEFAULT;
-			currentLine = styler.GetLine(sc.currentPos);
-			if (foldComment && sc.state!=SCE_TCL_COMMENT && isComment(sc.state)) {
-				if (currentLevel == 0) {
-					++currentLevel;
-					commentLevel = true;
-				}
-			} else {
-				if (visibleChars && commentLevel) {
-					--currentLevel;
-					--previousLevel;
-					commentLevel = false;
-				}
-			}
-			int flag = 0;
-			if (!visibleChars)
-				flag = SC_FOLDLEVELWHITEFLAG;
-			if (currentLevel > previousLevel)
-				flag = SC_FOLDLEVELHEADERFLAG;
-			styler.SetLevel(currentLine, flag + previousLevel + SC_FOLDLEVELBASE + (currentLevel << 17) + (commentLevel << 16));
+#define BITSTATE_TOP_LEVEL  0x00
+#define BITSTATE_IN_STRING  0x01
+#define BITSTATE_IN_COMMAND 0x02
+#define BITSTATE_IN_BRACE   0x03
+#define BITSTATE_MASK       0x03
+#define BITSTATE_MASK_SIZE  2
 
-			// Update the line state, so it can be seen by next line
-			if (sc.state == SCE_TCL_IN_QUOTE)
-				lineState = LS_OPEN_DOUBLE_QUOTE;
-			else {
-			     if (prevSlash) {
-				    if (isComment(sc.state))
-					    lineState = LS_OPEN_COMMENT;
-                } else if (sc.state == SCE_TCL_COMMENT_BOX)
-                    lineState = LS_COMMENT_BOX;
-			}
-            styler.SetLineState(currentLine,
-                (subBrace ? LS_BRACE_ONLY : 0) |
-                (expected ? LS_COMMAND_EXPECTED : 0)  | lineState);
-            if (lineState == LS_COMMENT_BOX)
-                sc.ForwardSetState(SCE_TCL_COMMENT_BOX);
-            else if (lineState == LS_OPEN_DOUBLE_QUOTE)
-                sc.ForwardSetState(SCE_TCL_IN_QUOTE);
-            else
-                sc.ForwardSetState(SCE_TCL_DEFAULT);
-			prevSlash = false;
-			previousLevel = currentLevel;
-			goto next;
-		}
+#define pushBitState(bitState, mask) bitState = ((bitState) << BITSTATE_MASK_SIZE) | (mask)
 
-		if (prevSlash) {
-            prevSlash = false;
-            if (sc.ch == '#' && IsANumberChar(sc.chNext))
-                sc.ForwardSetState(SCE_TCL_NUMBER);
-            continue;
-		}
-        prevSlash = sc.ch == '\\';
-        if (isComment(sc.state))
-            continue;
-		if (sc.atLineStart) {
-			visibleChars = false;
-			if (sc.state!=SCE_TCL_IN_QUOTE && !isComment(sc.state))
-            {
-				sc.SetState(SCE_TCL_DEFAULT);
-                expected = IsAWordStart(sc.ch)|| isspacechar(static_cast<unsigned char>(sc.ch));
-            }
-		}
+#define popBitState(bitState) bitState >>= BITSTATE_MASK_SIZE;
 
-		switch (sc.state) {
-		case SCE_TCL_NUMBER:
-			if (!IsANumberChar(sc.ch))
-				sc.SetState(SCE_TCL_DEFAULT);
-			break;
-		case SCE_TCL_IN_QUOTE:
-			if (sc.ch == '"') {
-				sc.ForwardSetState(SCE_TCL_DEFAULT);
-				visibleChars = true; // necessary if a " is the first and only character on a line
-				goto next;
-			} else if (sc.ch == '[' || sc.ch == ']' || sc.ch == '$') {
-				sc.SetState(SCE_TCL_OPERATOR);
-                expected = sc.ch == '[';
-                sc.ForwardSetState(SCE_TCL_IN_QUOTE);
-				goto next;
-			}
-            continue;
-        case SCE_TCL_OPERATOR:
-			sc.SetState(SCE_TCL_DEFAULT);
-			break;
-		}
-
-		if (sc.ch == '#') {
-			if (visibleChars) {
-                if (sc.state != SCE_TCL_IN_QUOTE && expected)
-					sc.SetState(SCE_TCL_COMMENT);
-			} else {
-                sc.SetState(SCE_TCL_COMMENTLINE);
-                if (sc.chNext == '~')
-                    sc.SetState(SCE_TCL_BLOCK_COMMENT);
-                if (sc.atLineStart && (sc.chNext == '#' || sc.chNext == '-'))
-                        sc.SetState(SCE_TCL_COMMENT_BOX);
-            }
-        }
-
-		if (!isspacechar(static_cast<unsigned char>(sc.ch))) {
-			visibleChars = true;
-		}
-
-		if (sc.ch == '\\') {
-			prevSlash = true;
-			continue;
-		}
-
-		// Determine if a new state should be entered.
-		if (sc.state == SCE_TCL_DEFAULT) {
-            if (IsAWordStart(sc.ch)) {
-				sc.SetState(SCE_TCL_IDENTIFIER);
-			} else if (IsADigit(sc.ch) && !IsAWordChar(sc.chPrev)) {
-				sc.SetState(SCE_TCL_NUMBER);
-			} else {
-				switch (sc.ch) {
-				case '\"':
-					sc.SetState(SCE_TCL_IN_QUOTE);
-					break;
-				case '{':
-					sc.SetState(SCE_TCL_OPERATOR);
-					expected = true;
-					++currentLevel;
-					break;
-				case '}':
-					sc.SetState(SCE_TCL_OPERATOR);
-					expected = true;
-					--currentLevel;
-					break;
-				case '[':
-                    expected = true;
-				case ']':
-				case '(':
-				case ')':
-					sc.SetState(SCE_TCL_OPERATOR);
-					break;
-				case ';':
-                    expected = true;
-					break;
-                case '$':
-                    subParen = 0;
-                    if (sc.chNext != '{') {
-                        sc.SetState(SCE_TCL_SUBSTITUTION);
-                    }
-                    else {
-                        sc.SetState(SCE_TCL_OPERATOR);  // $
-                        sc.Forward();  // {
-                        sc.ForwardSetState(SCE_TCL_SUB_BRACE);
-                        subBrace = true;
-                    }
-                    break;
-                case '#':
-                    if ((isspacechar(static_cast<unsigned char>(sc.chPrev))||
-                            isoperator(static_cast<char>(sc.chPrev))) && IsADigit(sc.chNext,0x10))
-                        sc.SetState(SCE_TCL_NUMBER);
-                    break;
-                case '-':
-                    sc.SetState(IsADigit(sc.chNext)? SCE_TCL_NUMBER: SCE_TCL_MODIFIER);
-                    break;
-                default:
-                    if (isoperator(static_cast<char>(sc.ch))) {
-                        sc.SetState(SCE_TCL_OPERATOR);
-                    }
-				}
-			}
-		}
+static bool testBitStateNotTopLevel(unsigned int bitState,
+				    unsigned int mask,
+				    bool keepLooking=false) {
+    // Peel off BITSTATE_MASK bits at a time until we hit 0
+    while (bitState) {
+	if ((bitState & BITSTATE_MASK) == mask) {
+	    return true;
 	}
-	sc.Complete();
+	if (keepLooking
+	    && mask == BITSTATE_IN_BRACE
+	    && (bitState & BITSTATE_IN_COMMAND) == BITSTATE_IN_COMMAND) {
+	    bitState >>= BITSTATE_MASK_SIZE;
+	} else {
+	    return false;
+	}
+    }
+    return false;
+}
+
+static bool testBitStateOrTopLevel(unsigned int bitState,
+				   unsigned int mask) {
+    unsigned int part = bitState & BITSTATE_MASK;
+    return !part || part == mask;
+}
+
+/**
+ * '"' starts a string only if a matching '"' is found before
+ * a closing brace. This simplifies string processing.
+ *
+ * The caller can then color the '"' as a tcl_literal.
+ */
+static bool quotePrecedesClosingBrace(int pos,
+				     int lengthDoc,
+				     Accessor &styler) {
+    char ch;
+    int numBraces = 0;
+    if (lengthDoc - pos > 2000) {
+	// Just look so far.
+	lengthDoc = pos + 2000;
+    }
+    for (; pos < lengthDoc; pos++) {
+	ch = styler.SafeGetCharAt(pos);
+	if (ch == '\\') {
+	    // Skip the next char.
+	    pos++;
+	} else if (ch == '"') {
+	    // Even if we have something like
+	    // ... { ... " ... {"
+	    // the inner string is quoted, because that's how
+	    // the tcl parser will interpret it.
+	    return false;
+	} else if (ch == '{') {
+	    numBraces++;
+	} else if (ch == '}') {
+	    numBraces--;
+	    if (numBraces < 0) {
+		return true;
+	    }
+	}
+    }
+    return false;
+}
+
+static bool continuesComment(int pos,
+			     Accessor &styler) {
+    int style;
+    styler.Flush();
+    for (; pos >= 0; --pos) {
+	style = actual_style(styler.StyleAt(pos));
+	if (style == SCE_TCL_COMMENT) {
+	    return true;
+	} else if (style != SCE_TCL_DEFAULT) {
+	    return false;
+	}
+    }
+    return false;
+}
+
+static void ColouriseTclDoc(unsigned int startPos_,
+			    int length,
+			    int initStyle,
+			    WordList *keywordlists[],
+			    Accessor &styler) {
+    WordList &keywords = *keywordlists[0];
+
+    long bitState = 0;
+    int startPos = (int) startPos_; // avoid unsigned int due to
+                                    // bdry conditions at buffer start
+
+    int inEscape	= 0;
+    // inCmtBraceCnt -- keeps track of the brace count in a block of
+    // comments.  End it when we hit a different state.
+    // This means that the synchronization always starts at a block of
+    // comments as well.
+    int inCmtBraceCnt   = 0;
+    // We're not always sure of the command start, but make an attempt
+    bool cmdStart	= true;
+    // Keep track of whether a variable is using braces or it is an array
+    bool varBraced	= 0;
+
+    //fprintf(stderr, "Start lexing at pos %d, len %d, style %d\n", startPos, length, initStyle);
+    
+    int state;
+    int lengthDoc = startPos + length;
+    if (IsIOStyle(initStyle)) {
+	// KOMODO
+	// Skip initial IO Style?
+	while (startPos < lengthDoc
+	       && IsIOStyle(actual_style(styler.StyleAt(startPos)))) {
+	    startPos++;
+	}
+    } else {
+	int start_line, start_line_pos = 0, pos;
+	char ch;
+	for (start_line = styler.GetLine(startPos);
+	     start_line > 0;
+	     --start_line) {
+	    // Don't stop after an escaped line.
+	    start_line_pos = styler.LineStart(start_line);
+	    pos = start_line_pos - 1;
+	    ch = styler.SafeGetCharAt(pos);
+	    if (pos > 0 && ch == '\n') {
+		pos -= 1;
+		ch = styler.SafeGetCharAt(pos);
+	    }
+	    if (pos > 0 && ch == '\r') {
+		pos -= 1;
+		ch = styler.SafeGetCharAt(pos);
+	    }
+	    if (ch == '\\'
+		|| actual_style(styler.StyleAt(pos)) == SCE_TCL_COMMENT) {
+		continue;
+	    }
+	    bitState = styler.GetLineState(start_line - 1);
+	    if (!testBitStateNotTopLevel(bitState, BITSTATE_IN_STRING)) {
+		// Simplify: don't start in a multi-line string
+		break;
+	    }
+	}
+	lengthDoc = startPos + length + (start_line_pos - startPos);
+	startPos = start_line_pos;
+    }
+    state = SCE_TCL_DEFAULT;
+    if(0) fprintf(stderr, "After sync, start at pos %d (line %d:%d), len %d, style %d\n",
+	    startPos,
+	    styler.GetLine(startPos),
+	    startPos - styler.LineStart(styler.GetLine(startPos)),
+	    length, initStyle);
+    char chPrev		= ' ';
+    char chNext		= styler[startPos];
+
+    // Folding info
+    int visibleChars = 0;
+    int lineCurrent = styler.GetLine(startPos);
+    int levelPrev   = styler.LevelAt(lineCurrent) & SC_FOLDLEVELNUMBERMASK;
+    int levelMinPrev   = levelPrev;
+    int levelCurrent = levelPrev;
+    bool foldCompact = styler.GetPropertyInt("fold.compact", 1) != 0;
+    bool foldAtElse = styler.GetPropertyInt("fold.at.else", 1) != 0;
+
+    styler.StartAt(startPos);
+    styler.StartSegment(startPos);
+    for (int i = startPos; i < lengthDoc; i++) {
+	char ch = chNext;
+	chNext = styler.SafeGetCharAt(i + 1);
+
+	if (styler.IsLeadByte(ch)) {
+	    chNext = styler.SafeGetCharAt(i + 2);
+	    chPrev = ' ';
+	    i += 1;
+	    visibleChars++;
+	    cmdStart = false;
+	    continue;
+	}
+
+	if (chPrev == '\\') {
+	    // If the prev char was the escape char, flip the inEscape bit.
+	    // This works because colorization always starts at the
+	    // beginning of the line.
+	    inEscape = !inEscape;
+	} else if (inEscape) {
+	    if (chPrev == '\r' && ch == '\n') {
+		// Keep inEscape for one more round
+	    } else {
+		// Otherwise we aren't in an escape sequence
+		inEscape = 0;
+	    }
+	}
+
+	if ((ch == '\r' && chNext != '\n') || (ch == '\n')) {
+	    // Trigger on CR only (Mac style) or either on LF from CR+LF
+	    // (Dos/Win) or on LF alone (Unix) Avoid triggering two times on
+	    // Dos/Win End of line
+	    styler.SetLineState(lineCurrent, bitState);
+	    if (state == SCE_TCL_EOL) {
+		colourString(i, state, styler);
+		state = SCE_TCL_DEFAULT;
+	    }
+#if 0
+	    fprintf(stderr, "end of line %d, levelPrev=0x%0x, levelCurrent=0x%0x\n",
+		    lineCurrent, levelPrev, levelCurrent);
+#endif
+	    int levelUse = foldAtElse ? levelMinPrev : levelPrev;
+	    int lev = levelUse;
+	    if (lev < SC_FOLDLEVELBASE) {
+		lev = SC_FOLDLEVELBASE;
+	    }
+	    if (visibleChars == 0 && foldCompact) {
+		lev |= SC_FOLDLEVELWHITEFLAG;
+	    }
+	    if ((levelCurrent > levelUse) && (visibleChars > 0)) {
+		lev |= SC_FOLDLEVELHEADERFLAG;
+	    }
+	    if (lev != styler.LevelAt(lineCurrent)) {
+		styler.SetLevel(lineCurrent, lev);
+	    }
+	    lineCurrent++;
+	    levelMinPrev = levelPrev = levelCurrent;
+	    visibleChars = 0;
+	    if (state == SCE_TCL_DEFAULT && !inEscape) {
+		cmdStart = true;
+	    }
+	} else if (!isspacechar(ch)) {
+	    visibleChars++;
+	}
+
+	if (state == SCE_TCL_DEFAULT) {
+	    if ((ch == '#') && cmdStart) {
+		colourString(i-1, state, styler);
+		state = SCE_TCL_COMMENT;
+		if (i > 0 && !continuesComment(i - 1, styler)) {
+		    inCmtBraceCnt = 0;
+		}
+		cmdStart = false;
+	    } else if ((ch == '"') && !inEscape) {
+		if (testBitStateNotTopLevel(bitState, BITSTATE_IN_BRACE, true)) {
+		    if (quotePrecedesClosingBrace(i + 1, lengthDoc, styler)) {
+			// Do nothing, treat it like a literal.
+			colourString(i-1, state, styler);
+			colourString(i, SCE_TCL_LITERAL, styler);
+		    } else {
+			colourString(i-1, state, styler);
+			state = SCE_TCL_STRING;
+			pushBitState(bitState, BITSTATE_IN_STRING);
+		    }
+		} else {
+		    colourString(i-1, state, styler);
+		    state = SCE_TCL_STRING;
+		    pushBitState(bitState, BITSTATE_IN_STRING);
+		}
+		cmdStart = false;
+	    } else if (ch == '$') {
+		colourString(i-1, state, styler);
+		if (chNext == '{') {
+		    varBraced = true;
+		    advanceOneChar(i, ch, chNext, styler.SafeGetCharAt(i + 1));
+		    state = SCE_TCL_VARIABLE;
+		} else if (iswordchar(chNext)) {
+		    varBraced = false;
+		    state = SCE_TCL_VARIABLE;
+		} else {
+		    colourString(i, SCE_TCL_OPERATOR, styler);
+		    // Stay in default mode.
+		}
+		cmdStart = false;
+	    } else if (isTclOperator(ch) || ch == ':') {
+		if (ch == '-' && isascii(chNext) && isalpha(chNext)) {
+		    colourString(i-1, state, styler);
+		    // We could call it an identifier, but then we'd need another
+		    // state.  classifyWordTcl will do the right thing.
+		    state = SCE_TCL_WORD;
+		    cmdStart = false;
+		} else {
+		    // color up this one character as our operator
+		    // multi-character operators will have their second
+		    // character colored on the next pass
+		    colourString(i-1, state, styler);
+		    colourString(i, SCE_TCL_OPERATOR, styler);
+		    if (!inEscape) {
+			if (ch == '{' || ch == '[') {
+			    if (ch == '{') {
+				if (levelMinPrev > levelCurrent) {
+				    levelMinPrev = levelCurrent;
+				}
+				pushBitState(bitState, BITSTATE_IN_BRACE);
+			    } else {
+				pushBitState(bitState, BITSTATE_IN_COMMAND);
+			    }
+			    ++levelCurrent;
+			    cmdStart = true;
+			} else if (ch == ']' || ch == '}') {
+			    if ((levelCurrent & SC_FOLDLEVELNUMBERMASK) > SC_FOLDLEVELBASE) {
+				--levelCurrent;
+			    }
+			    if (ch == ']') {
+				if (testBitStateNotTopLevel(bitState, BITSTATE_IN_COMMAND)) {
+				    popBitState(bitState);
+				    if (testBitStateNotTopLevel(bitState, BITSTATE_IN_STRING)) {
+					state = SCE_TCL_STRING;
+				    }
+				}
+			    } else if (testBitStateNotTopLevel(bitState, BITSTATE_IN_BRACE)) {
+				popBitState(bitState);
+			    }
+			} else if (ch == ';' && testBitStateOrTopLevel(bitState, BITSTATE_IN_BRACE)) {
+			    cmdStart = true;
+			}
+		    }
+		}
+	    } else if (iswordstart(ch)) {
+		colourString(i-1, state, styler);
+		if (iswordchar(chNext)) {
+		    state = SCE_TCL_WORD;
+		} else {
+		    classifyWordTcl(styler.GetStartSegment(), i,
+				    keywords, styler);
+		    // Stay in the default state
+		}
+		cmdStart = false;
+	    } else if (!isspacechar(ch)) {
+		cmdStart = false;
+	    }
+	} else if (state == SCE_TCL_WORD) {
+	    if (!iswordchar(chNext)) {
+		classifyWordTcl(styler.GetStartSegment(), i,
+				keywords, styler);
+		state = SCE_TCL_DEFAULT;
+	    }
+	} else {
+	    if (state == SCE_TCL_VARIABLE) {
+		/*
+		 * A variable is ${?\w*}? and may be directly followed by
+		 * another variable.  This should handle weird cases like:
+		 * $a$b           ;# multiple vars
+		 * ${a(def)(def)} ;# all one var
+		 * ${abc}(def)    ;# (def) is not part of the var name now
+		 * Previous to Komodo 4.2.1:
+		 * $a(def)(ghi)   ;# (def) is array key, (ghi) is just chars
+		 * ${a...}(def)(ghi)   ;# ( and ) are operators, def and ghi are chars
+		 */
+		if (!iswordchar(chNext)) {
+		    bool varEndsHere = false;
+		    if (varBraced) {
+			if (chNext == '}') {
+			    varBraced = false;
+			    colourString(i + 1, state, styler);
+			    state = SCE_TCL_DEFAULT;
+			    advanceOneChar(i, ch, chNext, styler.SafeGetCharAt(i + 2));
+			}
+			// else continue building a var-braced string
+		    } else if (chNext == ':' && styler.SafeGetCharAt(i + 2) == ':') {
+			// continue, it's part of a simple name, but advance
+			// so we don't stumble on the second colon
+			advanceOneChar(i, ch, chNext, ':');
+		    } else {
+			varEndsHere = true;
+		    }
+		    if (varEndsHere) {
+			colourString(i, state, styler);
+			state = SCE_TCL_DEFAULT;
+		    }
+		}
+	    } else if (state == SCE_TCL_COMMENT) {
+		/*
+		 * The line continuation character also works for comments.
+		 */
+		if ((ch == '\r' || ch == '\n') && !inEscape) {
+		    colourString(i-1, state, styler);
+		    state = SCE_TCL_DEFAULT;
+		    cmdStart = true;
+		} else if ((ch == '{') && !inEscape) {
+		    inCmtBraceCnt++;
+		} else if ((ch == '}') && !inEscape) {
+		    inCmtBraceCnt--;
+		    // Ignore braces at the top-level
+		    // If we're processing a comment, the current bit-state
+		    // is either clear or IN_BRACE
+		    // Don't worry about 
+		    if (inCmtBraceCnt == -1 && testBitStateNotTopLevel(bitState,
+								       BITSTATE_IN_BRACE)) {
+			popBitState(bitState);
+			colourString(i - 1, state, styler);
+			colourString(i, SCE_TCL_OPERATOR, styler);
+			state = SCE_TCL_DEFAULT;
+		    }
+		}
+	    } else if (state == SCE_TCL_STRING && !inEscape) {
+		if (ch == '\r' || ch == '\n') {
+		    /*
+		     * In the case of EOL in a string where the line
+		     * continuations character isn't used, leave us in the
+		     * SCE_TCL_STRING state, but color the newline.
+		     */
+		    // No I think this is wrong -- EP
+		    // The lexer will color it as a string if it hits
+		    // a quote or EOF, otherwise it'll hit the brace
+		    // and whip back.
+		    
+		    //!! colourString(i-1, state, styler);
+		    //colourString(i, SCE_TCL_EOL, styler);
+		    /*
+		     * We are in a string, but in Tcl you can never really
+		     * say when a command starts or not until eval.
+		     */
+		    cmdStart = true;
+		} else if (ch == '\"') {
+		    colourString(i, state, styler);
+		    popBitState(bitState);
+		    // We always pop to a default state
+		    state = SCE_TCL_DEFAULT;
+		} else if (ch == '[') {
+		    pushBitState(bitState, BITSTATE_IN_COMMAND);
+		    colourString(i, state, styler);
+		    state = SCE_TCL_DEFAULT;
+		    ++levelCurrent;
+		    cmdStart = true;
+		}
+	    }
+	}
+	chPrev = ch;
+    }
+    // Make sure to colorize last part of document
+    // If it was SCE_TCL_WORD (the default if we were in a word), then
+    // check to see whether it's a legitamite word.
+    if (state == SCE_TCL_WORD) {
+	classifyWordTcl(styler.GetStartSegment(), lengthDoc - 1,
+			keywords, styler);
+    } else {
+	colourString(lengthDoc - 1, state, styler);
+    }
+    int flagsNext = styler.LevelAt(lineCurrent) & ~SC_FOLDLEVELNUMBERMASK;
+    styler.SetLevel(lineCurrent, levelPrev | flagsNext);
+    styler.Flush();
 }
 
 static const char * const tclWordListDesc[] = {
-            "TCL Keywords",
-            "TK Keywords",
-            "iTCL Keywords",
-            "tkCommands",
-            "expand",
-            "user1",
-            "user2",
-            "user3",
-            "user4",
-            0
-        };
+    "Tcl keywords",
+    0
+};
 
-// this code supports folding in the colourizer
-LexerModule lmTCL(SCLEX_TCL, ColouriseTCLDoc, "tcl", 0, tclWordListDesc);
+LexerModule lmTcl(SCLEX_TCL, ColouriseTclDoc, "tcl", NULL,
+		  tclWordListDesc);

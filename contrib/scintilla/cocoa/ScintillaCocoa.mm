@@ -832,7 +832,11 @@ sptr_t ScintillaCocoa::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPar
       break;
 
     case SCI_GRABFOCUS:
-      [[ContentView() window] makeFirstResponder:ContentView()];
+      // Commenting this out makes no difference -- this code wasn't called.
+#if defined(SCINTILLA_COCOA_DEBUG)
+      fprintf(stderr, "ScintillaCocoa.mm:: WndProc: don't makeFirstResponder on SCI_GRABFOCUS\n");
+#endif
+      // [[ContentView() window] makeFirstResponder:ContentView()];
       break;
 
     case SCI_SETBUFFEREDDRAW:
@@ -1222,6 +1226,10 @@ void ScintillaCocoa::DragScroll()
  */
 void ScintillaCocoa::StartDrag()
 {
+#ifdef KOMODO_DISABLE_DRAG_DROP
+    inDragDrop = ddNone;
+    return;
+#endif
   if (sel.Empty())
     return;
 
@@ -1451,6 +1459,11 @@ bool ScintillaCocoa::PerformDragOperation(id <NSDraggingInfo> info)
     NSArray* files = [pasteboard propertyListForType: NSFilenamesPboardType];
     for (NSString* uri in files)
       NotifyURIDropped([uri UTF8String]);
+  }
+  else if ([[pasteboard types] containsObject: NSURLPboardType])
+  {
+    NSString* uri = [[NSURL URLFromPasteboard:pasteboard] absoluteString];
+    NotifyURIDropped([uri UTF8String]);
   }
   else
   {
@@ -1736,15 +1749,15 @@ bool ScintillaCocoa::SetScrollingSize(void) {
 			!Wrapping();
 		if (!showHorizontalScroll)
 			docWidth = clipRect.size.width;
-		NSRect contentRect = {0, 0, docWidth, docHeight};
+		NSRect contentRect = {0, 0, static_cast<CGFloat>(docWidth), static_cast<CGFloat>(docHeight)};
 		NSRect contentRectNow = [inner frame];
 		changes = (contentRect.size.width != contentRectNow.size.width) ||
 			(contentRect.size.height != contentRectNow.size.height);
 		if (changes) {
 			[inner setFrame: contentRect];
 		}
-		[scrollView setHasVerticalScroller: verticalScrollBarVisible];
-		[scrollView setHasHorizontalScroller: showHorizontalScroll];
+		[scrollView setHasVerticalScroller: verticalScrollBarVisible && !useCustomScrollBars];
+		[scrollView setHasHorizontalScroller: showHorizontalScroll && !useCustomScrollBars];
 		SetVerticalScrollPos();
 		enteredSetScrollingSize = false;
 	}
@@ -1766,10 +1779,22 @@ void ScintillaCocoa::Resize()
  * Update fields to match scroll position after receiving a notification that the user has scrolled.
  */
 void ScintillaCocoa::UpdateForScroll() {
+  // KOMODO: Invalidate the editor, otherwise it will not update when there was
+  // a styling change offscreen - bug 100361.
+  NSView* editorView = static_cast<NSView*>(wMain.GetID());
+  [editorView setNeedsDisplay:YES];
+
+  // KOMODO: Invalidate the margin, otherwise it will not update - bug 99808.
+  NSView* marginView = static_cast<NSView*>(wMargin.GetID());
+  [marginView setNeedsDisplay:YES];
+  // KOMODO: end
+
   Point ptOrigin = GetVisibleOriginInMain();
   xOffset = ptOrigin.x;
   int newTop = Platform::Minimum(ptOrigin.y / vs.lineHeight, MaxScrollPos());
   SetTopLine(newTop);
+  // Send pending scroll notifications.
+  NotifyUpdateUI();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2130,7 +2155,7 @@ void ScintillaCocoa::MouseWheel(NSEvent* event)
     else
     dY = (int) sqrt(10.0 * [event deltaY]);
 
-  if (command)
+  if (command && !suppressZoomOnScrollWheel)
   {
     // Zoom! We play with the font sizes in the styles.
     // Number of steps/line is ignored, we just care if sizing up or down.

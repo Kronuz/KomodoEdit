@@ -68,8 +68,8 @@ else
 CTFLAGS=-DNDEBUG -Os $(CXXBASEFLAGS) $(THREADFLAGS)
 endif
 
-CFLAGS:=$(CTFLAGS)
-CXXTFLAGS:=--std=c++0x $(CTFLAGS) $(REFLAGS)
+CFLAGS:=-fPIC $(CTFLAGS)
+CXXTFLAGS:=$(CTFLAGS) $(REFLAGS)
 
 CONFIGFLAGS:=$(shell pkg-config --cflags $(GTKVERSION))
 MARSHALLER=scintilla-marshal.o
