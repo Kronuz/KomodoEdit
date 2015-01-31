@@ -35,7 +35,7 @@ class _FileWrapper(object):
         self.f = sys.stdin
 
     def set_text(self, text):
-        from cStringIO import StringIO
+        six.moves import StringIO
         self.f = StringIO(text)
 
     def readline(self):

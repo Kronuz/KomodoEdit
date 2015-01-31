@@ -84,7 +84,7 @@ def get_constants():
             if mo1:
                 resConstants[mo1.group(1)] = int(mo1.group(2))
     fh.close()
-    if len(list(resConstants.keys())) == 0:
+    if len(resConstants.keys()) == 0:
         sys.stderr.write("Couldn't find any defines in file "
                          + LEXUDL_CXX_PATH + "\n")
         sys.exit(1)
@@ -99,7 +99,7 @@ def get_constants():
         if mo1:
             resConstants[mo1.group(1)] = int(mo1.group(2))
     fh.close()
-    if len(list(resConstants.keys())) == 0:
+    if len(resConstants.keys()) == 0:
         sys.stderr.write("Couldn't find any defines in file "
                          + SCINTILLA_IFACE_PATH + "\n")
         sys.exit(1)

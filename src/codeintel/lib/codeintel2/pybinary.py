@@ -8,7 +8,7 @@ from __future__ import print_function
 
 import os
 import sys
-import cStringIO as io
+from six.moves import StringIO
 import optparse
 
 from process import ProcessOpen
@@ -79,7 +79,7 @@ def scan(path):
 
     tree = gencix.ElementTree(root)
 
-    stream = io.StringIO()
+    stream = StringIO()
     try:
         stream.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         tree.write(stream)

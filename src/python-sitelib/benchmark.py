@@ -64,7 +64,7 @@ class BenchReporter(object):
     def displayAccumulations(self, limit=None):
         if self._cumulative:
             print("Cumulative:")
-            for name, hit in sorted(list(self._cumulative.items()), key=lambda x: x[1][1]):
+            for name, hit in sorted(self._cumulative.items(), key=lambda x: x[1][1]):
                 print("  %-46s %d calls - %0.5f" % (name, hit[0], hit[1]))
 
     def display(self, order="by-time", limit=None):
@@ -80,7 +80,7 @@ class BenchReporter(object):
         if order == "by-time":
             print("Timings:")
             entries_by_time = defaultdict(list)
-            for name, timings in list(self._entries.items()):
+            for name, timings in self._entries.items():
                 for start, spent, depth in timings:
                     entries_by_time[start].append((name, spent, depth))
 

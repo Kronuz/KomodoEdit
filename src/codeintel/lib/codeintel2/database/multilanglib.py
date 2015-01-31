@@ -48,7 +48,7 @@ from glob import glob
 from pprint import pprint, pformat
 import time
 import logging
-from cStringIO import StringIO
+from six.moves import StringIO
 import copy
 
 import ciElementTree as ET
@@ -898,7 +898,7 @@ class MultiLangZone(LangZone):
                 # and the dbfiles and then make them.
                 dbfile_changes = []
                 for (lang, blobname), blob \
-                        in list(new_blob_from_lang_and_blobname.items()):
+                        in new_blob_from_lang_and_blobname.items():
                     try:
                         old_res_data[lang][blobname]
                     except KeyError:
@@ -906,7 +906,7 @@ class MultiLangZone(LangZone):
                     else:
                         dbfile_changes.append(("update", lang, blobname, blob))
 
-                for lang, old_tfifb in list(old_res_data.items()):
+                for lang, old_tfifb in old_res_data.items():
                     for blobname in old_tfifb:
                         try:
                             new_res_data[lang][blobname]

@@ -53,7 +53,6 @@ from pprint import pprint, pformat
 import time
 import codecs
 import six
-from six.moves import range
 
 # Global dict for holding specific hotshot profilers
 hotshotProfilers = {}
@@ -488,7 +487,7 @@ def lines_from_pos(unmarked_text, positions):
         values = {}
     except AttributeError:
         # assume a list/tuple
-        keys = list(range(len(positions)))
+        keys = range(len(positions))
         values = []
 
     for key in keys:

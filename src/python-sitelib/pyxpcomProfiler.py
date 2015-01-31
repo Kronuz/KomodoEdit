@@ -103,10 +103,10 @@ class XPCOMRecorder:
         self.setters[attr] = self.setters.get(attr, 0) + 1
 
     def totalcalltime(self):
-        return sum([x[0] for x in list(self.calls.values())])
+        return sum(x[0] for x in self.calls.values())
 
     def totalcallcount(self):
-        return sum([x[1] for x in list(self.calls.values())])
+        return sum(x[1] for x in self.calls.values())
 
     def __len__(self):
         return self.totalcallcount() + sum(self.getters.values()) + sum(self.setters.values())
@@ -115,15 +115,15 @@ class XPCOMRecorder:
         print("%s" % (self.name))
         if self.calls:
             print("  Calls: %d, Time: %f" % (self.totalcallcount(), self.totalcalltime()))
-            for name, recorder in sorted(list(self.calls.items()), key=lambda k_v: (k_v[1], k_v[0]), reverse=True):
+            for name, recorder in sorted(self.calls.items(), key=lambda k_v: (k_v[1], k_v[0]), reverse=True):
                 print("      %-30s%5d %f" % (name, recorder[1], recorder[0]))
         if self.getters:
             print("  Getters: %d" % (sum(self.getters.values())))
-            for name, num in sorted(list(self.getters.items()), key=lambda k_v1: (k_v1[1], k_v1[0]), reverse=True):
+            for name, num in sorted(self.getters.items(), key=lambda k_v1: (k_v1[1], k_v1[0]), reverse=True):
                 print("      %-30s%d" % (name, num))
         if self.setters:
             print("  Setters: %d" % (sum(self.setters.values())))
-            for name, num in sorted(list(self.setters.items()), key=lambda k_v2: (k_v2[1], k_v2[0]), reverse=True):
+            for name, num in sorted(self.setters.items(), key=lambda k_v2: (k_v2[1], k_v2[0]), reverse=True):
                 print("      %-30s%d" % (name, num))
         # print
 
@@ -216,11 +216,8 @@ class Tracer:
 
 def print_stats():
     """Print out the pyXPCOM stats and the python main thread profiler stats"""
-    def recorder_cmp(a, b):
-        return cmp(a[0].totalcalltime(), b[0].totalcalltime())
-    for name, recorder in sorted(list(xpcom_recordings.items()),
-                                 cmp=recorder_cmp,
-                                 key=lambda k_v3: (k_v3[1], k_v3[0]), reverse=True):
+    for name, recorder in sorted(xpcom_recordings.items(),
+                                 key=lambda k: (k[1].totalcalltime(), k[0]), reverse=True):
         if len(recorder) > 0:
             recorder.print_stats()
     print()

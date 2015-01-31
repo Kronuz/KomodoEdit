@@ -684,7 +684,7 @@ class ModuleInfo:
         #imports = getattr(modInfo, 'aImports', [])
         # imports.reverse()
         for _import in getattr(modInfo, 'aImports', []):
-            attrs = list(_import.keys())
+            attrs = _import.keys()
             importNode = SubElement(currNode, "import")
             for k in attrs:
                 importNode.set(k, str(_import[k]))
@@ -707,12 +707,10 @@ class ModuleInfo:
         if not hasattr(modInfo, 'aVar'):
             return
 
-        def sorter1(a, b):
-            return (cmp(a[0]['line'], b[0]['line']) or
-                    cmp(a[0]['name'].lower(), b[0]['name'].lower()))
+        def sorter1(a):
+            return (a[0]['line'], a[0]['name'].lower())
 
-        variables = list(modInfo.aVar.values())
-        variables.sort(sorter1)
+        variables = sorted(modInfo.aVar.values(), key=sorter1)
         try:
             export_info = modInfo.export_info
         except:
@@ -962,22 +960,15 @@ class Parser:
             self.moduleInfo.printImports(mainInfo, moduleNode)
             self.moduleInfo.printVariables(mainInfo, moduleNode)
 
-        def sorter1(a, b):
+        def sorter1(a):
             amod = innerModules.get(a)
-            bmod = innerModules.get(b)
-            aline = getattr(amod, 'line', None)
-            if aline:
-                bline = getattr(bmod, 'line', None)
-                if aline and bline:
-                    return cmp(aline, bline)
-            return cmp(getattr(amod, 'name', ""), getattr(bmod, 'name', ""))
+            return getattr(amod, 'line', None), getattr(amod, 'name', "")
 
         # Sub-packages need to updated their parent blob name - bug 88814.
         # I.e. when parsing "XML/Simple.pm" the blob name is "Simple", but we
         #      need it be "XML::Simple" in this case. The bestPackageName is
         #      used to find the best matching name.
-        packages = [x for x in list(self.moduleInfo.modules.keys()) if x != 'main']
-        packages.sort(sorter1)
+        packages = sorted([x for x in self.moduleInfo.modules.keys() if x != 'main'], key=sorter1)
         bestPackageName = None
         for k in packages:
             modInfo = innerModules[k]

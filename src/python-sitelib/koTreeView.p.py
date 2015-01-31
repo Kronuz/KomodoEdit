@@ -40,6 +40,7 @@ import logging
 import itertools
 import contextlib
 import functools
+from six.moves import map
 from six.moves import range
 from functools import reduce
 
@@ -497,7 +498,7 @@ class ObjectTreeViewItem(object):
 
         # no child found, look for the child that is an ancestor of the target
         child_index = -1
-        for i in list(self._index_to_children.keys()):
+        for i in self._index_to_children.keys():
             if i < index and i > child_index:
                 child_index = i
 
@@ -1086,7 +1087,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         if item is None:
             return True
         result = any(
-            itertools.imap(lambda c: c.subTreeIsVisible, item.children))
+            map(lambda c: c.subTreeIsVisible, item.children))
         return not result
 
     def getParentIndex(self, index):
@@ -1107,7 +1108,7 @@ class ObjectTreeView(TreeView, ObjectTreeViewItem):
         try:
             while not index in parent._index_to_children:
                 i = max(
-                    [k for k in list(parent._index_to_children.keys()) if k < index])
+                    [k for k in parent._index_to_children.keys() if k < index])
                 # i is the offset of the next parent to use (from the current
                 # parent)
 

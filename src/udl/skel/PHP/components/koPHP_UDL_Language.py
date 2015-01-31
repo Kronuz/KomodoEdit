@@ -74,7 +74,7 @@ class KoPHPLanguage(KoUDLLanguage, KoLanguageBaseDedentMixin):
     accessKey = 'h'
     primary = 1
     shebangPatterns = [
-        re.compile(ur'\A#!.*php.*$', re.IGNORECASE | re.MULTILINE),
+        re.compile(r'\A#!.*php.*$', re.IGNORECASE | re.MULTILINE),
     ]
     namedBlockRE = r'^(.*?function\s+[&]*?\s*[\w_]*)|(^.*?(?<=\s)(?:class|interface)\s+[\w_]*)'
     namedBlockDescription = 'PHP functions and classes'

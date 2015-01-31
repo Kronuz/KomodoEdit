@@ -59,20 +59,20 @@ log = logging.getLogger("luddite")
 
 # XXX review and Pythonify
 def keep_non_empty_dicts(lst):
-    return [x for x in lst if x and type(x) == DictType and len(list(x.keys())) > 0]
+    return [x for x in lst if x and isinstance(x, dict) and len(x.keys()) > 0]
 
 # XXX review and Pythonify
 
 
 def keep_non_empty_lists(lst):
-    return [x for x in lst if x and type(x) == ListType and len(x) > 0]
+    return [x for x in lst if x and isinstance(x, list) and len(x) > 0]
 
 # XXX review and Pythonify
 
 
 def combine_filter_list_dict(list1, item2):
     list2 = keep_non_empty_dicts(list1 or [])
-    if type(item2) == DictType:
+    if isinstance(item2, dict):
         list2.append(item2)
     return list2
 

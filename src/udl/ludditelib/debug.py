@@ -43,14 +43,13 @@ from os.path import basename, dirname, join, exists, abspath
 from glob import glob
 import sys
 import re
-from cStringIO import StringIO
 import logging
 from pprint import pprint
 
 from ludditelib.common import is_source_tree_layout
 import six
 from six.moves import range
-
+from six.moves import StringIO
 
 def _add_libs():
     """Get a SilverCity build on sys.path.
@@ -268,7 +267,7 @@ def _style_names_from_style_num(style_num):
     # Get a style group from styles.py.
     import styles
     if "UDL" in styles.StateMap:
-        for style_group, const_names in list(styles.StateMap["UDL"].items()):
+        for style_group, const_names in styles.StateMap["UDL"].items():
             if const_name in const_names:
                 style_names.append(style_group)
                 break
@@ -349,13 +348,13 @@ class Accessor(object):
     """
 
     def char_at_pos(self, pos):
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def style_at_pos(self, pos):
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def line_and_col_at_pos(self, pos):
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def gen_char_and_style_back(self, start, stop):
         """Generate (char, style) tuples backward from start to stop
@@ -364,7 +363,7 @@ class Accessor(object):
         For SciMozAccessor this can be implemented more efficiently than
         the naive usage of char_at_pos()/style_at_pos().
         """
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def gen_char_and_style(self, start, stop):
         """Generate (char, style) tuples forward from start to stop
@@ -373,33 +372,33 @@ class Accessor(object):
         For SciMozAccessor this can be implemented more efficiently than
         the naive usage of char_at_pos()/style_at_pos().
         """
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def match_at_pos(self, pos, s):
         """Return True if the given string matches the text at the given
         position.
         """
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def line_from_pos(self, pos):
         """Return the 0-based line number for the given position."""
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def line_start_pos_from_pos(self, pos):
         """Return the position of the start of the line of the given pos."""
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def pos_from_line_and_col(self, line, col):
         """Return the position of the given line and column."""
-        raise VirtualMethodError()
+        raise NotImplemented
 
     @property
     def text(self):
         """All buffer content (as a unicode string)."""
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def text_range(self, start, end):
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def length(self):
         """Return the length of the buffer.
@@ -409,7 +408,7 @@ class Accessor(object):
         efficient. All that is guaranteed is that the *_at_pos() methods
         work as expected.
         """
-        raise VirtualMethodError()
+        raise NotImplemented
     # def gen_pos_and_char_fwd(self, start_pos):
     #    """Generate (<pos>, <char>) tuples forward from the starting
     #    position until the end of the document.
@@ -418,7 +417,7 @@ class Accessor(object):
     #    left fuzzy so that SilverCity and SciMoz implementations can be
     #    efficient.
     #    """
-    #    raise VirtualMethodError()
+    #    raise NotImplemented
 
     def gen_tokens(self):
         """Generator for all styled tokens in the buffer.
@@ -426,12 +425,12 @@ class Accessor(object):
         Currently this should yield token dict a la SilverCity's
         tokenize_by_style().
         """
-        raise VirtualMethodError()
+        raise NotImplemented
 
     def contiguous_style_range_from_pos(self, pos):
         """Returns a 2-tuple (start, end) giving the span of the sequence of
         characters with the style at position pos."""
-        raise VirtualMethodError()
+        raise NotImplemented
 
 
 class SilverCityAccessor(Accessor):
@@ -659,8 +658,7 @@ def _escaped_text_from_text(text, escapes="eol"):
 
     # Sort longer replacements first to allow, e.g. '\r\n' to beat '\r' and
     # '\n'.
-    escapes_keys = list(escapes.keys())
-    escapes_keys.sort(key=lambda a: len(a), reverse=True)
+    escapes_keys = sorted(escapes.keys(), key=len, reverse=True)
 
     def repl(match):
         val = escapes[match.group(0)]

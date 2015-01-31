@@ -22,7 +22,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import re
-import cStringIO as sio
+from six.moves import StringIO
 import tokenize
 
 
@@ -36,7 +36,7 @@ type_map = {tokenize.NUMBER: "(literal)",
 
 
 def gen_python_tokens(source):
-    stream = tokenize.generate_tokens(sio.StringIO(source).readline)
+    stream = tokenize.generate_tokens(StringIO(source).readline)
     for token, value, begin, end in (t[:4] for t in stream):
         if token in type_map:
             yield type_map[token], value, begin, end

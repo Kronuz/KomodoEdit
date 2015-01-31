@@ -62,7 +62,7 @@ import sys
 import types
 import logging
 import operator
-from cStringIO import StringIO
+from six.moves import StringIO
 import weakref
 from glob import glob
 
@@ -1171,7 +1171,7 @@ class JSObject:
 
     def addClassRef(self, baseclass):
         assert isinstance(
-            baseclass, (str, six.text_type)), "baseclass %r is not a str" % (baseclass,)
+            baseclass, six.string_types), "baseclass %r is not a str" % (baseclass,)
         if baseclass not in self.classrefs:
             self.classrefs.append(baseclass)
 
@@ -1248,7 +1248,7 @@ class JSObject:
             bestCount = 0
             bestType = None
             for rtype in self.returnTypes:
-                if isinstance(rtype, (str, six.text_type)):
+                if isinstance(rtype, six.string_types):
                     count = d.get(rtype, 0) + 1
                     d[rtype] = count
                     if count > bestCount:
@@ -1279,7 +1279,7 @@ class JSObject:
             result.append("%s%s %s" % (" " * depth, self.cixname, self.name))
         for attrname in ("classes", "members", "functions", "variables"):
             d = getattr(self, attrname, {})
-            for v in list(d.values()):
+            for v in d.values():
                 result += v.outline(depth + 2)
         return result
 
@@ -1347,7 +1347,7 @@ class JSObject:
 
         # Additional meta-data.
         if self.metadata:
-            for key, value in list(self.metadata.items()):
+            for key, value in self.metadata.items():
                 cixobject.attrib[key] = value
 
         # Add the type information, JSDoc overrides whatever the ciler found
@@ -1355,7 +1355,7 @@ class JSObject:
             # Convert the value into a standard name
             addCixType(cixobject, standardizeJSType(jsdoc.type))
         elif self.type:
-            assert isinstance(self.type, (str, six.text_type)), \
+            assert isinstance(self.type, six.string_types), \
                 "self.type %r is not a str" % (self.type)
             addCixType(cixobject, standardizeJSType(self.type))
 
@@ -1388,7 +1388,7 @@ class JSObject:
                     addClassRef(cixobject, baseclass)
 
         # Note that arguments must be kept in the order they were defined.
-        variables = list(self.variables.values())
+        variables = self.variables.values()
         arguments = [x for x in variables if isinstance(x, JSArgument)]
         variables = [x for x in variables if not isinstance(x, JSArgument)]
         allValues = sorted(arguments, key=operator.attrgetter("pos", "name")) + \
@@ -1474,7 +1474,7 @@ class JSArgument(JSVariable):
             result.append("%sargument %s" % (" " * depth, self.name))
         for attrname in ("classes", "members", "functions", "variables"):
             d = getattr(self, attrname, {})
-            for v in list(d.values()):
+            for v in d.values():
                 result += v.outline(depth + 2)
         return result
 
@@ -1594,7 +1594,7 @@ class JSFile:
         result = ["File: %r" % (self.name)]
         for attrname in ("classes", "functions", "variables"):
             d = getattr(self, attrname, {})
-            for v in list(d.values()):
+            for v in d.values():
                 result += v.outline(2)
         return result
 
@@ -1646,7 +1646,7 @@ class JSFile:
         """
         # print "Looking for varType:%r in scope:%r" % (varType,
         # scopeStack[-1].name)
-        assert not varType or isinstance(varType, (str, six.text_type)), \
+        assert not varType or isinstance(varType, six.string_types), \
             "varType %r is not a string" % varType
         if depth < 10 and varType:
             # Don't look any further if it's a known type
@@ -1690,7 +1690,7 @@ class JSFile:
                 # print "Found scope"
                 if isinstance(foundScope, JSVariable):
                     # print "Recursively searching scope"
-                    assert foundScope.type is None or isinstance(foundScope.type, (str, six.text_type)), \
+                    assert foundScope.type is None or isinstance(foundScope.type, six.string_types), \
                         "foundScope %r has invalid type %r" % (
                             foundScope, foundScope.type)
                     foundScope = self._lookupVariableType(
@@ -1742,7 +1742,7 @@ class JSFile:
                     returnType = jstype.returnTypes[i]
                     # print "Looking up function return type: %r" %
                     # (returnType, )
-                    if isinstance(returnType, (str, six.text_type)):
+                    if isinstance(returnType, six.string_types):
                         actualType = self._lookupVariableType(
                             returnType, jstype, scopeStack + [jstype])
                         if actualType and actualType != jstype:
@@ -3388,7 +3388,7 @@ class JavaScriptCiler:
                         # "alias" to a primitive
                         varType = TYPE_VARIABLE
                 varType_mapping = dict(
-                    [(v, k) for k, v in list(globals().items()) if k.startswith("TYPE_")])
+                    [(v, k) for k, v in globals().items() if k.startswith("TYPE_")])
                 log.debug("_variableHandler:: varType:%r, typeNames:%r, args:%r, p: %d", varType_mapping.get(
                     varType, varType), typeNames, args, p)
                 if varType == TYPE_FUNCTION:

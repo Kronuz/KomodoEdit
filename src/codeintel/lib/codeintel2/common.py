@@ -37,7 +37,6 @@
 
 """Code Intelligence: common definitions"""
 from __future__ import absolute_import
-from six.moves import range
 # Dev Notes:
 # - XXX Need some good top-level logging control functions for this package.
 # - XXX Rationalize exceptions.
@@ -258,7 +257,7 @@ class NoCIDBModuleEntry(CIDBError):  # XXX change name to NoModuleEntryForPath
 #---- globals
 
 # Trigger forms - must be kept in sync with values in koICodeIntel.idl.
-TRG_FORM_CPLN, TRG_FORM_CALLTIP, TRG_FORM_DEFN = list(range(3))
+TRG_FORM_CPLN, TRG_FORM_CALLTIP, TRG_FORM_DEFN = range(3)
 
 # Priorities at which scanning requests can be scheduled.
 PRIORITY_CONTROL = 0        # Special sentinal priority to control scheduler
@@ -269,12 +268,12 @@ PRIORITY_BACKGROUND = 4     # info may be needed sometime
 
 # TODO: these are unused, drop them
 # CIDB base type constants
-BT_CLASSREF, BT_INTERFACEREF = list(range(2))
+BT_CLASSREF, BT_INTERFACEREF = range(2)
 
 # TODO: These are unused, drop them, the symbolType2Name below and its dead
 #      usage in cb.py.
 # CIDB symbol type constants
-(ST_FUNCTION, ST_CLASS, ST_INTERFACE, ST_VARIABLE, ST_ARGUMENT) = list(range(5))
+(ST_FUNCTION, ST_CLASS, ST_INTERFACE, ST_VARIABLE, ST_ARGUMENT) = range(5)
 _symbolType2Name = {
     ST_FUNCTION: "function",
     ST_CLASS: "class",
@@ -701,8 +700,7 @@ def xmlattrstr(attrs):
     # XXX Should this be using
     from xml.sax.saxutils import quoteattr
     s = ''
-    names = list(attrs.keys())
-    names.sort()  # dump attrs sorted by key, not necessary but is more stable
+    names = sorted(attrs.keys())  # dump attrs sorted by key, not necessary but is more stable
     for name in names:
         s += ' %s=%s' % (name, quoteattr(str(attrs[name])))
     return s

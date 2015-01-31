@@ -479,7 +479,7 @@ class StrpObj(TimeObj):
             locale_setting)
         REComp = self.RECreation(format, DIRECTIVEDict)
         reobj = REComp.match(string)
-        for found in list(reobj.groupdict().keys()):
+        for found in reobj.groupdict().keys():
             if found in ('y', 'Y'):  # Year
                 if found == 'y':  # Without century
                     self.year = CENTURY + int(reobj.group('y'))

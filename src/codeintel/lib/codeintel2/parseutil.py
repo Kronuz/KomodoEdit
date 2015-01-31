@@ -101,7 +101,7 @@ def urlencode_path(s):
     The string must be an 8-bit string (that is all that URL-encoding can
     handle).
     """
-    from urllib import quote
+    from six.moves.urllib_parse import quote
     safe = os.sep + (os.altsep or '') + ":"
     return quote(s, safe=safe)
 

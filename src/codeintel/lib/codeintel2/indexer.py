@@ -56,7 +56,7 @@ import sys
 import threading
 import time
 import bisect
-import six.moves.queue
+from six.moves import queue
 from hashlib import md5
 import traceback
 
@@ -66,7 +66,6 @@ from codeintel2.common import *
 from codeintel2.buffer import Buffer
 from codeintel2.database.langlib import LangDirsLib
 from codeintel2.database.multilanglib import MultiLangDirsLib
-from six.moves import range
 
 if _xpcom_:
     from xpcom.server import UnwrapObject
@@ -80,7 +79,7 @@ log = logging.getLogger("codeintel.indexer")
 
 #---- internal support
 
-class _PriorityQueue(six.moves.queue.Queue):
+class _PriorityQueue(queue.Queue):
 
     """A thread-safe priority queue.
 
@@ -494,7 +493,7 @@ class Indexer(threading.Thread):
     - There is a potential race condition on request id generation
       if addRequest/stageRequest calls are made from multiple threads.
     """
-    MODE_DAEMON, MODE_ONE_SHOT = list(range(2))
+    MODE_DAEMON, MODE_ONE_SHOT = range(2)
     mode = MODE_DAEMON
 
     class StopIndexing(Exception):
@@ -579,7 +578,7 @@ class Indexer(threading.Thread):
             while 1:
                 try:
                     self._iteration()
-                except six.moves.queue.Empty:  # for mode=MODE_ONE_SHOT only
+                except queue.Empty:  # for mode=MODE_ONE_SHOT only
                     ##                    reason = "completed"
                     break
                 except self.StopIndexing:

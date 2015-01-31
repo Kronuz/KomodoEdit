@@ -74,8 +74,9 @@ class rng_base_dataset:
         self.refs = []
 
     def resolveRefs(self, dataset):
+        keys = list(dataset.defs.keys())
         for ref in self.refs[:]:
-            if ref not in list(dataset.defs.keys()):
+            if ref not in keys:
                 if ref not in dataset.ref_unresolved:
                     dataset.ref_unresolved[ref] = []
                 dataset.ref_unresolved[ref].append(self)
@@ -111,10 +112,10 @@ class rng_dataset(rng_base_dataset):
             dataset = self
         rng_base_dataset.resolveRefs(self, dataset)
 
-        for d in list(self.defs.values()):
+        for d in self.defs.values():
             d.resolveRefs(dataset)
 
-        for e in list(self.all_elements.values()):
+        for e in self.all_elements.values():
             e.resolveRefs(dataset)
 
         for a in self.attributes[:]:
@@ -123,7 +124,7 @@ class rng_dataset(rng_base_dataset):
         self.resolveUnresolvedRefs()
 
     def resolveCircularRefs(self):
-        for ref in list(self.ref_circular.keys())[:]:
+        for ref in list(self.ref_circular.keys()):
             # print "resolving earlier circular reference %s"%ref
             el = self.ref_circular[ref]
             del self.ref_circular[ref]
@@ -131,7 +132,7 @@ class rng_dataset(rng_base_dataset):
                 e.resolveRefs(self)
 
     def resolveUnresolvedRefs(self):
-        for ref in list(self.ref_unresolved.keys())[:]:
+        for ref in list(self.ref_unresolved.keys()):
             print("resolving earlier unresolved reference %s" % ref)
             el = self.ref_unresolved[ref]
             del self.ref_unresolved[ref]
@@ -178,7 +179,7 @@ class rng_dataset(rng_base_dataset):
         for e in self.elements:
             e.dump(stream)
         print("-" * 60)
-        for e in list(self.all_elements.values()):
+        for e in self.all_elements.values():
             e.dump(stream)
         print("-" * 60)
 
@@ -195,7 +196,7 @@ class element_info(rng_node_info):
 
     def dump(self, stream):
         attrs = []
-        for n, v in list(self._node.attrib.items()):
+        for n, v in self._node.attrib.items():
             attrs.append('%s="%s"' % (n, v))
         stream.write("<element %s>\n" % ' '.join(attrs))
         names = [el.name for el in self.elements]
@@ -259,7 +260,7 @@ class rng:
         if hasattr(self, methodName):
             fn = getattr(self, methodName)
             fn(node)
-        for child in list(node):
+        for child in node:
             # print "parsing child %s"%child.tagName
             self.parseNode(child)
         methodName = "handle_%s_end" % node.tagName

@@ -87,13 +87,7 @@ def escaped_text_from_text(text, escapes="eol"):
 
     # Sort longer replacements first to allow, e.g. '\r\n' to beat '\r' and
     # '\n'.
-    escapes_keys = list(escapes.keys())
-    try:
-        escapes_keys.sort(key=lambda a: len(a), reverse=True)
-    except TypeError:
-        # Python 2.3 support: sort() takes no keyword arguments
-        escapes_keys.sort(lambda a, b: cmp(len(a), len(b)))
-        escapes_keys.reverse()
+    escapes_keys = sorted(escapes.keys(), key=len, reverse=True)
 
     def repl(match):
         val = escapes[match.group(0)]

@@ -261,7 +261,7 @@ class Lexer:
             else:
                 # XXX Handle allowed prefixes, as in "<<" and "<<="
                 found_something = False
-                for possible_op in list(multi_char_ops_dict.keys()):
+                for possible_op in multi_char_ops_dict.keys():
                     if tval.startswith(possible_op):
                         split_tokens.append(possible_op)
                         tval = tval[len(possible_op):]

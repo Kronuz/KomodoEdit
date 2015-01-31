@@ -95,16 +95,6 @@ def getcollector():
     return g_collector
 
 
-def _cmpLen(a, b):
-    al = len(a)
-    bl = len(b)
-    if al > bl:
-        return -1
-    if al == bl:
-        return cmp(a, b)
-    return 1
-
-
 def strip_quotes(str):
     if not str:
         return None
@@ -191,14 +181,13 @@ class Catalog:
 
     # Support functions for matching data to a catalog
     def _longestMatch(self, needle, haystack):
-        haystack.sort(_cmpLen)
-        for straw in haystack:
+        for straw in sorted(haystack, key=lambda k: (len(k), k)):
             if needle.find(straw) == 0:
                 return straw
         return None
 
     def _getRewrite(self, id, ar):
-        possible = self._longestMatch(id, list(ar.keys()))
+        possible = self._longestMatch(id, ar.keys())
         if possible:
             return "%s%s" % (ar[possible], id[len(possible):])
         return None
@@ -206,7 +195,7 @@ class Catalog:
     def _getDelegates(self, id, delegates):
         if id not in delegates:
             return None
-        entries = list(delegates[id].keys()).sort(_cmpLen)
+        entries = sorted(delegates[id].keys(), key=lambda k: (len(k), k))
         return [delegates[id][d].catalog for d in entries]
 
     def getSystemRewrite(self, systemId):
@@ -262,7 +251,7 @@ class XMLCatalog(Catalog):
         if hasattr(self, methodName):
             fn = getattr(self, methodName)
             fn(node)
-        for child in list(node):
+        for child in node:
             # print "parsing child %s"%child.tagName
             self._parseNode(child)
         methodName = "_handle_%s_end" % node.tagName.lower()

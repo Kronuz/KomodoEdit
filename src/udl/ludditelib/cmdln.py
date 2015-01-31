@@ -37,7 +37,6 @@ details.
 from __future__ import absolute_import
 from __future__ import print_function
 from six.moves import map
-from six.moves import range
 from six.moves import input
 
 __revision__ = "$Id$"
@@ -53,7 +52,7 @@ from pprint import pprint
 
 #---- globals
 
-LOOP_ALWAYS, LOOP_NEVER, LOOP_IF_EMPTY = list(range(3))
+LOOP_ALWAYS, LOOP_NEVER, LOOP_IF_EMPTY = range(3)
 
 # An unspecified optional argument when None is a meaningful value.
 _NOT_SPECIFIED = ("Not", "Specified")
@@ -278,8 +277,7 @@ class RawCmdln(cmd.Cmd):
 
         Returns the return value from the command handler.
         """
-        assert (isinstance(argv, (list, tuple)),
-                "'argv' is not a sequence: %r" % argv)
+        assert isinstance(argv, (list, tuple)), "'argv' is not a sequence: %r" % argv
         retval = None
         try:
             argv = self.precmd(argv)
@@ -324,8 +322,7 @@ class RawCmdln(cmd.Cmd):
         while not self.stop:
             if self.cmdqueue:
                 argv = self.cmdqueue.pop(0)
-                assert (isinstance(argv, (list, tuple)),
-                        "item on 'cmdqueue' is not a sequence: %r" % argv)
+                assert isinstance(argv, (list, tuple)), "item on 'cmdqueue' is not a sequence: %r" % argv
             else:
                 if self.use_rawinput:
                     try:
@@ -586,7 +583,7 @@ class RawCmdln(cmd.Cmd):
             "${cmd_option_list}": self._help_preprocess_cmd_option_list,
         }
 
-        for marker, preprocessor in list(preprocessors.items()):
+        for marker, preprocessor in preprocessors.items():
             if marker in help:
                 help = preprocessor(help, cmdname)
         return help
@@ -621,7 +618,7 @@ class RawCmdln(cmd.Cmd):
         # Find any aliases for commands.
         token2canonical = self._get_canonical_map()
         aliases = {}
-        for token, cmdname in list(token2canonical.items()):
+        for token, cmdname in token2canonical.items():
             if token == cmdname:
                 continue
             aliases.setdefault(cmdname, []).append(token)
@@ -632,8 +629,7 @@ class RawCmdln(cmd.Cmd):
         for attr in self.get_names():
             if attr.startswith("do_"):
                 cmdnames[attr[3:]] = True
-        cmdnames = list(cmdnames.keys())
-        cmdnames.sort()
+        cmdnames = sorted(cmdnames.keys())
         linedata = []
         for cmdname in cmdnames:
             if aliases.get(cmdname):
@@ -698,7 +694,7 @@ class RawCmdln(cmd.Cmd):
                 helpnames[helpname] = attr
 
         if helpnames:
-            linedata = [(n, a.__doc__ or "") for n, a in list(helpnames.items())]
+            linedata = [(n, a.__doc__ or "") for n, a in helpnames.items()]
             linedata.sort()
 
             subindent = indent + ' ' * 4
@@ -844,7 +840,7 @@ class RawCmdln(cmd.Cmd):
                     continue
                 cmd2funcname[cmdname] = attr
                 token2canonical[cmdname] = cmdname
-            for cmdname, funcname in list(cmd2funcname.items()):  # add aliases
+            for cmdname, funcname in cmd2funcname.items():  # add aliases
                 func = getattr(self, funcname)
                 aliases = getattr(func, "aliases", [])
                 for alias in aliases:

@@ -44,7 +44,7 @@ from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import sys
 import stat
 import string
-from cStringIO import StringIO
+from six.moves import StringIO
 import logging
 import traceback
 from pprint import pprint
@@ -449,7 +449,7 @@ class CSSLangIntel(LangIntel, ParenStyleCalltipIntelMixin):
     @LazyClassAttribute
     def CSS_PROPERTY_NAMES(self):
         # Setup the names triggered for "property-names"
-        return sorted(list(self.CSS_ATTRIBUTES.keys()), key=OrdPunctLast)
+        return sorted(self.CSS_ATTRIBUTES.keys(), key=OrdPunctLast)
 
     @LazyClassAttribute
     def CSS_PROPERTY_ATTRIBUTE_CALLTIPS_DICT(self):

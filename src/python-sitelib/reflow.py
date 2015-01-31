@@ -600,8 +600,8 @@ def htmlify(text):
     """
     paragraphs = Paragraphize(text)
     htmlcontext = HTMLContext()
-    import cStringIO
-    buffer = cStringIO.StringIO()
+    from six.moves import StringIO
+    buffer = StringIO()
 
     [paragraph.htmlify(buffer, htmlcontext) for paragraph in paragraphs]
     return buffer.getvalue()

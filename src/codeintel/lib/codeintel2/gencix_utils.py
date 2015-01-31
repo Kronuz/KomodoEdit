@@ -46,7 +46,7 @@ import os
 import sys
 import re
 import shutil
-from cStringIO import StringIO
+from six.moves import StringIO
 import warnings
 
 from ciElementTree import Element, ElementTree, SubElement

@@ -73,9 +73,9 @@ error_count = 3
 import re
 import types
 import sys
-import cStringIO
 import os.path
 from hashlib import md5
+from six.moves import StringIO
 
 # Exception raised for yacc-related errors
 
@@ -466,7 +466,7 @@ def validate_file(filename):
 
 
 def validate_dict(d):
-    for n, v in list(d.items()):
+    for n, v in d.items():
         if n[0:2] == 'p_' and type(v) in (types.FunctionType, types.MethodType):
             continue
         if n[0:2] == 't_':
@@ -559,8 +559,8 @@ def initialize_vars():
 
     # File objects used when creating the parser.out debugging file
     global _vf, _vfc
-    _vf = cStringIO.StringIO()
-    _vfc = cStringIO.StringIO()
+    _vf = StringIO()
+    _vfc = StringIO()
 
 # -----------------------------------------------------------------------------
 # class Production:
@@ -590,7 +590,7 @@ def initialize_vars():
 class Production:
 
     def __init__(self, **kw):
-        for k, v in list(kw.items()):
+        for k, v in kw.items():
             setattr(self, k, v)
         self.lr_index = -1
         # Flag indicating whether or not added to LR0 closure
@@ -852,7 +852,7 @@ def compute_reachable():
 
     mark_reachable_from(Productions[0].prod[0], Reachable)
 
-    for s in list(Nonterminals.keys()):
+    for s in Nonterminals.keys():
         if not Reachable[s]:
             sys.stderr.write("yacc: Symbol '%s' is unreachable.\n" % s)
 
@@ -885,7 +885,7 @@ def compute_terminates():
     Terminates = {}
 
     # Terminals:
-    for t in list(Terminals.keys()):
+    for t in Terminals.keys():
         Terminates[t] = 1
 
     Terminates['$'] = 1
@@ -893,13 +893,13 @@ def compute_terminates():
     # Nonterminals:
 
     # Initialize to false:
-    for n in list(Nonterminals.keys()):
+    for n in Nonterminals.keys():
         Terminates[n] = 0
 
     # Then propagate termination until no change:
     while 1:
         some_change = 0
-        for (n, pl) in list(Prodnames.items()):
+        for (n, pl) in Prodnames.items():
             # Nonterminal n terminates iff any of its productions terminates.
             for p in pl:
                 # Production p terminates iff all of its rhs symbols terminate.
@@ -927,7 +927,7 @@ def compute_terminates():
             break
 
     some_error = 0
-    for (s, terminates) in list(Terminates.items()):
+    for (s, terminates) in Terminates.items():
         if not terminates:
             if s not in Prodnames and s not in Terminals and s != 'error':
                 # s is used-but-not-defined, and we've already warned of that,
@@ -965,7 +965,7 @@ def verify_productions(cycle_check=1):
     # Now verify all of the tokens
     if yaccdebug:
         _vf.write("Unused terminals:\n\n")
-    for s, v in list(Terminals.items()):
+    for s, v in Terminals.items():
         if s != 'error' and not v:
             sys.stderr.write(
                 "yacc: Warning. Token '%s' defined, but not used.\n" % s)
@@ -981,7 +981,7 @@ def verify_productions(cycle_check=1):
 
     unused_prod = 0
     # Verify the use of all productions
-    for s, v in list(Nonterminals.items()):
+    for s, v in Nonterminals.items():
         if not v:
             p = Prodnames[s][0]
             sys.stderr.write(
@@ -1002,14 +1002,12 @@ def verify_productions(cycle_check=1):
 
     if yaccdebug:
         _vf.write("\nTerminals, with rules where they appear\n\n")
-        ks = list(Terminals.keys())
-        ks.sort()
+        ks = sorted(Terminals.keys())
         for k in ks:
             _vf.write("%-20s : %s\n" %
                       (k, " ".join([str(s) for s in Terminals[k]])))
         _vf.write("\nNonterminals, with rules where they appear\n\n")
-        ks = list(Nonterminals.keys())
-        ks.sort()
+        ks = sorted(Nonterminals.keys())
         for k in ks:
             _vf.write("%-20s : %s\n" %
                       (k, " ".join([str(s) for s in Nonterminals[k]])))
@@ -1149,7 +1147,7 @@ def first(beta):
 
 def compute_follow(start=None):
     # Add '$' to the follow list of the start symbol
-    for k in list(Nonterminals.keys()):
+    for k in Nonterminals.keys():
         Follow[k] = []
 
     if not start:
@@ -1184,7 +1182,7 @@ def compute_follow(start=None):
 
     if 0 and yaccdebug:
         _vf.write('\nFollow:\n')
-        for k in list(Nonterminals.keys()):
+        for k in Nonterminals.keys():
             _vf.write("%-20s : %s\n" %
                       (k, " ".join([str(s) for s in Follow[k]])))
 
@@ -1198,7 +1196,7 @@ def compute_follow(start=None):
 def compute_first1():
 
     # Terminals:
-    for t in list(Terminals.keys()):
+    for t in Terminals.keys():
         First[t] = [t]
 
     First['$'] = ['$']
@@ -1207,13 +1205,13 @@ def compute_first1():
     # Nonterminals:
 
     # Initialize to the empty set:
-    for n in list(Nonterminals.keys()):
+    for n in Nonterminals.keys():
         First[n] = []
 
     # Then propagate symbols until no change:
     while 1:
         some_change = 0
-        for n in list(Nonterminals.keys()):
+        for n in Nonterminals.keys():
             for p in Prodnames[n]:
                 for f in first(p.prod):
                     if f not in First[n]:
@@ -1224,7 +1222,7 @@ def compute_first1():
 
     if 0 and yaccdebug:
         _vf.write('\nFirst:\n')
-        for k in list(Nonterminals.keys()):
+        for k in Nonterminals.keys():
             _vf.write("%-20s : %s\n" %
                       (k, " ".join([str(s) for s in First[k]])))
 
@@ -1391,7 +1389,7 @@ def lr0_items():
             for s in ii.usyms:
                 asyms[s] = None
 
-        for x in list(asyms.keys()):
+        for x in asyms.keys():
             g = lr0_goto(I, x)
             if not g:
                 continue
@@ -1589,7 +1587,7 @@ def slr_parse_table():
             for s in ii.usyms:
                 if s in Nonterminals:
                     nkeys[s] = None
-        for n in list(nkeys.keys()):
+        for n in nkeys.keys():
             g = lr0_goto(I, n)
             j = _lr0_cidhash.get(id(g), -1)
             if j >= 0:
@@ -1757,11 +1755,11 @@ def ReduceNonterminals():
     global TReductions
     global NTReductions
 
-    for nt in list(Nonterminals.keys()):
+    for nt in Nonterminals.keys():
         TReductions[nt] = []
         NTReductions[nt] = []
 
-    for nt in list(Nonterminals.keys()):
+    for nt in Nonterminals.keys():
         terms = ReduceToTerminals(nt)
         TReductions[nt].extend(terms)
         if nt not in NTReductions:
@@ -1882,9 +1880,9 @@ def lalr_parse_table():
     global Prodempty
 
     EmptyAncestors = {}
-    for y in list(Prodempty.keys()):
+    for y in Prodempty.keys():
         EmptyAncestors[y] = []
-    for x in list(NTReductions.items()):
+    for x in NTReductions.items():
         for y in x[1]:
             if y in Prodempty:
                 EmptyAncestors[y].append(x[0])
@@ -1923,7 +1921,7 @@ def lalr_parse_table():
                                         if len(x.prod) > 0 and x.prod[0] == p.name:
                                             n = p.prod[1:]
                                             d = x.prod[lr_index + 2:]
-                                            for l in list(x.lookaheads.items()):
+                                            for l in x.lookaheads.items():
                                                 flist = First[
                                                     tuple(n + d + [l])]
                                                 for f in flist:
@@ -2205,7 +2203,7 @@ def lalr_parse_table():
                     nkeys[s] = None
 
         # Construct the goto table for this state
-        for n in list(nkeys.keys()):
+        for n in nkeys.keys():
             g = lr0_goto(I, n)
             j = cid_hash.get(id(g), -1)
             if j >= 0:
@@ -2259,7 +2257,7 @@ _lr_signature = %s
         if smaller:
             items = {}
 
-            for k, v in list(_lr_action.items()):
+            for k, v in _lr_action.items():
                 i = items.get(k[1])
                 if not i:
                     i = ([], [])
@@ -2268,7 +2266,7 @@ _lr_signature = %s
                 i[1].append(v)
 
             f.write("\n_lr_action_items = {")
-            for k, v in list(items.items()):
+            for k, v in items.items():
                 f.write("%r:([" % k)
                 for i in v[0]:
                     f.write("%r," % i)
@@ -2289,7 +2287,7 @@ del _lr_action_items
 
         else:
             f.write("\n_lr_action = { ")
-            for k, v in list(_lr_action.items()):
+            for k, v in _lr_action.items():
                 f.write("(%r,%r):%r," % (k[0], k[1], v))
             f.write("}\n")
 
@@ -2297,7 +2295,7 @@ del _lr_action_items
             # Factor out names to try and make smaller
             items = {}
 
-            for k, v in list(_lr_goto.items()):
+            for k, v in _lr_goto.items():
                 i = items.get(k[1])
                 if not i:
                     i = ([], [])
@@ -2306,7 +2304,7 @@ del _lr_action_items
                 i[1].append(v)
 
             f.write("\n_lr_goto_items = {")
-            for k, v in list(items.items()):
+            for k, v in items.items():
                 f.write("%r:([" % k)
                 for i in v[0]:
                     f.write("%r," % i)
@@ -2326,7 +2324,7 @@ del _lr_goto_items
 """)
         else:
             f.write("\n_lr_goto = { ")
-            for k, v in list(_lr_goto.items()):
+            for k, v in _lr_goto.items():
                 f.write("(%r,%r):%r," % (k[0], k[1], v))
             f.write("}\n")
 
@@ -2462,7 +2460,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
             if not (isinstance(requires, dict)):
                 raise YaccError("require must be a dictionary.")
 
-            for r, v in list(requires.items()):
+            for r, v in requires.items():
                 try:
                     if not (isinstance(v, list)):
                         raise TypeError
@@ -2521,7 +2519,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
             print("yacc: Warning. no p_error() function is defined.")
 
         # Get the list of built-in functions with p_ prefix
-        symbols = [ldict[f] for f in list(ldict.keys())
+        symbols = [ldict[f] for f in ldict.keys()
                    if (type(ldict[f]) in (types.FunctionType, types.MethodType) and ldict[f].__name__[:2] == 'p_'
                        and ldict[f].__name__ != 'p_error')]
 
@@ -2530,8 +2528,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
             raise YaccError("no rules of the form p_rulename are defined.")
 
         # Sort the symbols by line number
-        symbols.sort(
-            lambda x, y: cmp(x.__code__.co_firstlineno, y.__code__.co_firstlineno))
+        symbols.sort(key=lambda k: k.__code__.co_firstlineno)
 
         # Add all of the symbols to the grammar
         for f in symbols:
@@ -2553,7 +2550,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
         if not lr_read_tables(tabmodule):
 
             # Validate files
-            for filename in list(files.keys()):
+            for filename in files.keys():
                 if not validate_file(filename):
                     error = 1
 
@@ -2565,7 +2562,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
 
             augment_grammar(start)
             error = verify_productions(cycle_check=check_recursion)
-            otherfunc = [ldict[f] for f in list(ldict.keys())
+            otherfunc = [ldict[f] for f in ldict.keys()
                          if (type(f) in (types.FunctionType, types.MethodType) and ldict[f].__name__[:2] != 'p_')]
 
             if error:

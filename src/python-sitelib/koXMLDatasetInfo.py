@@ -68,7 +68,7 @@ class EmptyDatasetHandler:
             tags = tree.tags.get(tree.namespace(node), {})
         else:
             tags = tree.tags.get("", {})
-        return [t for t in list(tags.keys()) if t]
+        return [t for t in tags.keys() if t]
 
     def attrs(self, tree, node=None):
         if node is None:

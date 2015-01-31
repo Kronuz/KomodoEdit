@@ -65,12 +65,12 @@ from __future__ import absolute_import
 import codecs
 import encodings
 import re
-from six.moves import map
 import six
+from six.moves import map
 from six.moves import range
 
-re_firstline = re.compile(ur'(.*?)(?:\r|\n|$)')
-re_htmlmeta = re.compile(ur'<meta.*?charset=(.*?)">')
+re_firstline = re.compile(r'(.*?)(?:\r|\n|$)')
+re_htmlmeta = re.compile(r'<meta.*?charset=(.*?)">')
 
 """Komodo will hand this library a buffer and ask it to either convert
 it or auto-detect the type."""
@@ -96,7 +96,7 @@ def checkBOM(buffer):
 
     for i in range(min(4, len(buffer)), 0, -1):
         encoding = autodetect_dict.get(
-            tuple(list(map(ord, buffer[0:i])) + [None] * (4 - i)))
+            tuple(map(ord, buffer[0:i]) + [None] * (4 - i)))
         if encoding:
             return (encoding, i)
 
@@ -348,7 +348,7 @@ def recode_unicode(buffer, from_encoding, to_encoding, errors='strict'):
 
     In some instances, unicode object would not change, shortcuts will be taken.
     """
-    assert(type(buffer) == type(u''))
+    assert(isinstance(buffer, six.text_type))
     # unicode can always be decoded to utf-*, so we do not need to do
     # anything to recode the string now.
     if to_encoding.startswith('utf'):
@@ -373,7 +373,7 @@ def recode_raw(buffer, from_encoding, to_encoding, errors='strict'):
 
 
 def recode(buffer, from_encoding, to_encoding, errors='strict', raw=1):
-    if type(buffer) == type(u''):
+    if isinstance(buffer, six.text_type):
         newbuffer = recode_unicode(buffer, from_encoding, to_encoding, errors)
         if raw:
             return makeRaw(newbuffer, to_encoding)

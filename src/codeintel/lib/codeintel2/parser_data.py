@@ -125,7 +125,7 @@ class Node:
             collection = getattr(self, attr)
             if len(collection) > 0:
                 print("%s %s: " % (" " * indent_level, label))
-                for name, varInfo in list(collection.items()):
+                for name, varInfo in collection.items():
                     line, type = varInfo.line_num, varInfo.type
                     if type:
                         typeString = " [" + type + "]"

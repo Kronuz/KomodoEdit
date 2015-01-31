@@ -283,7 +283,7 @@ class RubyTreeEvaluator(TreeEvaluatorHelper):
         self._get_current_names = False
         cplns = self._cplns_from_hits(hits, allowed_cplns)
         if held_get_current_names:
-            for kwd in list(self.langintel.RUBY_KEYWORDS.keys()):
+            for kwd in self.langintel.RUBY_KEYWORDS.keys():
                 cplns.add(("function", kwd))  # "keyword" would be nice
             cplns = self._filter_by_prefix(cplns, self.expr)
         self.debug("eval_cplns: raw list: %r", cplns)

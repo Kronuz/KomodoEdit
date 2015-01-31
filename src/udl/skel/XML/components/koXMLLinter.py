@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 #!python
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -86,7 +86,7 @@ class KoXMLCompileLinter:
             # We need to remove the BOM on UTF-8 data to prevent expat from
             # crashing. We should check to see if this is still necesary
             # with every new Python version (we are at 2.0 now).
-            utf8bom = u'\ufeff'.encode('utf-8')
+            utf8bom = '\ufeff'.encode('utf-8')
             if text.startswith(utf8bom):
                 parser.Parse(text[len(utf8bom):], 1)
             else:

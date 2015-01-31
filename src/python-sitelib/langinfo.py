@@ -360,7 +360,7 @@ class Database(object):
         if filename in self._langinfo_from_filename:
             return self._langinfo_from_filename[filename]
         else:
-            for regex, li in list(self._langinfo_from_filename_re.items()):
+            for regex, li in self._langinfo_from_filename_re.items():
                 if regex.search(filename):
                     return li
 
@@ -457,7 +457,7 @@ class Database(object):
         # <lang> -> (<hint>, <specialized-langinfo>)
         self._specialization_hints_from_lang = {}
 
-        for li in list(self._langinfo_from_norm_lang.values()):
+        for li in self._langinfo_from_norm_lang.values():
             if li.exts:
                 for ext in li.exts:
                     if not ext.startswith('.'):
@@ -523,7 +523,7 @@ class Database(object):
                 norm_komodo_lang = self._norm_lang_from_lang(li.komodo_name)
                 self._li_from_norm_komodo_lang[norm_komodo_lang] = li
             if li.specialization_hints_from_lang:
-                for lang, hint in list(li.specialization_hints_from_lang.items()):
+                for lang, hint in li.specialization_hints_from_lang.items():
                     self._specialization_hints_from_lang[lang] = (hint, li)
 
         self._magic_table.sort(key=operator.itemgetter(2))
@@ -533,8 +533,8 @@ class Database(object):
 
     def _load(self):
         """Load LangInfo classes in this module."""
-        for name, g in list(globals().items()):
-            if isinstance(g, (type, type)) \
+        for name, g in globals().items():
+            if isinstance(g, type) \
                and issubclass(g, LangInfo) and g is not LangInfo:
                 norm_lang = self._norm_lang_from_lang(g.name)
                 self._langinfo_from_norm_lang[norm_lang] = g(self)
@@ -552,7 +552,7 @@ class Database(object):
             for name in dir(module):
                 attr = getattr(module, name)
                 if (not name.startswith("_")   # skip internal bases
-                        and isinstance(attr, (type, type))
+                        and isinstance(attr, type)
                         and issubclass(attr, LangInfo)
                         and attr is not LangInfo):
                     norm_lang = self._norm_lang_from_lang(attr.name)

@@ -297,7 +297,7 @@ class TextInfo(object):
                    % _one_line_summary_from_text(self.content, 30)
 
     def as_dict(self):
-        return dict((k, v) for k, v in list(self.__dict__.items())
+        return dict((k, v) for k, v in self.__dict__.items()
                     if not k.startswith('_'))
 
     def as_summary(self):
@@ -1003,7 +1003,7 @@ class TextInfo(object):
                         emacs_vars[variable.lower()] = value.strip()
 
         # Unquote values.
-        for var, val in list(emacs_vars.items()):
+        for var, val in emacs_vars.items():
             if len(val) > 1 and (val.startswith('"') and val.endswith('"')
                                  or val.startswith('"') and val.endswith('"')):
                 emacs_vars[var] = val[1:-1]
@@ -1117,7 +1117,7 @@ class TextInfo(object):
                     emacs_vars[variable] = value
 
         # Unquote values.
-        for var, val in list(emacs_vars.items()):
+        for var, val in emacs_vars.items():
             if len(val) > 1 and (val.startswith('"') and val.endswith('"')
                                  or val.startswith('"') and val.endswith('"')):
                 emacs_vars[var] = val[1:-1]
@@ -1382,7 +1382,7 @@ class PathAccessor(Accessor):
     (READ_NONE,             # _file==None, file not opened yet
      READ_HEAD,             # _bytes==<head bytes>
      READ_TAIL,             # _bytes==<head>, _bytes_tail==<tail>
-     READ_ALL) = list(range(4))   # _bytes==<all>, _bytes_tail==None, _file closed
+     READ_ALL) = range(4)   # _bytes==<all>, _bytes_tail==None, _file closed
     _read_state = READ_NONE  # one of the READ_* states
     _file = None
     _bytes = None
@@ -1546,7 +1546,7 @@ def _regex_from_encoded_pattern(s):
             except KeyError:
                 raise ValueError("unsupported regex flag: '%s' in '%s' "
                                  "(must be one of '%s')"
-                                 % (char, s, ''.join(list(flag_from_char.keys()))))
+                                 % (char, s, ''.join(flag_from_char.keys())))
         return re.compile(s[1:idx], flags)
     else:  # not an encoded regex
         return re.compile(re.escape(s))
@@ -1592,13 +1592,7 @@ def _escaped_text_from_text(text, escapes="eol"):
 
     # Sort longer replacements first to allow, e.g. '\r\n' to beat '\r' and
     # '\n'.
-    escapes_keys = list(escapes.keys())
-    try:
-        escapes_keys.sort(key=lambda a: len(a), reverse=True)
-    except TypeError:
-        # Python 2.3 support: sort() takes no keyword arguments
-        escapes_keys.sort(lambda a, b: cmp(len(a), len(b)))
-        escapes_keys.reverse()
+    escapes_keys = sorted(escapes.keys(), key=len, reverse=True)
 
     def repl(match):
         val = escapes[match.group(0)]

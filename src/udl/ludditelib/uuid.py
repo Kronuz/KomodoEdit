@@ -5,7 +5,6 @@ uuid4(), uuid5() for generating version 1, 3, 4, and 5 UUIDs respectively.
 
 This module works with Python 2.3 or higher."""
 from __future__ import absolute_import
-from six.moves import map
 
 __author__ = 'Ka-Ping Yee <ping@zesty.ca>'
 __date__ = '$Date: 2005/11/30 11:51:58 $'.split()[1].replace('/', '-')

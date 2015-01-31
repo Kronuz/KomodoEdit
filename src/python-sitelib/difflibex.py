@@ -342,7 +342,7 @@ class FileDiff:
         """Return a list of possible paths for this hunk."""
         best_path = self.best_path(cwd=cwd)
         all_paths = [best_path]
-        for path in list(self.paths.values()):
+        for path in self.paths.values():
             if path == best_path:
                 continue
             if path and cwd and not os.path.isabs(path):
@@ -963,8 +963,8 @@ def _get_hash_for_arrays(a, b):
         return key
     if len(_split_opcodes_diffs) >= 1000:
         # If we have more than 1000 keys, remove the least recently used.
-        oldest_item = min([(x[1]['time'], x[0])
-                           for x in list(_split_opcodes_diffs.items())])
+        oldest_item = min((x[1]['time'], x[0])
+                           for x in _split_opcodes_diffs.items())
         del _split_opcodes_diffs[oldest_item[1]]
     _split_opcodes_diffs[key] = {'time': currTime, 'opcodes': None}
     return key
@@ -1241,7 +1241,7 @@ def _test():
 
 
 def _print_file_position(diff, path, diff_pos):
-    diff_line, diff_col = list(map(int, diff_pos.split(',')))
+    diff_line, diff_col = map(int, diff_pos.split(','))
     try:
         file_path, file_line, file_col \
             = diff.file_pos_from_diff_pos(diff_line - 1, diff_col - 1)

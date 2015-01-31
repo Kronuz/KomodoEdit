@@ -1564,7 +1564,7 @@ class PHPTreeEvaluator(TreeEvaluator):
         return (scoperef[0], [])
 
     def _convertListToCitdl(self, citdl_type, lst):
-        return sorted([(citdl_type, v) for v in lst])
+        return sorted((citdl_type, v) for v in lst)
 
     def _make_shortname_lookup_citdl_dict(self, citdl_type, namelist, length=1):
         d = make_short_name_dict(namelist, length=length)
@@ -1588,7 +1588,7 @@ class PHPTreeEvaluator(TreeEvaluator):
             if childnode.tag == tagname:
                 doesMatch = True
                 if attributes:
-                    for attrname, attrvalue in list(attributes.items()):
+                    for attrname, attrvalue in attributes.items():
                         if childnode.get(attrname) != attrvalue:
                             doesMatch = False
                             break

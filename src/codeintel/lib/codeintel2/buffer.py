@@ -44,7 +44,7 @@ import operator
 import bisect
 from pprint import pprint, pformat
 import logging
-from cStringIO import StringIO
+from six.moves import StringIO
 import traceback
 from hashlib import md5
 import time
@@ -615,7 +615,7 @@ div.code .tags        { color: red; }
 
         # Get a style group from styles.py.
         if self.lang in styles.StateMap:
-            for style_group, const_names in list(styles.StateMap[self.lang].items()):
+            for style_group, const_names in styles.StateMap[self.lang].items():
                 if const_name in const_names:
                     style_names.append(style_group)
                     break

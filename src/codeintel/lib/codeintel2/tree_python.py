@@ -149,6 +149,7 @@ class PythonImportLibGenerator(object):
             raise StopIteration
         else:
             raise StopIteration
+    __next__ = next
 
 
 class PythonTreeEvaluator(TreeEvaluator):
@@ -366,7 +367,7 @@ class PythonTreeEvaluator(TreeEvaluator):
                 blob = import_handler.import_blob_name(
                     module_name, self.libs, self.ctlr)
                 if symbol_name == "*":
-                    for m_name, m_elem in list(blob.names.items()):
+                    for m_name, m_elem in blob.names.items():
                         m_type = m_elem.get("ilk") or m_elem.tag
                         members.add((m_type, m_name))
                 elif symbol_name in blob.names:

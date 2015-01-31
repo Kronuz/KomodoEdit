@@ -2,9 +2,7 @@ from __future__ import absolute_import
 #!/usr/bin/env python2
 
 import logging
-from six.moves import filter
 import six
-from six.moves import zip
 
 log = logging.getLogger("codeintel.oop.driver")
 # log.setLevel(logging.DEBUG)
@@ -33,7 +31,7 @@ import imp
 import itertools
 import json
 import os.path
-import six.moves.queue
+from six.moves import queue
 import shutil
 import string
 import sys
@@ -153,7 +151,7 @@ class Driver(threading.Thread):
         self.next_buffer = 0
         self.active_request = None
 
-        self.send_queue = six.moves.queue.Queue()
+        self.send_queue = queue.Queue()
         self.send_thread = threading.Thread(name="Codeintel OOP Driver Send Thread",
                                             target=self._send_proc)
         self.send_thread.daemon = True
@@ -194,7 +192,7 @@ class Driver(threading.Thread):
 
         def __init__(self, driver):
             self.driver = driver
-            self.log = log.getChild("DBEventReporter")
+            self.log = logging.getLogger("codeintel.oop.driver.DBEventReporter")
             self.debug = self.log.debug
 
             # directories being scanned (completed or not)
@@ -578,7 +576,7 @@ class Driver(threading.Thread):
                             except ValueError:
                                 pass  # ... shouldn't happen, but tolerate it
                             continue
-                        for handlers in list(self._command_handler_map.values()):
+                        for handlers in self._command_handler_map.values():
                             try:
                                 handlers[
                                     handlers.index(handler)] = real_handler
@@ -739,8 +737,8 @@ class CoreHandler(CommandHandler):
         else:
             langs = request.get("languages", None)
             if not langs:
-                langs = dict(list(zip(self._get_stdlib_langs(driver),
-                                 itertools.repeat(None))))
+                langs = dict(zip(self._get_stdlib_langs(driver),
+                                 itertools.repeat(None)))
             progress_base = 5
             progress_incr = (80 - progress_base) / \
                 len(langs)  # stage 1 goes up to 80%
@@ -783,11 +781,11 @@ class CoreHandler(CommandHandler):
         elif typ == "citadel":
             driver.send(languages=driver.mgr.get_citadel_langs())
         elif typ == "xml":
-            driver.send(languages=list(filter(driver.mgr.is_xml_lang,
-                                         list(driver.mgr.buf_class_from_lang.keys()))))
+            driver.send(languages=filter(driver.mgr.is_xml_lang,
+                                         driver.mgr.buf_class_from_lang.keys()))
         elif typ == "multilang":
-            driver.send(languages=list(filter(driver.mgr.is_multilang,
-                                         list(driver.mgr.buf_class_from_lang.keys()))))
+            driver.send(languages=filter(driver.mgr.is_multilang,
+                                         driver.mgr.buf_class_from_lang.keys()))
         elif typ == "stdlib-supported":
             driver.send(languages=self._get_stdlib_langs(driver))
         else:
@@ -797,7 +795,7 @@ class CoreHandler(CommandHandler):
         if self._stdlib_langs is None:
             stdlibs_zone = driver.mgr.db.get_stdlibs_zone()
             langs = set()
-            for lang in list(driver.mgr.buf_class_from_lang.keys()):
+            for lang in driver.mgr.buf_class_from_lang.keys():
                 if stdlibs_zone.vers_and_names_from_lang(lang):
                     langs.add(lang)
             self._stdlib_langs = sorted(langs)
@@ -929,10 +927,10 @@ class CoreHandler(CommandHandler):
         public = set()
         system = set()
         datasetHandler = koXMLDatasetInfo.getService()
-        for catalog in list(datasetHandler.resolver.catalogMap.values()):
-            public.update(list(catalog.public.keys()))
-            system.update(list(catalog.system.keys()))
-        namespaces = list(datasetHandler.resolver.getWellKnownNamspaces().keys())
+        for catalog in datasetHandler.resolver.catalogMap.values():
+            public.update(catalog.public.keys())
+            system.update(catalog.system.keys())
+        namespaces = datasetHandler.resolver.getWellKnownNamspaces().keys()
         driver.send(request=request,
                     public=sorted(public),
                     system=sorted(system),
@@ -976,7 +974,7 @@ class Environment(codeintel2.environment.Environment):
     def __init__(self, request={}, send_fn=None, name=None):
         codeintel2.environment.Environment.__init__(self)
         log_name = [_f for _f in [self.__class__.__name__, name] if _f]
-        self.log = log.getChild(".".join(log_name))
+        self.log = logging.getLogger("codeintel.oop.driver." + ".".join(log_name))
         env = request.get("env", {})
         self._env = dict(env.get("env", {}))
         self._prefs = [dict(level) for level in env.get("prefs", [])]
@@ -1041,7 +1039,7 @@ class Environment(codeintel2.environment.Environment):
         changed_prefs.update(old_keys.symmetric_difference(list(new_prefs.keys())))
 
         # Determine the prefs that were modified
-        for key in old_keys.intersection(list(new_prefs.keys())):
+        for key in old_keys.intersection(new_prefs.keys()):
             if old_prefs[key] != new_prefs[key]:
                 changed_prefs.add(key)
 

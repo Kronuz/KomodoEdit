@@ -89,8 +89,8 @@ log = logging.getLogger("codeintel.python")
 makePerformantLogger(log)
 
 # See http://effbot.org/zone/pythondoc.htm
-_g_pythondoc_tags = list(sorted("param keyparam return exception def "
-                                "defreturn see link linkplain".split()))
+_g_pythondoc_tags = sorted("param keyparam return exception def "
+                                "defreturn see link linkplain".split())
 
 _g_python_magic_method_names = sorted([
     '__init__',
@@ -306,7 +306,7 @@ class PythonImportsEvaluator(Evaluator):
                     raise
 
                 if symbol_name == "*":  # can it be so?
-                    for m_name, m_elem in list(blob.names.items()):
+                    for m_name, m_elem in blob.names.items():
                         m_type = m_elem.get("ilk") or m_elem.tag
                         members.add((m_type, m_name))
                 elif symbol_name in blob.names:

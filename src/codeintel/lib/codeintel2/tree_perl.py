@@ -344,7 +344,7 @@ class PerlTreeEvaluatorBase(CandidatesForTreeEvaluator):
         _handled_pkg_names.add(pkg_name)
 
         # Get the locally defined subs.
-        members = [("function", n) for n, el in list(pkg.names.items())
+        members = [("function", n) for n, el in pkg.names.items()
                    if el.get("ilk") == "function"]
 
         # Get inherited subs.
@@ -528,7 +528,7 @@ class PerlPackageMembersTreeEvaluator(PerlTreeEvaluatorBase):
 
         # Get the locally defined members.
         members = []
-        for name, elem in list(pkg.names.items()):
+        for name, elem in pkg.names.items():
             #self.debug("%r: %r", name, elem)
             if elem.tag == "variable":
                 if "__local__" not in elem.get("attributes", ""):
@@ -575,7 +575,7 @@ class PerlPackageSubsTreeEvaluator(PerlTreeEvaluatorBase):
         _handled_pkg_names.add(pkg_name)
 
         # Get the locally defined subs.
-        members = [("function", n) for n, el in list(pkg.names.items())
+        members = [("function", n) for n, el in pkg.names.items()
                    if el.get("ilk") == "function"]
 
         # Get inherited subs.

@@ -42,7 +42,7 @@ from __future__ import print_function
 import os
 from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import sys
-from cStringIO import StringIO
+from six.moves import StringIO
 import logging
 import re
 import traceback

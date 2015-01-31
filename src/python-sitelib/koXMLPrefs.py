@@ -226,7 +226,7 @@ class koGlobalPreferenceDefinition:
         self.defaults_filename = None
         self.save_format = self.SAVE_DEFAULT
         self.contract_id = None
-        for name, val in list(kw.items()):
+        for name, val in kw.items():
             # Handle deprecated "user_filename" field.
             if name == "user_filename":
                 name = "user_filepath"
@@ -490,7 +490,7 @@ def serializePref(stream, pref, prefType, prefName=None, basedir=None):
         # will also call cgi_escape
         #pref = cgi_escape(pref)
         data = u'  <string'
-        for a, v in list(attrs.items()):
+        for a, v in attrs.items():
             data += ' %s="%s"' % (a, v)
         data += u'>%s</string>%s' % (_xmlencode(pref), newl)
         stream.write(data)

@@ -81,7 +81,6 @@ from codeintel2.util import (isident, isdigit, banner, indent, markup_text,
                              hotshotit, makePerformantLogger)
 from codeintel2.tree import tree_2_0_from_tree_0_1
 from codeintel2.tree_ruby import RubyTreeEvaluator
-from six.moves import map
 from six.moves import range
 
 if _xpcom_:
@@ -419,7 +418,7 @@ class RubyLangIntel(CitadelLangIntel,
         def gem_ver_from_ver_str(ver_str):
             parts = ver_str.split('.')
             try:
-                parts = list(map(int, parts))
+                parts = map(int, parts)
             except ValueError:
                 return ver_str
             else:

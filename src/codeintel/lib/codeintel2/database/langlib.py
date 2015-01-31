@@ -49,7 +49,7 @@ import time
 from glob import glob
 from pprint import pprint, pformat
 import logging
-from cStringIO import StringIO
+from six.moves import StringIO
 import codecs
 import copy
 
@@ -165,7 +165,7 @@ class LangDirsLib(LangDirsLibBase):
                             imports = set(
                                 (name, is_dir_import)
                                 for name, (_, _, is_dir_import)
-                                in list(sub_importables.items())
+                                in sub_importables.items()
                             )
                             break
                     else:
@@ -177,7 +177,7 @@ class LangDirsLib(LangDirsLibBase):
                         imports.update(
                             (name, is_dir_import)
                             for name, (_, _, is_dir_import)
-                            in list(importables.items())
+                            in importables.items()
                         )
                 self._blob_imports_from_prefix_cache[prefix] = imports
             return self._blob_imports_from_prefix_cache[prefix]

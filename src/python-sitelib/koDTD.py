@@ -124,11 +124,11 @@ class dtd_dataset:
         return None
 
     def buildRootList(self):
-        all_elements = list(self.elements.keys())
+        all_elements = self.elements.keys()
         root = {}
         for el in all_elements:
             found = 0
-            for e in list(self.elements.values()):
+            for e in self.elements.values():
                 if el in e.elements:
                     found = 1
                     break
@@ -144,7 +144,7 @@ class dtd_dataset:
             if name in self.elements_caseless:
                 el = self.elements_caseless[name]
                 if el.content.lower() == "any":
-                    elements = list(self.elements.keys())
+                    elements = self.elements.keys()
                 else:
                     elements = self.elements_caseless[name].elements
                 result = set(elements)
@@ -172,7 +172,7 @@ class dtd_dataset:
         return list(self.elements.keys())
 
     def dump(self, stream):
-        for e in list(self.elements.values()):
+        for e in self.elements.values():
             e.dump(stream)
 
 
@@ -236,13 +236,13 @@ class dtd_element:
                         children = children.difference(
                             [n for n in groupedNamesRe.split(match) if n])
                 if casename:
-                    self.elements = [i.lower() for i in list(children)]
+                    self.elements = [i.lower() for i in children]
                 else:
                     self.elements = list(children)
 
     def dump(self, stream):
         stream.write("ELEMENT: %s\n" % self.name)
-        for a in list(self.attributes.values()):
+        for a in self.attributes.values():
             a.dump(stream)
         stream.write("    CHILDREN %r\n" % self.elements)
 
@@ -377,7 +377,7 @@ class DTD:
 
     def applyEntities(self, text):
         # apply all existing entities to this text
-        for e in list(self.dataset.entities.values()):
+        for e in self.dataset.entities.values():
             text = e.applyEntity(text)
         return text
 

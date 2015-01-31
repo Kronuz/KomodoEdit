@@ -42,7 +42,7 @@ import re
 import string
 import sys
 import mimetools
-import StringIO
+from six.moves import StringIO
 from elementtree import ElementTree
 import six
 
@@ -195,7 +195,7 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
             if http_equiv == "content-type" and content:
                 # use mimetools to parse the http header
                 header = mimetools.Message(
-                    StringIO.StringIO("%s: %s\n\n" % (http_equiv, content))
+                    StringIO("%s: %s\n\n" % (http_equiv, content))
                 )
                 encoding = header.getparam("charset")
                 if encoding:

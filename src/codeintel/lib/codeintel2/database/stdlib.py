@@ -53,7 +53,7 @@ import fnmatch
 from glob import glob
 from pprint import pprint, pformat
 import logging
-from cStringIO import StringIO
+from six.moves import StringIO
 import codecs
 import copy
 import weakref
@@ -357,7 +357,7 @@ class StdLibsZone(object):
         """
         log.debug("StdLibZone: reporting memory")
         result = {}
-        for stdlib in list(self._stdlib_from_stdlib_ver_and_name.values()):
+        for stdlib in self._stdlib_from_stdlib_ver_and_name.values():
             result.update(stdlib.reportMemory())
         return result
 

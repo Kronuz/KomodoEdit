@@ -965,9 +965,9 @@ def getAttrStr(attrs):
     """
     from xml.sax.saxutils import quoteattr
     s = ''
-    for attr, value in list(attrs.items()):
+    for attr, value in attrs.items():
         if not isinstance(value, six.string_types):
-            value = str(value)
+            value = six.binary_type(value)
         elif isinstance(value, six.text_type):
             value = value.encode("utf-8")
         s += ' %s=%s' % (attr, quoteattr(value))
@@ -1013,7 +1013,7 @@ def scan(content, filename, md5sum=None, mtime=None, lang="Python"):
     # funky *whitespace* at the end of the file.
     content = content.rstrip() + '\n'
 
-    if type(filename) == str:
+    if isinstance(filename, six.text_type):
         filename = filename.encode('utf-8')
     # The 'path' attribute must use normalized dir separators.
     if sys.platform.startswith("win"):
@@ -1054,7 +1054,7 @@ def scan(content, filename, md5sum=None, mtime=None, lang="Python"):
                 # Dump a repr of the gathering info for debugging
                 # - We only have to dump the module namespace because
                 #   everything else should be linked from it.
-                for nspath, namespace in list(visitor.st.items()):
+                for nspath, namespace in visitor.st.items():
                     if len(nspath) == 0:  # this is the module namespace
                         pprint.pprint(namespace)
             file = '    <file%s>\n\n%s\n    </file>'\

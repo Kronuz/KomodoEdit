@@ -88,7 +88,7 @@ import glob
 import time
 import stat
 import types
-from cStringIO import StringIO
+from six.moves import StringIO
 from functools import partial
 
 # this particular ET is different from xml.etree and is expected
@@ -151,9 +151,9 @@ def getAttrStr(attrs):
     """
     from xml.sax.saxutils import quoteattr
     s = ''
-    for attr, value in list(attrs.items()):
+    for attr, value in attrs.items():
         if not isinstance(value, six.string_types):
-            value = str(value)
+            value = six.text_type(value)
         elif isinstance(value, six.text_type):
             value = value.encode("utf-8")
         s += ' %s=%s' % (attr, quoteattr(value))
@@ -231,14 +231,14 @@ def cdataescape(s):
 def _unistr(x):
     if isinstance(x, six.text_type):
         return x
-    elif isinstance(x, str):
+    elif isinstance(x, six.binary_type):
         return x.decode('utf8')
     else:
         return six.text_type(x)
 
 
 def _et_attrs(attrs):
-    return dict((_unistr(k), xmlencode(_unistr(v))) for k, v in list(attrs.items())
+    return dict((_unistr(k), xmlencode(_unistr(v))) for k, v in attrs.items()
                 if v is not None)
 
 
@@ -259,7 +259,7 @@ def _node_citdl(node):
     max_score = -1
     #'guesses' is a types dict: {<type guess>: <score>, ...}
     guesses = node.get("types", {})
-    for type, score in list(guesses.items()):
+    for type, score in guesses.items():
         if ' ' in type:
             # XXX Drop the <start-scope> part of CITDL for now.
             type = type.split(None, 1)[0]
@@ -336,7 +336,7 @@ class AST2CIXVisitor:
     def cix_symbols(self, node, parentIsClass=0):
         # Sort variables by line order. This provide the most naturally
         # readable comparison of document with its associate CIX content.
-        vars = sorted(list(node.values()), key=lambda v: v.get("line"))
+        vars = sorted(node.values(), key=lambda v: v.get("line"))
         for var in vars:
             self.cix_symbol(var, parentIsClass)
 
@@ -396,7 +396,7 @@ class AST2CIXVisitor:
         # Determine the best return type.
         best_citdl = None
         max_count = 0
-        for citdl, count in list(node["returns"].items()):
+        for citdl, count in node["returns"].items():
             if count > max_count:
                 best_citdl = citdl
 
@@ -415,7 +415,7 @@ class AST2CIXVisitor:
             argNames.append(arg["name"])
             self.cix_argument(arg)
         symbols = {}  # don't re-emit the function arguments
-        for symbolName, symbol in list(node["symbols"].items()):
+        for symbolName, symbol in node["symbols"].items():
             if symbolName not in argNames:
                 symbols[symbolName] = symbol
         self.cix_symbols(symbols)
@@ -1673,7 +1673,7 @@ def scan_et(content, filename, md5sum=None, mtime=None, lang="Python"):
         # parser as neessary for codeintel purposes.
         content = _convert3to2(content)
 
-    if type(filename) == str:
+    if isinstance(filename, six.text_type):
         filename = filename.encode('utf-8')
     # The 'path' attribute must use normalized dir separators.
     if sys.platform.startswith("win"):
@@ -1704,7 +1704,7 @@ def scan_et(content, filename, md5sum=None, mtime=None, lang="Python"):
             # Dump a repr of the gathering info for debugging
             # - We only have to dump the module namespace because
             #   everything else should be linked from it.
-            for nspath, namespace in list(visitor.st.items()):
+            for nspath, namespace in visitor.st.items():
                 if len(nspath) == 0:  # this is the module namespace
                     pprint.pprint(namespace)
 

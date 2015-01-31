@@ -65,7 +65,6 @@ import logging
 from codeintel2.common import *
 from codeintel2.util import banner, indent, markup_text, isident, isdigit
 import langinfo
-from six.moves import range
 
 if _xpcom_:
     from xpcom.server import UnwrapObject
@@ -922,7 +921,7 @@ def _parse_calltip(calltip, DEBUG=False):
     length = len(signature)
     p = arg_start_pos + 1
     args = [Arg()]
-    OPERATOR, ARGUMENT, DEFAULT = list(range(3))
+    OPERATOR, ARGUMENT, DEFAULT = range(3)
     WHITESPACE = tuple(" \t[]")
     state = OPERATOR
     while p < length:

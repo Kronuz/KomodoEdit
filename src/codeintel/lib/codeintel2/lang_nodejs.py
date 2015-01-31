@@ -149,7 +149,7 @@ class NodeJSTreeEvaluator(JavaScriptTreeEvaluator):
                     self.log("skipping lib %r, don't know how to deal", lib)
                     continue
 
-                if dirname in list(map(os.path.normpath, lib.dirs)):
+                if dirname in map(os.path.normpath, lib.dirs):
                     # Found a lib with the directory we want. Whether we found
                     # a hit or not, we don't need to look in any other libs
                     # (since they will just give the same results)

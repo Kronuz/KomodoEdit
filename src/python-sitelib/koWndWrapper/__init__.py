@@ -45,6 +45,7 @@ import os
 import sys
 import types
 import logging
+import six
 from six.moves import range
 log = logging.getLogger("koWndWrapper")
 # log.setLevel(logging.DEBUG)
@@ -74,7 +75,7 @@ MAXIMUM_WAIT_OBJECTS = 64
 
 def create_event(name, security_attributes=None, manual_reset=1, initial_state=0):
     log.debug("create_event(%r)", name)
-    func = (type(name) == str
+    func = (isinstance(name, six.string_types)
             and _kernel32.CreateEventW
             or _kernel32.CreateEventA)
     return func(security_attributes, manual_reset, initial_state, name)
@@ -82,7 +83,7 @@ def create_event(name, security_attributes=None, manual_reset=1, initial_state=0
 
 def create_mutex(name, security_attributes=None, owner=0):
     log.debug("create_mutex(%r)", name)
-    func = (type(name) == str
+    func = (isinstance(name, six.string_types)
             and _kernel32.CreateMutexW
             or _kernel32.CreateMutexA)
     return func(security_attributes, owner, name)
@@ -141,7 +142,7 @@ def set_foreground_window(h):
 
 
 def CreateFile(fileName, desiredAccess, shareMode, attributes, creationDisposition, flagsAndAttributes, hTemplateFile=None):
-    func = (type(fileName) == str
+    func = (isinstance(fileName, six.string_types)
             and _kernel32.CreateFileW
             or _kernel32.CreateFileA)
     if hTemplateFile is None:

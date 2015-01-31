@@ -57,7 +57,7 @@
 #
 #-----------------------------------------------------------------------------
 
-r"""
+"""
 lex.py
 
 This module builds lex-like scanners based on regular expression rules.
@@ -185,6 +185,7 @@ scanner you have defined.
 from __future__ import absolute_import
 from __future__ import print_function
 from six.moves import range
+import six
 
 # -----------------------------------------------------------------------------
 
@@ -223,7 +224,7 @@ class LexToken:
         return "LexToken(%s,%r,%d)" % (self.type, self.value, self.lineno)
 
     def __repr__(self):
-        return str(self)
+        return six.text_type(self)
 
     def skip(self, n):
         try:
@@ -278,7 +279,7 @@ class Lexer:
     # input() - Push a new string into the lexer
     # ------------------------------------------------------------
     def input(self, s):
-        if not (isinstance(s, bytes) or isinstance(s, str)):
+        if not isinstance(s, six.string_types):
             raise ValueError("Expected a string")
         self.lexdata = s
         self.lexpos = 0
@@ -543,19 +544,17 @@ def lex(module=None, debug=0, optimize=0, lextab="lextab", reflags=0):
     for f in tsymbols:
         if callable(ldict[f]):
             fsymbols.append(ldict[f])
-        elif (isinstance(ldict[f], bytes) or isinstance(ldict[f], str)):
+        elif isinstance(ldict[f], six.string_types):
             ssymbols.append((f, ldict[f]))
         else:
             print("lex: %s not defined as a function or string" % f)
             error = 1
 
     # Sort the functions by line number
-    fsymbols.sort(
-        lambda x, y: cmp(x.__code__.co_firstlineno, y.__code__.co_firstlineno))
+    fsymbols.sort(key=lambda k: k.__code__.co_firstlineno)
 
     # Sort the strings by regular expression length
-    ssymbols.sort(
-        lambda x, y: (len(x[1]) < len(y[1])) - (len(x[1]) > len(y[1])))
+    ssymbols.sort(key=lambda k: len(k[1]))
 
     # Check for non-empty symbols
     if len(fsymbols) == 0 and len(ssymbols) == 0:

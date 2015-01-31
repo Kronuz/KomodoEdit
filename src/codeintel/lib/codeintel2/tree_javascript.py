@@ -1014,4 +1014,4 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                 if name not in all_completions:
                     all_completions[name] = ilk
 
-        return [(ilk, name) for name, ilk in list(all_completions.items())]
+        return [(ilk, name) for name, ilk in all_completions.items()]
