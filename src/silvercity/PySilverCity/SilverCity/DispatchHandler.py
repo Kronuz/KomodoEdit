@@ -1,5 +1,8 @@
-import ScintillaConstants
-import Utils
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals, print_function
+
+from . import ScintillaConstants
+from . import Utils
 
 def generate_handler_name(state):
     return 'handle_' + state[4:].lower()

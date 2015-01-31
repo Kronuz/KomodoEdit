@@ -1,4 +1,7 @@
-import ScintillaConstants
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals, print_function
+
+from . import ScintillaConstants
 
 def list_states(state_prefix):
     """list_states("SCE_P_") => ['SCE_P_DEFAULT', 'SCE_P_COMMENTLINE', ...]

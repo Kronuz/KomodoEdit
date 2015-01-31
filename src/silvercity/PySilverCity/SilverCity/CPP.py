@@ -1,10 +1,13 @@
-import HTMLGenerator
-import Keywords
-import Lexer
-from DispatchHandler import DispatchHandler
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals, print_function
+
+from . import HTMLGenerator
+from . import Keywords
+from . import Lexer
+from .DispatchHandler import DispatchHandler
 from _SilverCity import find_lexer_module_by_id, PropertySet, WordList
-from ScintillaConstants import SCLEX_CPP
-import LanguageInfo
+from .ScintillaConstants import SCLEX_CPP
+from . import LanguageInfo
 
 class CPPLexer(Lexer.Lexer):
     def __init__(self, properties = PropertySet()):

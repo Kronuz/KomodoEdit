@@ -1,12 +1,17 @@
 #!/usr/home/sweetapp/bin/python
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals, print_function
 
 import cgitb; cgitb.enable()
 import cgi
 from SilverCity import LanguageInfo
-import urllib
 import sys
 import source2html
 import os
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib import urlopen
 
 # change this to point to the correct template file
 default_template_name = 'cgi-styler-url-template.html'
@@ -65,12 +70,12 @@ def create_generator(source_url, generator_name, content):
         return guess_language(source_url, content).get_default_html_generator()()
 
 def handle_submit(form):
-    if form.has_key('source'):
+    if 'source' in form:
         source_uri = None
         source = form['source'].value
         title = "SilverCity Styled Source"
     else:
-        if form.has_key('uploadedfile'):
+        if 'uploadedfile' in form:
             source_uri = form['uploadedfile'].filename
             source = form['uploadedfile'].file.read()
 
@@ -80,7 +85,7 @@ def handle_submit(form):
                 title = source_uri.split('/')[-1]                
         else:        
             source_uri = form['sourceuri'].value
-            source = urllib.urlopen(source_uri).read()
+            source = urlopen(source_uri).read()
         
             title = source_uri.split('/')[-1]
         
@@ -88,21 +93,21 @@ def handle_submit(form):
     encoding = form['encoding'].value
 
     if encoding != 'Auto':
-        source = unicode(source, encoding).encode('utf-8')
+        source = str(source, encoding).encode('utf-8')
     else:
-        source = unicode(source)
+        source = str(source)
         
     if form['lexer'].value == 'Auto':
         generator = create_generator(source_uri, None, source)
     else:
         generator = create_generator(source_uri, form['lexer'].value, source)
 
-    print source2html.xhtml_prefix % {
+    print(source2html.xhtml_prefix % {
         'title' : title,
-        'css' : style_uri}
+        'css' : style_uri})
     
     generator.generate_html(sys.stdout, source)    
-    print source2html.suffix
+    print(source2html.suffix)
 
 def handle_form(template_name):
     template = file(os.path.join(template_path, template_name), 'r').read()
@@ -115,17 +120,17 @@ def handle_form(template_name):
         'generators' : '\n'.join(['<option value="%s">%s</option>' % (name, description) for name, description in generators]),
         'encodings' : '\n'.join(['<option value="%s">%s</option>' % (value, name) for value, name in encodings])}
 
-    print template    
+    print(template)    
 
-print 'Content-type: text/html'
-print
+print('Content-type: text/html')
+print()
     
 form = cgi.FieldStorage(keep_blank_values=True)
     
-if form.has_key('submit'):
+if 'submit' in form:
     handle_submit(form)
 else:
-    if form.has_key('template'):
+    if 'template' in form:
         template = form['template'].value
     else:
         template = os.path.join(default_template_name)
