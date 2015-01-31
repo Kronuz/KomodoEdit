@@ -155,7 +155,7 @@ def generate_html(
         if generator is not None:
             generator = LanguageInfo.find_generator_by_name(generator)()
         else:
-            language = guess_language_for_buffer(source)
+            language = LanguageInfo.guess_language_for_buffer(source)
             generator = language.get_default_html_generator()()
         
     if clean:
