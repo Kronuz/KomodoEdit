@@ -113,7 +113,7 @@ class OOPEvalController(EvalController):
                 #   TypeError: not enough arguments for format string
                 log.exception(
                     "problem logging eval failure: self.log=%r", self.log_entries)
-                msg = "error evaluating '%s'" % desc
+                msg = "error evaluating '%s'" % self.desc
             self.driver.fail(request=self.request, message=msg)
         else:
             # ERROR
