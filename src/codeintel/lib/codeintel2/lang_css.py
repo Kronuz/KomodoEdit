@@ -44,6 +44,7 @@ from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import sys
 import stat
 import string
+import six
 from six.moves import StringIO
 import logging
 import traceback
@@ -1175,7 +1176,11 @@ class CSSBuffer(Buffer):
 
 #---- internal support stuff
 
-_ident_chars_dictionary = dict((ch, 1) for ch in
+if six.PY3:
+    _ident_chars_dictionary = dict((ch, 1) for ch in
+                               string.ascii_lowercase + string.ascii_uppercase + string.digits + "-")
+else:
+    _ident_chars_dictionary = dict((ch, 1) for ch in
                                string.lowercase + string.uppercase + string.digits + "-")
 
 
