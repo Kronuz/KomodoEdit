@@ -39,7 +39,6 @@ from __future__ import print_function
 
 #import htmlentitydefs
 import re
-import string
 import sys
 from six.moves import StringIO
 from elementtree import ElementTree
@@ -194,7 +193,7 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
             http_equiv = content = None
             for k, v in attrs:
                 if k == "http-equiv":
-                    http_equiv = string.lower(v)
+                    http_equiv = v.lower()
                 elif k == "content":
                     content = v
             if http_equiv == "content-type" and content:
