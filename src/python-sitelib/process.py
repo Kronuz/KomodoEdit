@@ -39,7 +39,7 @@ import os
 import sys
 import time
 import types
-if sys.platform != "win32":
+if sys.platform != "win32" or sys.version_info[:2] >= (3, 0):
     import signal  # used by kill() method on Linux/Mac
 import logging
 import threading
@@ -56,14 +56,13 @@ try:
 except ImportError:
     # Not available on Windows - fallback to using regular subprocess module.
     from subprocess import Popen, PIPE
-    if sys.platform != "win32":
+    if sys.platform != "win32" or sys.version_info[:2] >= (3, 0):
         log.warn(
             "Could not import subprocess32 module, falling back to subprocess module")
 
 
 CREATE_NEW_CONSOLE = 0x10  # same as win32process.CREATE_NEW_CONSOLE
-# same as win32process.CREATE_NEW_PROCESS_GROUP
-CREATE_NEW_PROCESS_GROUP = 0x200
+CREATE_NEW_PROCESS_GROUP = 0x200  # same as win32process.CREATE_NEW_PROCESS_GROUP
 CREATE_NO_WINDOW = 0x8000000  # same as win32process.CREATE_NO_WINDOW
 CTRL_BREAK_EVENT = 1  # same as win32con.CTRL_BREAK_EVENT
 WAIT_TIMEOUT = 258  # same as win32event.WAIT_TIMEOUT
@@ -74,14 +73,13 @@ WAIT_TIMEOUT = 258  # same as win32event.WAIT_TIMEOUT
 # XXX - TODO: Work out what exceptions raised by SubProcess and turn into
 #       ProcessError?
 class ProcessError(Exception):
-
     def __init__(self, msg, errno=-1):
         Exception.__init__(self, msg)
         self.errno = errno
 
 
 # Check if this is Windows NT and above.
-if sys.platform == "win32" and sys.getwindowsversion()[3] == 2:
+if sys.platform == "win32" and sys.getwindowsversion()[3] == 2 and sys.version_info[:2] < (3, 0):
 
     import winprocess
     from subprocess import pywintypes, list2cmdline, STARTUPINFO
@@ -227,7 +225,6 @@ if sys.platform == "win32" and sys.getwindowsversion()[3] == 2:
 
 
 class ProcessOpen(Popen):
-
     def __init__(self, cmd, cwd=None, env=None, flags=None,
                  stdin=PIPE, stdout=PIPE, stderr=PIPE,
                  universal_newlines=True):
@@ -248,6 +245,7 @@ class ProcessOpen(Popen):
             output is redirected to Komodo's log files.
         "universal_newlines": On by default (the opposite of subprocess).
         """
+        self._child_created = False
         self.__use_killpg = False
         auto_piped_stdin = False
         preexec_fn = None
@@ -270,22 +268,23 @@ class ProcessOpen(Popen):
                     # http://bugs.activestate.com/show_bug.cgi?id=75467
                     cmd = '"%s"' % (cmd, )
 
-            # XXX - subprocess needs to be updated to use the wide string API.
-            # subprocess uses a Windows API that does not accept unicode, so
-            # we need to convert all the environment variables to strings
-            # before we make the call. Temporary fix to bug:
-            #   http://bugs.activestate.com/show_bug.cgi?id=72311
-            if env:
-                encoding = sys.getfilesystemencoding()
-                _enc_env = {}
-                for key, value in env.items():
-                    try:
-                        _enc_env[key.encode(encoding)] = value.encode(encoding)
-                    except UnicodeEncodeError:
-                        # Could not encode it, warn we are dropping it.
-                        log.warn("Could not encode environment variable %r "
-                                 "so removing it", key)
-                env = _enc_env
+            if sys.version_info[:2] < (3, 0):
+                # XXX - subprocess needs to be updated to use the wide string API.
+                # subprocess uses a Windows API that does not accept unicode, so
+                # we need to convert all the environment variables to strings
+                # before we make the call. Temporary fix to bug:
+                #   http://bugs.activestate.com/show_bug.cgi?id=72311
+                if env:
+                    encoding = sys.getfilesystemencoding()
+                    _enc_env = {}
+                    for key, value in env.items():
+                        try:
+                            _enc_env[key.encode(encoding)] = value.encode(encoding)
+                        except (UnicodeEncodeError, UnicodeDecodeError):
+                            # Could not encode it, warn we are dropping it.
+                            log.warn("Could not encode environment variable %r "
+                                     "so removing it", key)
+                    env = _enc_env
 
             if flags is None:
                 flags = CREATE_NO_WINDOW
@@ -328,12 +327,12 @@ class ProcessOpen(Popen):
             # a different and workable code path.
             if self._needToHackAroundStdHandles() \
                     and not (flags & CREATE_NEW_CONSOLE):
-                if not self._isFileObjInheritable(stdin, "stdin"):
+                if self._checkFileObjInheritable(sys.stdin, "STD_INPUT_HANDLE"):
                     stdin = PIPE
                     auto_piped_stdin = True
-                if not self._isFileObjInheritable(stdout, "stdout"):
+                if self._checkFileObjInheritable(sys.stdout, "STD_OUTPUT_HANDLE"):
                     stdout = PIPE
-                if not self._isFileObjInheritable(stderr, "stderr"):
+                if self._checkFileObjInheritable(sys.stderr, "STD_ERROR_HANDLE"):
                     stderr = PIPE
         else:
             # Set flags to 0, subprocess raises an exception otherwise.
@@ -366,60 +365,41 @@ class ProcessOpen(Popen):
     @classmethod
     def _needToHackAroundStdHandles(cls):
         if cls.__needToHackAroundStdHandles is None:
-            if sys.platform != "win32":
+            if sys.platform != "win32" or sys.version_info[:2] >= (3, 0):
                 cls.__needToHackAroundStdHandles = False
             else:
                 from _subprocess import GetStdHandle, STD_INPUT_HANDLE
                 stdin_handle = GetStdHandle(STD_INPUT_HANDLE)
                 if stdin_handle is not None:
                     cls.__needToHackAroundStdHandles = True
+                    if stdin_handle != 3:
+                        log.warn("`GetStdHandle(STD_INPUT_HANDLE)` != 3: "
+                                 "something has changed w.r.t. std handle "
+                                 "inheritance in Komodo that may affect "
+                                 "subprocess launching")
                 else:
                     cls.__needToHackAroundStdHandles = False
         return cls.__needToHackAroundStdHandles
 
     @classmethod
-    def _isFileObjInheritable(cls, fileobj, stream_name):
+    def _checkFileObjInheritable(cls, fileobj, handle_name):
         """Check if a given file-like object (or whatever else subprocess.Popen
         takes as a handle/stream) can be correctly inherited by a child process.
         This just duplicates the code in subprocess.Popen._get_handles to make
         sure we go down the correct code path; this to catch some non-standard
-        corner cases.
-
-        @param fileobj The object being used as a fd/handle/whatever
-        @param stream_name The name of the stream, "stdin", "stdout", or "stderr"
-        """
+        corner cases."""
         import _subprocess
         import ctypes
         import msvcrt
         new_handle = None
-
-        # Things that we know how to reset (i.e. not custom fds)
-        valid_list = {
-            "stdin": (sys.stdin, sys.__stdin__, 0),
-            "stdout": (sys.stdout, sys.__stdout__, 1),
-            "stderr": (sys.stderr, sys.__stderr__, 2),
-        }[stream_name]
-
         try:
             if fileobj is None:
-                std_handle = {
-                    "stdin": _subprocess.STD_INPUT_HANDLE,
-                    "stdout": _subprocess.STD_OUTPUT_HANDLE,
-                    "stderr": _subprocess.STD_ERROR_HANDLE,
-                }[stream_name]
-                handle = _subprocess.GetStdHandle(std_handle)
+                handle = _subprocess.GetStdHandle(getattr(_subprocess,
+                                                          handle_name))
                 if handle is None:
-                    # subprocess.Popen._get_handles creates a new pipe here
-                    # we don't have to worry about things we create
-                    return True
+                    return True  # No need to check things we create
             elif fileobj == subprocess.PIPE:
-                # We're creating a new pipe; newly created things are
-                # inheritable
-                return True
-            elif fileobj not in valid_list:
-                # We are trying to use a custom fd; don't do anything fancy here,
-                # we don't want to actually use subprocess.PIPE
-                return True
+                return True  # No need to check things we create
             elif isinstance(fileobj, int):
                 handle = msvcrt.get_osfhandle(fileobj)
             else:
@@ -552,7 +532,6 @@ class ProcessOpen(Popen):
 
 
 class AbortableProcessHelper(object):
-
     """A helper class that is able to run a process and have the process be
     killed/aborted (possibly by another thread) if it is still running.
     """
@@ -598,12 +577,10 @@ class AbortableProcessHelper(object):
 
 
 ## Deprecated process classes ##
-
 class Process(ProcessOpen):
-
     def __init__(self, *args, **kwargs):
-        warnings.warn("'process.%s' is now deprecated. Please use 'process.ProcessOpen'." % (
-            self.__class__.__name__))
+        warnings.warn("'process.%s' is now deprecated. Please use 'process.ProcessOpen'." %
+                      (self.__class__.__name__))
         ProcessOpen.__init__(self, *args, **kwargs)
 
 
