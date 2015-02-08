@@ -41,10 +41,15 @@ from __future__ import print_function
 import re
 import string
 import sys
-import mimetools
 from six.moves import StringIO
 from elementtree import ElementTree
 import six
+
+try:
+    from email import message
+except ImportError:
+    import mimetools as message  # NOQA
+
 
 # Lazily load the collecter on demand, rather than at import time.
 g_collector = None
@@ -193,11 +198,11 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
                 elif k == "content":
                     content = v
             if http_equiv == "content-type" and content:
-                # use mimetools to parse the http header
-                header = mimetools.Message(
+                # use message to parse the http header
+                header = message.Message(
                     StringIO("%s: %s\n\n" % (http_equiv, content))
                 )
-                encoding = header.getparam("charset")
+                encoding = header.get_charset() if hasattr(header, 'get_charset') else header.getparam("charset")
                 if encoding:
                     self.encoding = encoding
         l_tag = tag.lower()
