@@ -285,7 +285,7 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
         return self._last
 
     def data(self, data):
-        if isinstance(data, type('')) and is_not_ascii(data):
+        if not isinstance(data, six.text_type) and is_not_ascii(data):
             # convert to unicode, but only if necessary
             data = six.text_type(data, self.encoding, "ignore")
         ElementTree.TreeBuilder.data(self, data)
