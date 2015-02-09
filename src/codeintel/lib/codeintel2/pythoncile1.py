@@ -121,6 +121,12 @@ _gClock = None  # if gathering timing data this is set to time retrieval fn
 _gStartTime = None   # start time of current file being scanned
 
 
+if six.PY3:
+    ast_string_types = (ast.Str, ast.Bytes,)
+else:
+    ast_string_types = (ast.Str,)
+
+
 #---- internal routines and classes
 def _isclass(namespace):
     return (len(namespace["types"]) == 1
@@ -1001,7 +1007,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 return (None, citdl)
                 # XXX Could optimize here for common built-in attributes. E.g.,
                 #    we *know* that str.join() returns a string.
-            elif isinstance(expr.value, (ast.Str, ast.Bytes)):
+            elif isinstance(expr.value, ast_string_types):
                 # Special case: specifically refer to type object for
                 # attribute access on constants, e.g.:
                 #   ' '.join
@@ -1014,7 +1020,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             # Special case: specifically refer to type object for constants.
             citdl = "__builtins__.%s" % type(expr.n).__name__
             return (None, citdl)
-        elif isinstance(expr, (ast.Str, ast.Bytes)):
+        elif isinstance(expr, ast_string_types):
             # Special case: specifically refer to type object for constants.
             citdl = "__builtins__.%s" % type(expr.s).__name__
             return (None, citdl)
@@ -1041,7 +1047,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         ts = []
         if isinstance(expr, ast.Num):
             ts = [type(expr.n).__name__]
-        elif isinstance(expr, (ast.Str, ast.Bytes)):
+        elif isinstance(expr, ast_string_types):
             ts = [type(expr.s).__name__]
         elif isinstance(expr, ast.Tuple):
             ts = [tuple.__name__]
@@ -1161,7 +1167,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             s = node.id
         elif isinstance(node, ast.Num):
             s = repr(node.n)
-        elif isinstance(node, (ast.Str, ast.Bytes)):
+        elif isinstance(node, ast_string_types):
             s = repr(node.s)
         elif isinstance(node, ast.Attribute):
             s = '.'.join([self._getExprRepr(node.value), node.attr])
@@ -1343,7 +1349,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             s = node.id
         elif isinstance(node, ast.Num):
             s = repr(node.n)
-        elif isinstance(node, (ast.Str, ast.Bytes)):
+        elif isinstance(node, ast_string_types):
             s = repr(node.s)
         elif isinstance(node, ast.Attribute):
             exprRepr = self._getCITDLExprRepr(node.value, _level + 1)
