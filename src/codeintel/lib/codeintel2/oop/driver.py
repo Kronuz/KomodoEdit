@@ -293,9 +293,8 @@ class Driver(threading.Thread):
         while True:
             buf = self.send_queue.get()
             try:
-                buf_len = str(len(buf))
-                self.fd_out.write(buf_len)
-                self.fd_out.write(buf)
+                buf = "%i%s" % (len(buf), buf)
+                self.fd_out.write(buf.encode('utf-8'))
             finally:
                 self.send_queue.task_done()
 
@@ -489,7 +488,7 @@ class Driver(threading.Thread):
         threading.Thread.start(self)
         while not self.quit:
             try:
-                ch = self.fd_in.read(1)
+                ch = self.fd_in.read(1).decode('utf-8')
             except IOError:
                 log.debug(
                     "Failed to read frame length, assuming connection died")
@@ -503,7 +502,7 @@ class Driver(threading.Thread):
                 size = int(buf, 10)
                 try:
                     # exclude already-read {
-                    buf = ch + self.fd_in.read(size - 1)
+                    buf = ch + self.fd_in.read(size - 1).decode('utf-8')
                 except IOError:
                     log.debug(
                         "Failed to read frame data, assuming connection died")
