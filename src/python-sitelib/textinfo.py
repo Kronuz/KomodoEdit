@@ -140,7 +140,7 @@ import optparse
 import codecs
 import locale
 
-from zope.cachedescriptors.property import LazyClassAttribute
+from codeintel2.common import LazyClassAttribute
 
 import langinfo
 
