@@ -76,11 +76,28 @@ import logging
 import warnings
 
 try:
-    from zope.cachedescriptors.property import LazyClassAttribute
+    from zope.cachedescriptors.property import Lazy
+    class LazyClassAttribute(Lazy):
+        """Lazy Class Attributes.
+        """
+        def __get__(self, inst, class_):
+            if inst is None:
+                return self
+            if hasattr(self, '_value'):
+                return self._value
+            func, name = self.data
+            value = func(inst)
+            try:
+                class_.__dict__[name] = value
+            except Exception:
+                pass
+            self._value = value
+            return value
 except ImportError:
     import warnings
     warnings.warn("Unable to import zope.cachedescriptors.property")
     # Fallback to regular properties.
+    Lazy = property
     LazyClassAttribute = property
 
 import SilverCity
