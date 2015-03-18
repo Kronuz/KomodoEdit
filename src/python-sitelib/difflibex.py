@@ -60,7 +60,7 @@ import difflib
 from difflib import SequenceMatcher # For getUnsavedChangeInstructions
 from hashlib import md5
 
-from zope.cachedescriptors.property import LazyClassAttribute
+from codeintel2.common import LazyClassAttribute
 import textinfo
 from fileutils import walk_avoiding_cycles
 
