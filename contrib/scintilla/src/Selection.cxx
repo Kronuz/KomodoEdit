@@ -170,7 +170,7 @@ void SelectionRange::MinimizeVirtualSpace() {
 	}
 }
 
-Selection::Selection() : mainRange(0), moveExtends(false), tentativeMain(false), selType(selStream) {
+Selection::Selection() : mainRange(0), moveExtends(false), tentativeMain(false), selType(selStream), enforceRectangular(false) {
 	AddSelection(SelectionRange(SelectionPosition(0)));
 }
 
@@ -307,6 +307,14 @@ void Selection::TrimSelection(SelectionRange range) {
 			ranges.pop_back();
 		} else {
 			i++;
+		}
+	}
+}
+
+void Selection::TrimOtherSelections(size_t r, SelectionRange range) {
+	for (size_t i = 0; i<ranges.size(); ++i) {
+		if (i != r) {
+			ranges[i].Trim(range);
 		}
 	}
 }

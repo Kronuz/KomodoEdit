@@ -14,7 +14,7 @@
 namespace Scintilla {
 #endif
 
-class RunStyles {
+class SCIAPI RunStyles {
 private:
 	Partitioning *starts;
 	SplitVector<int> *styles;

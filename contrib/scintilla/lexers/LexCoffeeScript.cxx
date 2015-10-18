@@ -58,8 +58,7 @@ static bool FollowsPostfixOperator(StyleContext &sc, Accessor &styler) {
 	return false;
 }
 
-static bool followsReturnKeyword(StyleContext &sc, Accessor &styler) {
-    // Don't look at styles, so no need to flush.
+static bool followsKeyword(StyleContext &sc, Accessor &styler) {
 	int pos = (int) sc.currentPos;
 	int currentLine = styler.GetLine(pos);
 	int lineStartPos = styler.LineStart(currentLine);
@@ -69,15 +68,8 @@ static bool followsReturnKeyword(StyleContext &sc, Accessor &styler) {
 			break;
 		}
 	}
-	const char *retBack = "nruter";
-	const char *s = retBack;
-	while (*s
-	       && pos >= lineStartPos
-	       && styler.SafeGetCharAt(pos) == *s) {
-		s++;
-		pos--;
-	}
-	return !*s;
+	styler.Flush();
+	return styler.StyleAt(pos) == SCE_COFFEESCRIPT_WORD;
 }
 
 static void ColouriseCoffeeScriptDoc(unsigned int startPos, int length, int initStyle, WordList *keywordlists[],
@@ -146,6 +138,8 @@ static void ColouriseCoffeeScriptDoc(unsigned int startPos, int length, int init
 						sc.ChangeState(SCE_COFFEESCRIPT_WORD2);
 					} else if (keywords4.InList(s)) {
 						sc.ChangeState(SCE_COFFEESCRIPT_GLOBALCLASS);
+					} else if (sc.LengthCurrent() > 0 && s[0] == '@') {
+						sc.ChangeState(SCE_COFFEESCRIPT_INSTANCEPROPERTY);
 					}
 					sc.SetState(SCE_COFFEESCRIPT_DEFAULT);
 				}
@@ -153,6 +147,7 @@ static void ColouriseCoffeeScriptDoc(unsigned int startPos, int length, int init
 			case SCE_COFFEESCRIPT_WORD:
 			case SCE_COFFEESCRIPT_WORD2:
 			case SCE_COFFEESCRIPT_GLOBALCLASS:
+			case SCE_COFFEESCRIPT_INSTANCEPROPERTY:
 				if (!setWord.Contains(sc.ch)) {
 					sc.SetState(SCE_COFFEESCRIPT_DEFAULT);
 				}
@@ -239,7 +234,7 @@ static void ColouriseCoffeeScriptDoc(unsigned int startPos, int length, int init
 				sc.Forward();
 			} else if (sc.ch == '/'
 				   && (setOKBeforeRE.Contains(chPrevNonWhite)
-				       || followsReturnKeyword(sc, styler))
+				       || followsKeyword(sc, styler))
 				   && (!setCouldBePostOp.Contains(chPrevNonWhite)
 				       || !FollowsPostfixOperator(sc, styler))) {
 				sc.SetState(SCE_COFFEESCRIPT_REGEX);	// JavaScript's RegEx
@@ -257,6 +252,10 @@ static void ColouriseCoffeeScriptDoc(unsigned int startPos, int length, int init
 				}
 			} else if (isoperator(static_cast<char>(sc.ch))) {
 				sc.SetState(SCE_COFFEESCRIPT_OPERATOR);
+				// Handle '..' and '...' operators correctly.
+				if (sc.ch == '.') {
+					for (int i = 0; i < 2 && sc.chNext == '.'; i++, sc.Forward()) ;
+				}
 			}
 		}
 

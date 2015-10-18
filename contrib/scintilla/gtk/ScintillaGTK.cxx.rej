@@ -1,0 +1,40 @@
+***************
+*** 820,828 ****
+  	gtk_widget_set_can_focus(PWidget(wMain), TRUE);
+  	gtk_widget_set_sensitive(PWidget(wMain), TRUE);
+  #else
+- #ifndef KOMODO_NO_FOCUS
+  	GTK_WIDGET_SET_FLAGS(PWidget(wMain), GTK_CAN_FOCUS);
+- #endif
+  	GTK_WIDGET_SET_FLAGS(GTK_WIDGET(PWidget(wMain)), GTK_SENSITIVE);
+  #endif
+  	gtk_widget_set_events(PWidget(wMain),
+--- 759,765 ----
+  	gtk_widget_set_can_focus(PWidget(wMain), TRUE);
+  	gtk_widget_set_sensitive(PWidget(wMain), TRUE);
+  #else
+  	GTK_WIDGET_SET_FLAGS(PWidget(wMain), GTK_CAN_FOCUS);
+  	GTK_WIDGET_SET_FLAGS(GTK_WIDGET(PWidget(wMain)), GTK_SENSITIVE);
+  #endif
+  	gtk_widget_set_events(PWidget(wMain),
+***************
+*** 3488,3497 ****
+  #if GTK_CHECK_VERSION(2,20,0)
+  		gtk_widget_set_can_focus(GTK_WIDGET(sci), TRUE);
+  #else
+- #ifndef KOMODO_NO_FOCUS
+  		GTK_WIDGET_SET_FLAGS(sci, GTK_CAN_FOCUS);
+  #endif
+- #endif
+  		sci->pscin = new ScintillaGTK(sci);
+  	} catch (...) {
+  	}
+--- 3232,3239 ----
+  #if GTK_CHECK_VERSION(2,20,0)
+  		gtk_widget_set_can_focus(GTK_WIDGET(sci), TRUE);
+  #else
+  		GTK_WIDGET_SET_FLAGS(sci, GTK_CAN_FOCUS);
+  #endif
+  		sci->pscin = new ScintillaGTK(sci);
+  	} catch (...) {
+  	}

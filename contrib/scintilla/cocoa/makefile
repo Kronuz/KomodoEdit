@@ -6,7 +6,7 @@
 # Builds for GTK+ 2 and no longer supports GTK+ 1.
 # Also works with ming32-make on Windows.
 
-.SUFFIXES: .cxx .c .o .h .a
+.SUFFIXES: .mm .cxx .c .o .h .a
 ifdef CLANG
 CXX = clang++ -Wno-deprecated-register
 CC = clang
@@ -46,7 +46,7 @@ INCLUDEDIRS=-I ../include -I ../src -I ../lexlib
 ifdef CHECK_DEPRECATED
 DEPRECATED=-DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DDISABLE_GDK_FONT
 endif
-CXXBASEFLAGS=-Wall -pedantic -DGTK -DSCI_LEXER $(INCLUDEDIRS) $(DEPRECATED)
+CXXBASEFLAGS=-Wall -pedantic -DSCI_NAMESPACE -DMACOSX -DSCI_LEXER $(INCLUDEDIRS) $(DEPRECATED)
 
 ifdef NOTHREADS
 THREADFLAGS=-DG_THREADS_IMPL_NONE
@@ -68,12 +68,15 @@ else
 CTFLAGS=-DNDEBUG -Os $(CXXBASEFLAGS) $(THREADFLAGS)
 endif
 
-CFLAGS:=-fPIC $(CTFLAGS)
+CFLAGS:=$(CTFLAGS)
 CXXTFLAGS:=$(CTFLAGS) $(REFLAGS)
 
-CONFIGFLAGS:=$(shell pkg-config --cflags $(GTKVERSION))
-MARSHALLER=scintilla-marshal.o
+#CONFIGFLAGS:=$(shell pkg-config --cflags $(GTKVERSION))
+CONFIGFLAGS=
+MARSHALLER=
 
+.mm.o:
+	$(CXX) $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) -c $<
 .cxx.o:
 	$(CXX) $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) -c $<
 .c.o:
@@ -83,6 +86,11 @@ LEXOBJS:=$(addsuffix .o,$(basename $(notdir $(wildcard ../lexers/Lex*.cxx))))
 
 all: $(COMPLIB)
 
+shared: $(COMPLIB)
+
+../bin/libscintilla.dylib: $(COMPLIB)
+	$(CC) -dynamic -o $@ $(LDFLAGS) -framework Cocoa -framework QuartzCore -dynamiclib -install_name @executable_path/libscintilla.dylib -L. -lpcre $^
+
 clean:
 	$(DEL) *.o $(COMPLIB) *.plist
 
@@ -90,13 +98,14 @@ analyze:
 	clang --analyze $(CONFIGFLAGS) $(CXXTFLAGS) $(CXXFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx
 
 deps:
-	$(CXX) -MM $(CONFIGFLAGS) $(CXXTFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx | sed -e 's/\/usr.* //' | grep [a-zA-Z] >deps.mak
+	$(CXX) -MM $(CONFIGFLAGS) $(CXXTFLAGS) *.mm ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx | sed -e 's/\/usr.* //' | grep [a-zA-Z] >deps.mak
 
 $(COMPLIB): Accessor.o CharacterSet.o LexerBase.o LexerModule.o LexerSimple.o StyleContext.o WordList.o \
 	CharClassify.o Decoration.o Document.o PerLine.o Catalogue.o CallTip.o CaseConvert.o CaseFolder.o \
 	ScintillaBase.o ContractionState.o EditModel.o Editor.o EditView.o ExternalLexer.o MarginView.o \
-	PropSetSimple.o PlatGTK.o \
-	KeyMap.o LineMarker.o PositionCache.o ScintillaGTK.o ScintillaWrapGTK.o CellBuffer.o CharacterCategory.o ViewStyle.o \
+	PropSetSimple.o \
+	InfoBar.o PlatCocoa.o ScintillaCocoa.o ScintillaView.o \
+	KeyMap.o LineMarker.o PositionCache.o CellBuffer.o CharacterCategory.o ViewStyle.o \
 	RESearch.o RunStyles.o Selection.o Style.o Indicator.o AutoComplete.o UniConversion.o XPM.o \
 	$(MARSHALLER) $(LEXOBJS)
 	$(AR) rc $@ $^

@@ -26,6 +26,9 @@
 #define PLAT_CURSES 0
 #define PLAT_TK 0
 
+#define SCIAPI
+#define SCIEXTERN
+
 #if defined(FOX)
 #undef PLAT_FOX
 #define PLAT_FOX 1
@@ -68,6 +71,17 @@
 #else
 #undef PLAT_WIN
 #define PLAT_WIN 1
+
+#undef SCIAPI
+#undef SCIEXTERN
+
+#ifdef SCIAPI_DLL
+#define SCIAPI __declspec(dllexport)
+#define SCIEXTERN
+#else
+#define SCIAPI __declspec(dllimport)
+#define SCIEXTERN extern
+#endif
 
 #endif
 
@@ -308,6 +322,7 @@ public:
 	virtual void Release()=0;
 	virtual bool Initialised()=0;
 	virtual void PenColour(ColourDesired fore)=0;
+	virtual int LogPixelsX()=0;
 	virtual int LogPixelsY()=0;
 	virtual int DeviceHeightFont(int points)=0;
 	virtual void MoveTo(int x_, int y_)=0;

@@ -12,7 +12,9 @@
 namespace Scintilla {
 #endif
 
-class CharClassify {
+#include "Platform.h"
+
+class SCIAPI CharClassify {
 public:
 	CharClassify();
 

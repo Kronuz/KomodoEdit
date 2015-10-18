@@ -1,0 +1,119 @@
+***************
+*** 803,839 ****
+  	return pos;
+  }
+  
+- void Editor::MovedCaret(SelectionPosition newPos, SelectionPosition previousPos, bool ensureVisible) {
+- 	const int currentLine = pdoc->LineFromPosition(newPos.Position());
+- 	if (ensureVisible) {
+- 		// In case in need of wrapping to ensure DisplayFromDoc works.
+- 		if (currentLine >= wrapPending.start)
+- 			WrapLines(wsAll);
+- 		XYScrollPosition newXY = XYScrollToMakeVisible(
+- 			SelectionRange(posDrag.IsValid() ? posDrag : newPos), xysDefault);
+- 		if (previousPos.IsValid() && (newXY.xOffset == xOffset)) {
+- 			// simple vertical scroll then invalidate
+- 			ScrollTo(newXY.topLine);
+- 			InvalidateSelection(SelectionRange(previousPos), true);
+- 		} else {
+- 			SetXYScroll(newXY);
+- 		}
+- 	}
+- 
+- 	ShowCaretAtCurrentPosition();
+- 
+- 	ClaimSelection();
+- 	SetHoverIndicatorPosition(sel.MainCaret());
+- 	QueueIdleWork(WorkNeeded::workUpdateUI);
+- 
+- 	if (marginView.highlightDelimiter.NeedsDrawing(currentLine)) {
+- 		RedrawSelMargin();
+- 	}
+- }
+- 
+  void Editor::MovePositionTo(SelectionPosition newPos, Selection::selTypes selt, bool ensureVisible) {
+- 	const SelectionPosition spCaret = ((sel.Count() == 1) && sel.Empty()) ?
+- 		sel.Last() : SelectionPosition(INVALID_POSITION);
+  
+  	int delta = newPos.Position() - sel.MainCaret();
+  	newPos = ClampPositionIntoDocument(newPos);
+--- 803,811 ----
+  	return pos;
+  }
+  
+  void Editor::MovePositionTo(SelectionPosition newPos, Selection::selTypes selt, bool ensureVisible) {
++ 	const bool simpleCaret = (sel.Count() == 1) && sel.Empty();
++ 	const SelectionPosition spCaret = sel.Last();
+  
+  	int delta = newPos.Position() - sel.MainCaret();
+  	newPos = ClampPositionIntoDocument(newPos);
+***************
+*** 3078,3130 ****
+  		// There is an equivalent case when moving down which skips
+  		// over a line.
+  		Point ptNew = LocationFromPosition(posNew.Position());
+- 		while ((posNew.Position() > spStart.Position()) && (ptNew.y > newY)) {
+  			posNew.Add(-1);
+  			posNew.SetVirtualSpace(0);
+  			ptNew = LocationFromPosition(posNew.Position());
+  		}
+  	}
+- 	return posNew;
+- }
+- 
+- void Editor::CursorUpOrDown(int direction, Selection::selTypes selt) {
+- 	SelectionPosition caretToUse = sel.Range(sel.Main()).caret;
+- 	if (sel.IsRectangular()) {
+- 		if (selt ==  Selection::noSel) {
+- 			caretToUse = (direction > 0) ? sel.Limits().end : sel.Limits().start;
+- 		} else {
+- 			caretToUse = sel.Rectangular().caret;
+- 		}
+- 	}
+- 	if (selt == Selection::selRectangle) {
+- 		const SelectionRange rangeBase = sel.IsRectangular() ? sel.Rectangular() : sel.RangeMain();
+- 		if (!sel.IsRectangular()) {
+- 			InvalidateWholeSelection();
+- 			sel.DropAdditionalRanges();
+- 		}
+- 		const SelectionPosition posNew = MovePositionSoVisible(
+- 			PositionUpOrDown(caretToUse, direction, lastXChosen), direction);
+- 		sel.selType = Selection::selRectangle;
+- 		sel.Rectangular() = SelectionRange(posNew, rangeBase.anchor);
+- 		SetRectangularRange();
+- 		MovedCaret(posNew, caretToUse, true);
+- 	} else {
+- 		InvalidateWholeSelection();
+- 		if (!additionalSelectionTyping || (sel.IsRectangular())) {
+- 			sel.DropAdditionalRanges();
+- 		}
+- 		sel.selType = Selection::selStream;
+- 		for (size_t r = 0; r < sel.Count(); r++) {
+- 			const int lastX = (r == sel.Main()) ? lastXChosen : -1;
+- 			const SelectionPosition spCaretNow = sel.Range(r).caret;
+- 			const SelectionPosition posNew = MovePositionSoVisible(
+- 				PositionUpOrDown(spCaretNow, direction, lastX), direction);
+- 			sel.Range(r) = selt == Selection::selStream ? 
+- 				SelectionRange(posNew, sel.Range(r).anchor) : SelectionRange(posNew);
+- 		}
+- 		sel.RemoveDuplicates();
+- 		MovedCaret(sel.RangeMain().caret, caretToUse, true);
+- 	}
+  }
+  
+  void Editor::ParaUpOrDown(int direction, Selection::selTypes selt) {
+--- 3068,3081 ----
+  		// There is an equivalent case when moving down which skips
+  		// over a line.
+  		Point ptNew = LocationFromPosition(posNew.Position());
++ 		while ((posNew.Position() > caretToUse.Position()) && (ptNew.y > newY)) {
+  			posNew.Add(-1);
+  			posNew.SetVirtualSpace(0);
+  			ptNew = LocationFromPosition(posNew.Position());
+  		}
+  	}
++ 
++ 	MovePositionTo(MovePositionSoVisible(posNew, direction), selt);
+  }
+  
+  void Editor::ParaUpOrDown(int direction, Selection::selTypes selt) {
