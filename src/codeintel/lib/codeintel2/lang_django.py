@@ -1,0 +1,1 @@
+../../../../src/udl/skel/Django/pylib/lang_django.py
