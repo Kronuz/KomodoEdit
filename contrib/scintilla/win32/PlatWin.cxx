@@ -529,6 +529,7 @@ public:
 	void Release();
 	bool Initialised();
 	void PenColour(ColourDesired fore);
+	int LogPixelsX();
 	int LogPixelsY();
 	int DeviceHeightFont(int points);
 	void MoveTo(int x_, int y_);
@@ -679,6 +680,10 @@ void SurfaceGDI::SetFont(Font &font_) {
 		}
 		font = reinterpret_cast<HFONT>(pfm->hfont);
 	}
+}
+
+int SurfaceGDI::LogPixelsX() {
+	return ::GetDeviceCaps(hdc, LOGPIXELSX);
 }
 
 int SurfaceGDI::LogPixelsY() {
@@ -1137,6 +1142,7 @@ class SurfaceD2D : public Surface {
 
 	ID2D1SolidColorBrush *pBrush;
 
+	int logPixelsX;
 	int logPixelsY;
 	float dpiScaleX;
 	float dpiScaleY;
@@ -1162,6 +1168,7 @@ public:
 
 	void PenColour(ColourDesired fore);
 	void D2DPenColour(ColourDesired fore, int alpha=255);
+	int LogPixelsX();
 	int LogPixelsY();
 	int DeviceHeightFont(int points);
 	void MoveTo(int x_, int y_);
@@ -1217,7 +1224,8 @@ SurfaceD2D::SurfaceD2D() :
 
 	pBrush = NULL;
 
-	logPixelsY = 72;
+	logPixelsX = 96;
+	logPixelsY = 96;
 	dpiScaleX = 1.0;
 	dpiScaleY = 1.0;
 }
@@ -1245,8 +1253,9 @@ void SurfaceD2D::Release() {
 
 void SurfaceD2D::SetScale() {
 	HDC hdcMeasure = ::CreateCompatibleDC(NULL);
+	logPixelsX = ::GetDeviceCaps(hdcMeasure, LOGPIXELSX);
 	logPixelsY = ::GetDeviceCaps(hdcMeasure, LOGPIXELSY);
-	dpiScaleX = ::GetDeviceCaps(hdcMeasure, LOGPIXELSX) / 96.0f;
+	dpiScaleX = logPixelsX / 96.0f;
 	dpiScaleY = logPixelsY / 96.0f;
 	::DeleteDC(hdcMeasure);
 }
@@ -1339,6 +1348,10 @@ void SurfaceD2D::SetFont(Font &font_) {
 
 		pRenderTarget->SetTextAntialiasMode(aaMode);
 	}
+}
+
+int SurfaceD2D::LogPixelsX() {
+	return logPixelsX;
 }
 
 int SurfaceD2D::LogPixelsY() {

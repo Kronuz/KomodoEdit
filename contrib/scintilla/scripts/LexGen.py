@@ -17,12 +17,12 @@ def UpdateVersionNumbers(sci, root):
         "#define VERSION_SCINTILLA \"" + sci.versionDotted + "\"")
     UpdateLineInFile(root + "win32/ScintRes.rc", "#define VERSION_WORDS",
         "#define VERSION_WORDS " + sci.versionCommad)
-    UpdateLineInFile(root + "qt/ScintillaEditBase/ScintillaEditBase.pro",
-        "VERSION =",
-        "VERSION = " + sci.versionDotted)
-    UpdateLineInFile(root + "qt/ScintillaEdit/ScintillaEdit.pro",
-        "VERSION =",
-        "VERSION = " + sci.versionDotted)
+    #UpdateLineInFile(root + "qt/ScintillaEditBase/ScintillaEditBase.pro",
+    #    "VERSION =",
+    #    "VERSION = " + sci.versionDotted)
+    #UpdateLineInFile(root + "qt/ScintillaEdit/ScintillaEdit.pro",
+    #    "VERSION =",
+    #    "VERSION = " + sci.versionDotted)
     UpdateLineInFile(root + "doc/ScintillaDownload.html", "       Release",
         "       Release " + sci.versionDotted)
     ReplaceREInFile(root + "doc/ScintillaDownload.html",

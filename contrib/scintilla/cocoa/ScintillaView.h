@@ -114,6 +114,8 @@ extern NSString *const SCIUpdateUINotification;
   BOOL mInfoBarAtTop;
 
   id<ScintillaNotificationProtocol> mDelegate;
+  
+  BOOL mScrollerForceHide;
 }
 
 @property (nonatomic, readonly) Scintilla::ScintillaCocoa* backend;
@@ -131,6 +133,7 @@ extern NSString *const SCIUpdateUINotification;
 
 // Scroller handling
 - (void) setMarginWidth: (int) width;
+- (void) setScrollForceHide: (BOOL) hide;
 - (SCIContentView*) content;
 - (void) updateMarginCursors;
 

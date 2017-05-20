@@ -62,7 +62,6 @@ protected:
 	virtual void Initialise() = 0;
 	virtual void Finalise();
 
-	virtual void AddCharUTF(const char *s, unsigned int len, bool treatAsDBCS=false);
 	void Command(int cmdId);
 	virtual void CancelModes();
 	virtual int KeyCommand(unsigned int iMessage);
@@ -95,6 +94,7 @@ protected:
 public:
 	// Public so scintilla_send_message can use it
 	virtual sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
+	virtual void AddCharUTF(const char *s, unsigned int len, bool treatAsDBCS=false);
 };
 
 #ifdef SCI_NAMESPACE
