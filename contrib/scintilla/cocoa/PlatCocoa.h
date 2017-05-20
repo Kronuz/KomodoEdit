@@ -82,6 +82,7 @@ public:
   CGImageRef GetImage();
   void CopyImageRectangle(Surface &surfaceSource, PRectangle srcRect, PRectangle dstRect);
 
+  int LogPixelsX();
   int LogPixelsY();
   int DeviceHeightFont(int points);
   void MoveTo(int x_, int y_);

@@ -24,7 +24,12 @@ public:
 /**
  * The line vector contains information about each of the lines in a cell buffer.
  */
-class LineVector {
+#ifdef SCIAPI_DLL
+#include "PerLine.h"
+SCIEXTERN template class SCIAPI SplitVector<MarkerHandleSet *>;
+#endif
+
+class SCIAPI LineVector {
 
 	Partitioning starts;
 	PerLine *perLine;
@@ -70,7 +75,7 @@ enum actionType { insertAction, removeAction, startAction, containerAction };
 /**
  * Actions are used to store all the information required to perform one undo/redo step.
  */
-class Action {
+class SCIAPI Action {
 public:
 	actionType at;
 	int position;
@@ -88,7 +93,7 @@ public:
 /**
  *
  */
-class UndoHistory {
+class SCIAPI UndoHistory {
 	Action *actions;
 	int lenActions;
 	int maxAction;
@@ -141,7 +146,7 @@ public:
  * Based on article "Data Structures in a Bit-Mapped Text Editor"
  * by Wilfred J. Hansen, Byte January 1987, page 183.
  */
-class CellBuffer {
+class SCIAPI CellBuffer {
 private:
 	SplitVector<char> substance;
 	SplitVector<char> style;

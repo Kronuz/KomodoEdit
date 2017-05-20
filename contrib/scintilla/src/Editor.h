@@ -183,6 +183,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	bool horizontalScrollBarVisible;
 	int scrollWidth;
 	bool verticalScrollBarVisible;
+	bool useCustomScrollBars;
 	bool endAtLastLine;
 	int caretSticky;
 	int marginOptions;
@@ -258,6 +259,13 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	WrapPending wrapPending;
 
 	bool convertPastes;
+	
+	// ActiveState prevent minimap selection-claiming (bug 97956)
+	bool rejectSelectionClaim;
+	// ActiveState: suppress drag/drop when in minimap (bug 97159)
+	bool suppressDragDrop;
+	// ActiveState: hook {ctrl,cmd}-scroll-wheel zooming (bug 98938)
+	bool suppressZoomOnScrollWheel; // default false
 
 	Editor();
 	virtual ~Editor();
@@ -324,8 +332,13 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	void MultipleSelectAdd(AddNumber addNumber);
 	bool RangeContainsProtected(int start, int end) const;
 	bool SelectionContainsProtected();
+	
+	// ACTIVESTATE
+	int GetBytePositionForCharOffset(int bytePos, int charOffset, bool checkLineEnd=true);
+
 	int MovePositionOutsideChar(int pos, int moveDir, bool checkLineEnd=true) const;
 	SelectionPosition MovePositionOutsideChar(SelectionPosition pos, int moveDir, bool checkLineEnd=true) const;
+	void MovedCaret(SelectionPosition newPos, SelectionPosition previousPos, bool ensureVisible);
 	void MovePositionTo(SelectionPosition newPos, Selection::selTypes selt=Selection::noSel, bool ensureVisible=true);
 	void MovePositionTo(int newPos, Selection::selTypes selt=Selection::noSel, bool ensureVisible=true);
 	SelectionPosition MovePositionSoVisible(SelectionPosition pos, int moveDir);
@@ -390,7 +403,6 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	void FilterSelections();
 	int InsertSpace(int position, unsigned int spaces);
 	void AddChar(char ch);
-	virtual void AddCharUTF(const char *s, unsigned int len, bool treatAsDBCS=false);
 	void FillVirtualSpace();
 	void InsertPaste(const char *text, int len);
 	enum PasteShape { pasteStream=0, pasteRectangular = 1, pasteLine = 2 };
@@ -458,9 +470,15 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	void Duplicate(bool forLine);
 	virtual void CancelModes();
 	void NewLine();
+	SelectionPosition PositionUpOrDown(SelectionPosition spStart, int direction, int lastX);
 	void CursorUpOrDown(int direction, Selection::selTypes selt);
 	void ParaUpOrDown(int direction, Selection::selTypes selt);
 	int StartEndDisplayLine(int pos, bool start);
+	int VCHomeDisplayPosition(int position);
+	int VCHomeWrapPosition(int position);
+	int LineEndWrapPosition(int position);
+	int HorizontalMove(unsigned int iMessage);
+	int DelWordOrLine(unsigned int iMessage);
 	virtual int KeyCommand(unsigned int iMessage);
 	virtual int KeyDefault(int /* key */, int /*modifiers*/);
 	int KeyDownWithModifiers(int key, int modifiers, bool *consumed);
@@ -504,7 +522,6 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 
 	void Tick();
 	bool Idle();
-	virtual void SetTicking(bool on);
 	enum TickReason { tickCaret, tickScroll, tickWiden, tickDwell, tickPlatform };
 	virtual void TickFor(TickReason reason);
 	virtual bool FineTickerAvailable();
@@ -566,6 +583,8 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	static sptr_t BytesResult(sptr_t lParam, const unsigned char *val, size_t len);
 
 public:
+	// ACTIVESTATE KOMODO - expose so SciMoz on Mac can call it.
+	virtual void SetTicking(bool on);
 	// Public so the COM thunks can access it.
 	bool IsUnicodeMode() const;
 	// Public so scintilla_send_message can use it.
@@ -576,6 +595,8 @@ public:
 	int errorStatus;
 	friend class AutoSurface;
 	friend class SelectionLineIterator;
+	// ACTIVESTATE KOMODO - public so SciMoz can add chars directly.
+	virtual void AddCharUTF(const char *s, unsigned int len, bool treatAsDBCS=false);
 };
 
 /**

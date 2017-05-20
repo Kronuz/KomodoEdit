@@ -1112,7 +1112,14 @@ static void ColouriseErrorListDoc(unsigned int startPos, int length, int, WordLi
 		if (AtEOL(styler, i) || (linePos >= sizeof(lineBuffer) - 1)) {
 			// End of line (or of line buffer) met, colourise it
 			lineBuffer[linePos] = '\0';
-			ColouriseErrorListLine(lineBuffer, linePos, i, styler, valueSeparate);
+
+			// ACTIVESTATE
+			// Ensure that styles are split across lines --
+			// otherwise hotspots cover "too much" and blend
+			// consecutive errors into a single hotspot.
+			ColouriseErrorListLine(lineBuffer, linePos, i - 1, styler, valueSeparate);
+			styler.ColourTo(i, SCE_ERR_DEFAULT);
+
 			linePos = 0;
 		}
 	}

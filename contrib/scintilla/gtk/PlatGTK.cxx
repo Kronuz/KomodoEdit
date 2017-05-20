@@ -19,6 +19,8 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
+#include "ScintillaWrapGTK.h"
+
 #include "Platform.h"
 
 #include "Scintilla.h"
@@ -41,11 +43,7 @@
 
 #include "Converter.h"
 
-#if GTK_CHECK_VERSION(2,20,0)
-#define IS_WIDGET_FOCUSSED(w) (gtk_widget_has_focus(GTK_WIDGET(w)))
-#else
-#define IS_WIDGET_FOCUSSED(w) (GTK_WIDGET_HAS_FOCUS(w))
-#endif
+#define IS_WIDGET_FOCUSSED(w) (ScintillaWrapGTK_gtk_widget_has_focus(w))
 
 static const double kPi = 3.14159265358979323846;
 
@@ -61,21 +59,7 @@ static double doubleFromPangoUnits(int pu) {
 }
 
 static cairo_surface_t *CreateSimilarSurface(GdkWindow *window, cairo_content_t content, int width, int height) {
-#if GTK_CHECK_VERSION(2,22,0)
-	return gdk_window_create_similar_surface(window, content, width, height);
-#else
-	cairo_surface_t *window_surface, *surface;
-
-	g_return_val_if_fail(GDK_IS_WINDOW(window), NULL);
-
-	window_surface = GDK_DRAWABLE_GET_CLASS(window)->ref_cairo_surface(window);
-
-	surface = cairo_surface_create_similar(window_surface, content, width, height);
-
-	cairo_surface_destroy(window_surface);
-
-	return surface;
-#endif
+    return ScintillaWrapGTK_gdk_window_create_similar_surface(window, content, width, height);
 }
 
 static GdkWindow *WindowFromWidget(GtkWidget *w) {
@@ -396,6 +380,7 @@ public:
 	void Release();
 	bool Initialised();
 	void PenColour(ColourDesired fore);
+	int LogPixelsX();
 	int LogPixelsY();
 	int DeviceHeightFont(int points);
 	void MoveTo(int x_, int y_);
@@ -615,13 +600,17 @@ void SurfaceImpl::PenColour(ColourDesired fore) {
 	}
 }
 
+int SurfaceImpl::LogPixelsX() {
+	return gdk_screen_get_resolution(gdk_screen_get_default());
+}
+
 int SurfaceImpl::LogPixelsY() {
-	return 72;
+	return gdk_screen_get_resolution(gdk_screen_get_default());
 }
 
 int SurfaceImpl::DeviceHeightFont(int points) {
 	int logPix = LogPixelsY();
-	return (points * logPix + logPix / 2) / 72;
+	return (points * logPix + logPix / 2) / logPix;
 }
 
 void SurfaceImpl::MoveTo(int x_, int y_) {

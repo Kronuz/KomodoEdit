@@ -23,6 +23,13 @@
 #include <vector>
 #include <map>
 
+#import <Cocoa/Cocoa.h>
+#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
+#import <QuartzCore/CAGradientLayer.h>
+#endif
+#import <QuartzCore/CAAnimation.h>
+#import <QuartzCore/CATransaction.h>
+
 #include "ILexer.h"
 
 #ifdef SCI_LEXER
@@ -56,6 +63,8 @@
 
 #include "AutoComplete.h"
 #include "ScintillaBase.h"
+
+//#define SCINTILLA_COCOA_DEBUG
 
 extern "C" NSString* ScintillaRecPboardType;
 
@@ -223,6 +232,8 @@ public:
   void DraggingExited(id <NSDraggingInfo> info);
   bool PerformDragOperation(id <NSDraggingInfo> info);
   void DragScroll();
+  bool inDragSession() { return inDragDrop == ddDragging; };
+  bool isTracking;
 
   // Promote some methods needed for NSResponder actions.
   virtual void SelectAll();

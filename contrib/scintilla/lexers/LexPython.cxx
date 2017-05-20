@@ -27,6 +27,38 @@
 using namespace Scintilla;
 #endif
 
+// Should be used in the non-komodo-specific code as well.
+
+static int actual_style(int style) {
+	return style & 0x1f; // 31
+}
+
+// KOMODO  see if a style is one of our IO styles
+static inline bool IsIOStyle(int style) {
+	return style == SCE_P_STDIN ||
+		style == SCE_P_STDOUT ||
+		style == SCE_P_STDERR;
+}
+
+// KOMODO -- interactive shell colorizing
+static int prevNonEmptyLineIsStdio(int line,
+				   Accessor &styler) {
+	if (line <= 0) return false;
+	int lineStart = styler.LineStart(line);
+	if (lineStart == 0) return false;
+	// Move to the previous line
+	int pos = lineStart - 1;
+	for (; pos > 0; --pos) {
+		char ch = styler.SafeGetCharAt(pos);
+		if (ch == '\n' || ch == '\r') {
+			break;
+		}
+	}
+	if (pos == 0) return false;
+	return IsIOStyle(actual_style(styler.StyleAt(pos)));
+}
+
+
 /* kwCDef, kwCTypeName only used for Cython */
 enum kwType { kwOther, kwClass, kwDef, kwImport, kwCDef, kwCTypeName, kwCPDef };
 
@@ -101,11 +133,11 @@ static int GetPyStringState(Accessor &styler, int i, unsigned int *nextIndex, li
 }
 
 static inline bool IsAWordChar(int ch) {
-	return (ch < 0x80) && (isalnum(ch) || ch == '.' || ch == '_');
+	return ((unsigned int) ch >= 0x80) || isalnum(ch) || ch == '.' || ch == '_';
 }
 
 static inline bool IsAWordStart(int ch) {
-	return (ch < 0x80) && (isalnum(ch) || ch == '_');
+	return ((unsigned int) ch >= 0x80) || isalnum(ch) || ch == '_';
 }
 
 static void ColourisePyDoc(unsigned int startPos, int length, int initStyle,
@@ -116,7 +148,11 @@ static void ColourisePyDoc(unsigned int startPos, int length, int initStyle,
 	// Backtrack to previous line in case need to fix its tab whinging
 	int lineCurrent = styler.GetLine(startPos);
 	if (startPos > 0) {
-		if (lineCurrent > 0) {
+		// KOMODO
+		if (prevNonEmptyLineIsStdio(lineCurrent, styler)) {
+			initStyle = SCE_P_DEFAULT;
+		// Don't do anything else
+		} else if (lineCurrent > 0) {
 			lineCurrent--;
 			// Look for backslash-continued lines
 			while (lineCurrent > 0) {
@@ -186,7 +222,35 @@ static void ColourisePyDoc(unsigned int startPos, int length, int initStyle,
 	int startIndicator = sc.currentPos;
 	bool inContinuedString = false;
 
+	
+	// KOMODO
+	// reset the style of the first character.  This will either set it to the same
+	// style it already is, or will force it to default and cause colourise to start
+	// fresh at this position.
+	sc.SetState(initStyle);
+	
 	for (; sc.More(); sc.Forward()) {
+		
+		// KOMODO
+		// first, if the NEXT style is IO, then skip forward until the NEXT
+		// style IS NOT an IO style.  Then, if the current style is an IO
+		// style, reset it to the default style so colourise works correctly.
+		// this works fine if IO styles end at EOL, but *might* have slight
+		// artifacts if IO styles are mixed in with non IO styles on the same line.
+
+		// Fix bug 58648 by avoiding reading past edge of buffer
+		int nextStyle = (sc.currentPos < endPos - 1
+				 ? styler.StyleAt(sc.currentPos + 1)
+				 : SCE_P_DEFAULT);
+		if (IsIOStyle(nextStyle)) {
+			//leave the style whatever it was
+			sc.SetState(nextStyle);
+			continue;
+		} else if (IsIOStyle(sc.state)) {
+			if (sc.atLineEnd) {
+				sc.SetState(SCE_P_DEFAULT);
+			}
+		}
 
 		if (sc.atLineStart) {
 			styler.IndentAmount(lineCurrent, &spaceFlags, IsPyComment);
@@ -400,6 +464,14 @@ static void ColourisePyDoc(unsigned int startPos, int length, int initStyle,
 			} else if (IsAWordStart(sc.ch)) {
 				sc.SetState(SCE_P_IDENTIFIER);
 			}
+		}
+	}
+	if (sc.state == SCE_P_IDENTIFIER && sc.currentPos == (unsigned int) styler.Length()) {
+		/* Fix Komodo bug http://bugs.activestate.com/show_bug.cgi?id=44006 */
+		char s[100];
+		sc.GetCurrent(s, sizeof(s));
+		if (keywords.InList(s) || (kwLast == kwImport && strcmp(s, "as") == 0)) {
+			sc.ChangeState(SCE_P_WORD);
 		}
 	}
 	styler.IndicatorFill(startIndicator, sc.currentPos, indicatorWhitespace, 0);

@@ -33,6 +33,7 @@ public:
 	virtual int SCI_METHOD SetLevel(int line, int level) = 0;
 	virtual int SCI_METHOD GetLineState(int line) const = 0;
 	virtual int SCI_METHOD SetLineState(int line, int state) = 0;
+	virtual int SCI_METHOD SetLineStateNoNotify(int line, int state) = 0;
 	virtual void SCI_METHOD StartStyling(int position, char mask) = 0;
 	virtual bool SCI_METHOD SetStyleFor(int length, char style) = 0;
 	virtual bool SCI_METHOD SetStyles(int length, const char *styles) = 0;
