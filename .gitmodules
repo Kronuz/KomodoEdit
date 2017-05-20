@@ -18,3 +18,9 @@
 	path = src/modules/focusmode
 	url = https://github.com/Komodo/Focus-Mode.git
     branch = master
+[submodule "SublimeCodeIntel"]
+	path = SublimeCodeIntel
+	url = git@github.com:Kronuz/SublimeCodeIntel.git
+[submodule "CodeIntel"]
+	path = CodeIntel
+	url = git@github.com:Kronuz/CodeIntel.git
