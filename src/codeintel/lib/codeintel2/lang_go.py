@@ -1,0 +1,1 @@
+../../../../src/modules/golang/pylib/codeintel_go.py
