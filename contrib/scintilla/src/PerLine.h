@@ -25,7 +25,7 @@ struct MarkerHandleNumber {
 /**
  * A marker handle set contains any number of MarkerHandleNumbers.
  */
-class MarkerHandleSet {
+class SCIAPI MarkerHandleSet {
 	MarkerHandleNumber *root;
 
 public:

@@ -279,7 +279,7 @@ typedef sptr_t (*SciFnDirect)(sptr_t ptr, unsigned int iMessage, uptr_t wParam, 
 #define INDIC_TEXTFORE 17
 #define INDIC_IME 32
 #define INDIC_IME_MAX 35
-#define INDIC_MAX 35
+#define INDIC_MAX 63
 #define INDIC_CONTAINER 8
 #define INDIC0_MASK 0x20
 #define INDIC1_MASK 0x40
@@ -778,6 +778,7 @@ typedef sptr_t (*SciFnDirect)(sptr_t ptr, unsigned int iMessage, uptr_t wParam, 
 #define SC_ALPHA_NOALPHA 256
 #define SCI_SETCARETLINEBACKALPHA 2470
 #define SCI_GETCARETLINEBACKALPHA 2471
+#define SCI_STOPTIMERS 2472
 #define CARETSTYLE_INVISIBLE 0
 #define CARETSTYLE_LINE 1
 #define CARETSTYLE_BLOCK 2
@@ -926,6 +927,8 @@ typedef sptr_t (*SciFnDirect)(sptr_t ptr, unsigned int iMessage, uptr_t wParam, 
 #define SCI_VCHOMEDISPLAYEXTEND 2653
 #define SCI_GETCARETLINEVISIBLEALWAYS 2654
 #define SCI_SETCARETLINEVISIBLEALWAYS 2655
+#define SCI_SETUSECUSTOMSCROLLBARS 2656
+#define SCI_GETUSECUSTOMSCROLLBARS 2657
 #define SC_LINE_END_TYPE_DEFAULT 0
 #define SC_LINE_END_TYPE_UNICODE 1
 #define SCI_SETLINEENDTYPESALLOWED 2656

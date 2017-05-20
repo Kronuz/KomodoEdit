@@ -14,7 +14,7 @@ namespace Scintilla {
 #endif
 
 template <typename T>
-class SplitVector {
+class SCIAPI SplitVector {
 protected:
 	T *body;
 	int size;
@@ -286,6 +286,11 @@ public:
 
 #ifdef SCI_NAMESPACE
 }
+#endif
+
+#ifdef SCIAPI_DLL
+SCIEXTERN template class SCIAPI SplitVector<int>;
+SCIEXTERN template class SCIAPI SplitVector<char>;
 #endif
 
 #endif

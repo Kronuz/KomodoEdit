@@ -38,6 +38,13 @@ using namespace Scintilla;
 
 namespace {
 	// Use an unnamed namespace to protect the functions and classes from name conflicts
+	
+// KOMODO  see if a style is one of our IO styles
+static inline bool IsIOStyle(int style) {
+	return style == SCE_C_STDIN ||
+		style == SCE_C_STDOUT ||
+		style == SCE_C_STDERR;
+}
 
 bool IsSpaceEquiv(int state) {
 	return (state <= SCE_C_COMMENTDOC) ||
@@ -62,6 +69,84 @@ bool FollowsPostfixOperator(StyleContext &sc, LexAccessor &styler) {
 		}
 	}
 	return false;
+}
+
+// Helpers for startsJavaScriptLambdaBody
+static void sjslb_skipCommentsAndWhiteSpace(int &pos, LexAccessor &styler) {
+	for (; pos > 0; --pos) {
+		if (styler.StyleAt(pos) > SCE_C_COMMENTDOC) {
+			break;
+		}
+	}
+}
+
+static bool sjslb_matchStyledChar(int targetStyle, char targetChar, int &pos, LexAccessor &styler) {
+	if (pos < 0) return false;
+	if ((styler.StyleAt(pos) != targetStyle)
+	    || (styler.SafeGetCharAt(pos) != targetChar)) {
+		return false;
+	}
+	--pos; // Consume the char.
+	return true;
+}
+
+static bool sjslb_matchIdentifier(int &pos, LexAccessor &styler) {
+	int startPos;
+	for (startPos = pos; pos >= 0; --pos) {
+		if (styler.StyleAt(pos) != SCE_C_IDENTIFIER) {
+			break;
+		}
+	}
+	return pos < startPos;
+}
+
+static bool sjslb_matchKeyword(const char *kwd, int &pos, LexAccessor &styler) {
+	int startPos, targetLen = strlen(kwd);
+	const char *p_src = &kwd[targetLen - 1];
+	for (startPos = pos; pos >= 0 && p_src >= kwd; --pos, --p_src) {
+		if (styler.SafeGetCharAt(pos) != *p_src
+		    || styler.StyleAt(pos) != SCE_C_WORD) {
+			return false;
+		}
+	}
+	return (p_src == kwd - 1 && (pos == -1 || styler.StyleAt(pos) != SCE_C_WORD));
+	// lambda's can't occur at the very start of a file.
+}
+
+/*** startsJavaScriptLambdaBody()
+ * Look for lambda expressions like
+ *
+ * function optName (name {, name}* ) <|>
+ *
+ * where we can have comments and white-space before each char
+ *
+ * So the grammar to match walking backwards is:
+ *
+ * )-op {name {,-op name}*}? (-op name? function-WORD
+ *
+ * where each term can be preceded by white-space and comments.
+ */
+static bool startsJavaScriptLambdaBody(StyleContext &sc, LexAccessor &styler) {
+	int pos = (int) sc.currentPos - 1;
+	styler.Flush();
+	sjslb_skipCommentsAndWhiteSpace(pos, styler);
+	if (!sjslb_matchStyledChar(SCE_C_OPERATOR, ')', pos, styler)) return false;
+	sjslb_skipCommentsAndWhiteSpace(pos, styler);
+	// Allow for (name); (name1, name2,..., nameN); ()
+	if (sjslb_matchIdentifier(pos, styler)) {
+		while (pos > 7) {
+			sjslb_skipCommentsAndWhiteSpace(pos, styler);
+			if (!sjslb_matchStyledChar(SCE_C_OPERATOR, ',', pos, styler)) break;
+			sjslb_skipCommentsAndWhiteSpace(pos, styler);
+			if (!sjslb_matchIdentifier(pos, styler)) return false;
+		}
+	}
+	sjslb_skipCommentsAndWhiteSpace(pos, styler);
+	if (!sjslb_matchStyledChar(SCE_C_OPERATOR, '(', pos, styler)) return false;
+	sjslb_skipCommentsAndWhiteSpace(pos, styler);
+	sjslb_matchIdentifier(pos, styler); // Allow an optional name
+	sjslb_skipCommentsAndWhiteSpace(pos, styler);
+	return sjslb_matchKeyword("function", pos, styler);
 }
 
 bool followsReturnKeyword(StyleContext &sc, LexAccessor &styler) {
@@ -311,6 +396,7 @@ struct OptionsCPP {
 	bool hashquotedStrings;
 	bool backQuotedStrings;
 	bool escapeSequence;
+	bool backQuotedInterpolation;
 	bool fold;
 	bool foldSyntaxBased;
 	bool foldComment;
@@ -332,6 +418,7 @@ struct OptionsCPP {
 		hashquotedStrings = false;
 		backQuotedStrings = false;
 		escapeSequence = false;
+		backQuotedInterpolation = false;
 		fold = false;
 		foldSyntaxBased = true;
 		foldComment = false;
@@ -386,6 +473,9 @@ struct OptionSetCPP : public OptionSet<OptionsCPP> {
 
 		DefineProperty("lexer.cpp.escape.sequence", &OptionsCPP::escapeSequence,
 			"Set to 1 to enable highlighting of escape sequences in strings");
+
+		DefineProperty("lexer.cpp.backquoted.interpolation", &OptionsCPP::backQuotedInterpolation,
+			"Set to 1 to enable ${expr} interpolation in back-quoted raw strings.");
 
 		DefineProperty("fold", &OptionsCPP::fold);
 
@@ -640,7 +730,7 @@ struct After {
 void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, IDocument *pAccess) {
 	LexAccessor styler(pAccess);
 
-	CharacterSet setOKBeforeRE(CharacterSet::setNone, "([{=,:;!%^&*|?~+-");
+	CharacterSet setOKBeforeRE(CharacterSet::setNone, "([{}=,:;!%^&*|?~+-");
 	CharacterSet setCouldBePostOp(CharacterSet::setNone, "+-");
 
 	CharacterSet setDoxygen(CharacterSet::setAlpha, "$@\\&<>#{}[]");
@@ -713,6 +803,7 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 
 	std::string rawStringTerminator = rawStringTerminators.ValueAt(lineCurrent-1);
 	SparseState<std::string> rawSTNew(lineCurrent);
+	int backquotedInterpolatedBraceCount = styler.GetLineState(lineCurrent);
 
 	int activitySet = preproc.IsInactive() ? activeFlag : 0;
 
@@ -726,10 +817,14 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 		if (sc.atLineStart) {
 			// Using MaskActive() is not needed in the following statement.
 			// Inside inactive preprocessor declaration, state will be reset anyway at the end of this block.
-			if ((sc.state == SCE_C_STRING) || (sc.state == SCE_C_CHARACTER)) {
+			int lineStartState = sc.state;
+			if (lineStartState == SCE_C_STRING
+			    || lineStartState == SCE_C_CHARACTER) {
 				// Prevent SCE_C_STRINGEOL from leaking back to previous line which
 				// ends with a line continuation by locking in the state up to this position.
-				sc.SetState(sc.state);
+				sc.SetState(lineStartState);
+			} else if (IsIOStyle(sc.state)) {
+				sc.SetState(SCE_C_DEFAULT);
 			}
 			if ((MaskActive(sc.state) == SCE_C_PREPROCESSOR) && (!continuationLine)) {
 				sc.SetState(SCE_C_DEFAULT|activitySet);
@@ -753,6 +848,7 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 			if (rawStringTerminator != "") {
 				rawSTNew.Set(lineCurrent-1, rawStringTerminator);
 			}
+			styler.SetLineState(lineCurrent, backquotedInterpolatedBraceCount);
 		}
 
 		// Handle line continuation generically.
@@ -761,6 +857,10 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 				lineCurrent++;
 				lineEndNext = styler.LineEnd(lineCurrent);
 				vlls.Add(lineCurrent, preproc);
+				if (rawStringTerminator != "") {
+					rawSTNew.Set(lineCurrent-1, rawStringTerminator);
+				}
+				styler.SetLineState(lineCurrent, backquotedInterpolatedBraceCount);
 				sc.Forward();
 				if (sc.ch == '\r' && sc.chNext == '\n') {
 					// Even in UTF-8, \r and \n are separate
@@ -795,7 +895,7 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 					sc.SetState(SCE_C_DEFAULT|activitySet);
 				break;
 			case SCE_C_IDENTIFIER:
-				if (sc.atLineStart || sc.atLineEnd || !setWord.Contains(sc.ch) || (sc.ch == '.')) {
+				if (sc.atLineStart || sc.atLineEnd || !setWord.Contains(sc.ch) || (sc.ch == '.') || (sc.ch == '$')) {
 					char s[1000];
 					if (caseSensitive) {
 						sc.GetCurrent(s, sizeof(s));
@@ -1001,6 +1101,11 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 						sc.Forward();
 					sc.SetState(SCE_C_DEFAULT|activitySet);
 					rawStringTerminator = "";
+				} else if (options.backQuotedInterpolation && sc.ch == '$' && sc.chNext == '{') {
+					sc.SetState(SCE_C_OPERATOR|activitySet);
+					sc.Forward();
+					sc.ForwardSetState(SCE_C_DEFAULT|activitySet);
+					backquotedInterpolatedBraceCount = 1;
 				}
 				break;
 			case SCE_C_CHARACTER:
@@ -1099,7 +1204,7 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 				} else {
 					sc.SetState(SCE_C_NUMBER|activitySet);
 				}
-			} else if (!sc.atLineEnd && (setWordStart.Contains(sc.ch) || (sc.ch == '@'))) {
+			} else if (!sc.atLineEnd && (setWordStart.Contains(sc.ch) || (sc.ch == '@') || (sc.ch == '$'))) {
 				if (lastWordWasUUID) {
 					sc.SetState(SCE_C_UUID|activitySet);
 					lastWordWasUUID = false;
@@ -1114,16 +1219,19 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 				}
 				sc.Forward();	// Eat the * so it isn't used for the end of the comment
 			} else if (sc.Match('/', '/')) {
+				// In JS "//" always starts a comment, and is never the empty regex
 				if ((sc.Match("///") && !sc.Match("////")) || sc.Match("//!"))
 					// Support of Qt/Doxygen doc. style
 					sc.SetState(SCE_C_COMMENTLINEDOC|activitySet);
 				else
 					sc.SetState(SCE_C_COMMENTLINE|activitySet);
 			} else if (sc.ch == '/'
-				   && (setOKBeforeRE.Contains(chPrevNonWhite)
-				       || followsReturnKeyword(sc, styler))
-				   && (!setCouldBePostOp.Contains(chPrevNonWhite)
-				       || !FollowsPostfixOperator(sc, styler))) {
+				   && (((setOKBeforeRE.Contains(chPrevNonWhite)
+					 || followsReturnKeyword(sc, styler)
+					 || (startPos == 0 && chPrevNonWhite == ' ')) // the regex is the first token
+					&& (!setCouldBePostOp.Contains(chPrevNonWhite)
+					    || !FollowsPostfixOperator(sc, styler)))
+				       || startsJavaScriptLambdaBody(sc, styler))) {
 				sc.SetState(SCE_C_REGEX|activitySet);	// JavaScript's RegEx
 				inRERange = false;
 			} else if (sc.ch == '\"') {
@@ -1259,6 +1367,17 @@ void SCI_METHOD LexerCPP::Lex(unsigned int startPos, int length, int initStyle, 
 				}
 			} else if (isoperator(sc.ch)) {
 				sc.SetState(SCE_C_OPERATOR|activitySet);
+				if (backquotedInterpolatedBraceCount > 0) {
+					if (sc.ch == '{') {
+						backquotedInterpolatedBraceCount++;
+					} else if (sc.ch == '}') {
+						backquotedInterpolatedBraceCount--;
+					}
+					if (backquotedInterpolatedBraceCount == 0) {
+						sc.ForwardSetState(SCE_C_STRINGRAW|activitySet);
+						continue;
+					}
+				}
 			}
 		}
 
@@ -1357,7 +1476,9 @@ void SCI_METHOD LexerCPP::Fold(unsigned int startPos, int length, int initStyle,
 				}
 				levelNext++;
 			} else if (ch == '}' || ch == ']') {
-				levelNext--;
+				if ((levelNext & (SC_FOLDLEVELNUMBERMASK & ~SC_FOLDLEVELBASE)) > 0) {
+					levelNext--;
+				}
 			}
 		}
 		if (!IsASpace(ch))

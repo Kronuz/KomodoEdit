@@ -51,7 +51,7 @@ public:
 /// When needed, positions after the interval are considered part of the last partition
 /// but the end of the last partition can be found with PositionFromPartition(last+1).
 
-class Partitioning {
+class SCIAPI Partitioning {
 private:
 	// To avoid calculating all the partition positions whenever any text is inserted
 	// there may be a step somewhere in the list.

@@ -370,6 +370,18 @@ CGImageRef SurfaceImpl::GetImage()
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Returns the horizontal logical device resolution of the main monitor.
+ * This is no longer called.
+ * For Cocoa, all screens are treated as 72 DPI, even retina displays.
+ */
+int SurfaceImpl::LogPixelsX()
+{
+  return 72;
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Returns the vertical logical device resolution of the main monitor.
  * This is no longer called.
  * For Cocoa, all screens are treated as 72 DPI, even retina displays.
@@ -1949,7 +1961,11 @@ void Window::Destroy()
     if ([idWin isKindOfClass: [NSWindow class]])
     {
       NSWindow* win = reinterpret_cast<NSWindow*>(idWin);
-      [win release];
+      // KOMODO: Don't release the Window yet, just close it to avoid calltip
+      //         close crash - bug 105699.
+      //[win release];
+      [win close];
+      // KOMODO
     }
   }
   wid = 0;
