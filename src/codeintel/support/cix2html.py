@@ -384,7 +384,7 @@ def cix2html(opts, path):
                 _html_ci_elem(opts, elem.getchildren()[0])
             else:
                 _html_ci_elem(opts, elem)
-        except IOError, ex:
+        except IOError as ex:
             if ex.errno == 0:
                 # Ignore this error from aborting 'less' of 'ci2 outline'
                 # output:
@@ -392,7 +392,7 @@ def cix2html(opts, path):
                 pass
             else:
                 raise
-        except Exception, e:
+        except Exception as e:
             import traceback
             traceback.print_exc()
     finally:

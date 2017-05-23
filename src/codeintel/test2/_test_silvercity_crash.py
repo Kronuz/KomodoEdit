@@ -40,6 +40,8 @@
 # Grr. I can't get this to crash anymore. :)
 #
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import time
 import random
@@ -89,7 +91,7 @@ print (sys
 content = open("ci2.py", 'r').read()
 lexers = []
 
-print "_test_silvercity_crash...",
+print("_test_silvercity_crash...", end=' ')
 for i in range(1000):
     start = time.time()
     time.sleep(random.random())
@@ -98,5 +100,5 @@ for i in range(1000):
     lexer = PythonLexer()
     tokens = lexer.tokenize_by_style(content)
     lexers.append(lexer)
-print "ok"
+print("ok")
 

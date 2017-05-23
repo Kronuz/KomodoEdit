@@ -37,6 +37,7 @@
 
 """The codeintel test suite entry point."""
 
+from __future__ import absolute_import
 import os
 from os.path import exists
 import sys

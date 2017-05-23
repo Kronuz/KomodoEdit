@@ -8,8 +8,9 @@ Code Intelligence for this language is controlled through this module.
 
 from __future__ import absolute_import
 from __future__ import print_function
+
 import os
-import sys
+import re
 import logging
 try:
     from string import maketrans
@@ -19,13 +20,12 @@ except ImportError:
 import SilverCity
 from SilverCity.Lexer import Lexer
 from SilverCity import ScintillaConstants
-from codeintel2.common import Trigger, TRG_FORM_CPLN, TRG_FORM_CALLTIP, TRG_FORM_DEFN, CILEDriver, Definition, CodeIntelError
+from codeintel2.common import Trigger, TRG_FORM_CPLN, TRG_FORM_CALLTIP, TRG_FORM_DEFN, CILEDriver, Definition
 from codeintel2.citadel import CitadelLangIntel, CitadelBuffer
 from codeintel2.langintel import (ParenStyleCalltipIntelMixin,
                                   ProgLangTriggerIntelMixin)
 from codeintel2.tree import tree_from_cix
 from codeintel2.libclang import ClangCompleter
-import six
 
 # ---- globals
 
@@ -181,28 +181,17 @@ class CppLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
         print("line:%s, col:%s" % (line, col))
 
         env = buf.env
-        flags = env.get_pref('cppFlags', ())
+        flags = env.get_pref('cppFlags', [])
         extra_dirs = []
         for pref in env.get_all_prefs(self.extraPathsPrefName):
             if not pref:
                 continue
             extra_dirs.extend(d.strip() for d in pref.split(os.pathsep) if os.path.exists(d.strip()) and d.strip() not in extra_dirs)
         if extra_dirs:
-            flags = flags + ['-I"{}"'.format(extra_dir) for extra_dir in extra_dirs]
+            flags = flags + ['-I{}'.format(extra_dir) for extra_dir in extra_dirs]
+        flags = flags + ['-I{}'.format(os.path.dirname(filename)), '-I.']
 
         content = buf.accessor.text
-        assert not isinstance(content, six.text_type)
-
-        encoding = buf.encoding or "utf-8"
-        # The accessor.text is always raw "utf-8" - if the encoding of the
-        # actual file is different, then we need to convert back to that
-        # original encoding for the ast scanning to work correctly.
-        if encoding not in ("utf-8", "ascii"):
-            try:
-                content = content.decode("utf-8").encode(encoding)
-            except UnicodeError as ex:
-                raise CodeIntelError("cannot encode content as %r (%s)"
-                                     % (encoding, ex))
 
         if trg.form == TRG_FORM_CPLN:
             candidates = completer.getCurrentCompletions(filename, line, col, fileBuffer=content, flags=flags, include_macros=True, include_code_patterns=True, include_brief_comments=True)
@@ -274,12 +263,11 @@ class CppLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
             logicalline = lines.pop()[:-1] + ' ' + logicalline
         return logicalline
 
-    cpln_prefix_chars = "~`!@#$%^&*()-=+{}[]|\\;:'\",.<>? \t"
-    cpln_prefix_trans = maketrans(cpln_prefix_chars, ' ' * len(cpln_prefix_chars))
+    cpln_prefix_re = re.compile(r'''[-~`!@#$%^&*()=+{}[\]|\\;:'",.<>? \t]+''')
 
     def _prefix(self, text):
         line = self._last_logical_line(text)
-        return line.translate(self.cpln_prefix_trans).rstrip().rpartition(' ')[-1]
+        return self.cpln_prefix_re.sub(' ', line).rstrip().rpartition(' ')[-1]
 
 
 # ---- Buffer class
@@ -334,38 +322,23 @@ class CppCILEDriver(CILEDriver):
         print("scan_purelang(%s)" % buf.path)
         log.info("scan '%s'", buf.path)
 
-        if sys.platform.startswith("win"):
-            path = buf.path.replace('\\', '/')
-        else:
-            path = buf.path
+        filename = buf.path
 
         env = buf.env
-        flags = env.get_pref('cppFlags', ())
+        flags = env.get_pref('cppFlags', [])
         extra_dirs = []
         for pref in env.get_all_prefs(self.extraPathsPrefName):
             if not pref:
                 continue
             extra_dirs.extend(d.strip() for d in pref.split(os.pathsep) if os.path.exists(d.strip()) and d.strip() not in extra_dirs)
         if extra_dirs:
-            flags = flags + ['-I"{}"'.format(extra_dir) for extra_dir in extra_dirs]
+            flags = flags + ['-I{}'.format(extra_dir) for extra_dir in extra_dirs]
+        flags = flags + ['-I{}'.format(os.path.dirname(filename)), '-I.']
 
         content = buf.accessor.text
-        assert not isinstance(content, six.text_type)
-
-        encoding = buf.encoding or "utf-8"
-        # The accessor.text is always raw "utf-8" - if the encoding of the
-        # actual file is different, then we need to convert back to that
-        # original encoding for the ast scanning to work correctly.
-        if encoding not in ("utf-8", "ascii"):
-            try:
-                content = content.decode("utf-8").encode(encoding)
-            except UnicodeError as ex:
-                raise CodeIntelError("cannot encode c++ content as %r (%s)"
-                                     % (encoding, ex))
-
         completer.warmupCache(buf.path, fileBuffer=content, flags=flags)
 
-        output = '<file path="%s" lang="%s"></file>' % (path, lang)
+        output = '<file path="%s" lang="%s"></file>' % (filename, lang)
 
         xml = '<codeintel version="2.0">\n' + output + '</codeintel>'
         return tree_from_cix(xml)

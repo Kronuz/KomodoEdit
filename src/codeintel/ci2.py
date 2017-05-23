@@ -48,7 +48,6 @@ from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import sys
 import getopt
 import stat
-from cStringIO import StringIO
 import logging
 import time
 import re
@@ -58,7 +57,6 @@ import traceback
 from pprint import pprint
 import random
 from glob import glob
-import cStringIO
 
 import ciElementTree as ET
 from codeintel2.manager import Manager
@@ -207,11 +205,8 @@ def _escaped_text_from_text(text, escapes="eol"):
 def _outline_ci_elem(elem, stream=sys.stdout,
                      brief=False, doSort=False, encoding=None):
     """Dump an outline of the given codeintel tree element."""
-    if encoding is None:
-        encoding = sys.getfilesystemencoding()
-
     outline = outline_ci_elem(elem)
-    stream.write(outline.encode(encoding))
+    stream.write(outline)
 
 
 
@@ -323,7 +318,7 @@ class Shell(cmdln.Cmdln):
                 if trg is None:
                     raise Error("unexpected trigger: %r" % trg)
                 completions = buf.cplns_from_trg(trg)
-                print "COMPLETIONS: %r" % completions
+                print("COMPLETIONS: %r" % completions)
             finally:
                 mgr.finalize()
 
@@ -341,21 +336,21 @@ class Shell(cmdln.Cmdln):
                 f = Foo()
                 """)
             content, data = unmark_text(markedup_content)
-            print banner(path)
-            print _escaped_text_from_text(content, "whitespace")
+            print(banner(path))
+            print(_escaped_text_from_text(content, "whitespace"))
             pos = data["pos"]
             mgr = Manager()
             mgr.upgrade()
             mgr.initialize()
             try:
                 buf = mgr.buf_from_content(content, lang=lang, path=path)
-                print banner("cix", '-')
-                print buf.cix
+                print(banner("cix", '-'))
+                print(buf.cix)
 
                 trg = buf.trg_from_pos(pos)
                 if trg is None:
                     raise Error("unexpected trigger: %r" % trg)
-                print banner("completions", '-')
+                print(banner("completions", '-'))
                 ctlr = LogEvalController(log)
                 buf.async_eval_at_trg(trg, ctlr)
                 ctlr.wait(2) #XXX
@@ -363,7 +358,7 @@ class Shell(cmdln.Cmdln):
                     ctlr.abort()
                     raise Error("XXX async eval timed out")
                 pprint(ctlr.cplns)
-                print banner(None)
+                print(banner(None))
             finally:
                 mgr.finalize()
         elif False:
@@ -376,22 +371,22 @@ class Shell(cmdln.Cmdln):
             req.<2>get()
             """)
             content, data = unmark_text(markedup_content)
-            print banner(path)
-            print _escaped_text_from_text(content, "whitespace")
+            print(banner(path))
+            print(_escaped_text_from_text(content, "whitespace"))
             pos = data[1]
             mgr = Manager()
             mgr.upgrade()
             mgr.initialize()
             try:
                 buf = mgr.buf_from_content(content, lang=lang, path=path)
-                print banner("cix", '-')
+                print(banner("cix", '-'))
                 cix = buf.cix
-                print ET.tostring(pretty_tree_from_tree(tree_from_cix(buf.cix)))
+                print(ET.tostring(pretty_tree_from_tree(tree_from_cix(buf.cix))))
 
                 trg = buf.trg_from_pos(pos, implicit=False)
                 if trg is None:
                     raise Error("unexpected trigger: %r" % trg)
-                print banner("completions", '-')
+                print(banner("completions", '-'))
                 ctlr = LogEvalController(log)
                 buf.async_eval_at_trg(trg, ctlr)
                 ctlr.wait(30) #XXX
@@ -399,7 +394,7 @@ class Shell(cmdln.Cmdln):
                     ctlr.abort()
                     raise Error("XXX async eval timed out")
                 pprint(ctlr.cplns)
-                print banner(None)
+                print(banner(None))
             finally:
                 mgr.finalize()
 
@@ -436,7 +431,7 @@ class Shell(cmdln.Cmdln):
         finally:
             mgr.finalize()
         for error in errors:
-            print error
+            print(error)
         return len(errors)
 
     @cmdln.option("-l", "--language", dest="lang",
@@ -509,7 +504,7 @@ class Shell(cmdln.Cmdln):
 
             try:
                 _outline_ci_elem(elem, brief=opts.brief, doSort=opts.doSort)
-            except IOError, ex:
+            except IOError as ex:
                 if ex.errno == 0:
                     # Ignore this error from aborting 'less' of 'ci2 outline'
                     # output:
@@ -538,7 +533,7 @@ class Shell(cmdln.Cmdln):
             tree = tree_from_cix(cix)
             for sev, msg in check_tree(tree):
                 num_results += 1
-                print "%s: %s: %s" % (path, sev, msg)
+                print("%s: %s: %s" % (path, sev, msg))
         return num_results
 
     @cmdln.option("-2", dest="convert", action="store_true",

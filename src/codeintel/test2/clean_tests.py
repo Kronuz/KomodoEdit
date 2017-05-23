@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # Copyright (c) 2010 ActiveState Software Inc.
 
+from __future__ import absolute_import
 import sys
 from os.path import join, dirname, abspath, exists
 import subprocess

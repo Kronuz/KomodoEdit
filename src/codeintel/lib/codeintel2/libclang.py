@@ -11,6 +11,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def encode(value):
+    import sys
+    if sys.version_info[0] == 3:
+        return value
+
+    try:
+        return value.encode('utf-8')
+    except AttributeError:
+        return value
+
+
 def decode(value):
     import sys
     if sys.version_info[0] == 2:
@@ -272,7 +283,7 @@ class ClangCompleter(object):
                 subdirs = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
                 subdirs = sorted(subdirs) or ['.']
                 path = os.path.join(path, subdirs[-1], 'include')
-                if self._canFindBuiltinHeaders(self.index, ['-I"{}"'.format(path)]):
+                if self._canFindBuiltinHeaders(self.index, ['-I{}'.format(path)]):
                     return path
             except:
                 pass
@@ -341,7 +352,7 @@ class ClangCompleter(object):
                 args.extend(shlex.split(f))
 
         if self.builtin_header_path and '-nobuiltininc' not in args:
-            args.append('-I"{}"'.format(self.builtin_header_path))
+            args.append('-I{}'.format(self.builtin_header_path))
 
         return {
             'args': args,
@@ -350,7 +361,7 @@ class ClangCompleter(object):
 
     def _getCurrentTranslationUnit(self, args, fileName, fileBuffer=None, update=False):
         print('translationUnits args:', args)
-        unsaved_files = [(fileName, fileBuffer)] if fileBuffer else None
+        unsaved_files = [(fileName, encode(fileBuffer))] if fileBuffer else None
 
         tu = self.translationUnits.get(fileName)
         if tu is not None:
@@ -396,7 +407,7 @@ class ClangCompleter(object):
                 print("Couldn't get the TranslationUnit")
                 return None
 
-            unsaved_files = [(fileName, fileBuffer)] if fileBuffer else None
+            unsaved_files = [(fileName, encode(fileBuffer))] if fileBuffer else None
             cr = tu.codeComplete(fileName, line, column, unsaved_files=unsaved_files, include_macros=include_macros, include_code_patterns=include_code_patterns, include_brief_comments=include_brief_comments)
             if cr is None:
                 print("Cannot parse this source file. The following arguments are used for clang: " + " ".join(decode(params['args'])))

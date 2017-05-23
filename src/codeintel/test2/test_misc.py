@@ -37,6 +37,7 @@
 
 """Test miscellaneous bits of the Code Intelligence system."""
 
+from __future__ import absolute_import
 import unittest
 import pprint
 import logging

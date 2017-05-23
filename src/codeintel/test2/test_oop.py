@@ -2,6 +2,7 @@
 
 """Generic out-of-process codeintel test"""
 
+from __future__ import absolute_import
 import hashlib
 import json
 import logging
@@ -13,6 +14,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import six
 
 log = logging.getLogger("test.codeintel.oop")
 
@@ -72,8 +74,7 @@ class OOPTestCase(unittest.TestCase):
                                   "util",
                                   "contrib/smallstuff",
                                   "src/dbgp/PyDBGP")]
-        pythonpath[0:0] = filter(None,
-                                 env.get("PYTHONPATH", "").split(os.pathsep))
+        pythonpath[0:0] = [_f for _f in env.get("PYTHONPATH", "").split(os.pathsep) if _f]
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
 
     def setUp(self):
@@ -192,7 +193,7 @@ class OOPTestCase(unittest.TestCase):
                     buf += ch
             if expected is not None:
                 expected = dict(expected)
-                expected[u"req_id"] = unicode(i)
+                expected[u"req_id"] = u"%d" % i
                 if not u"success" in expected:
                     expected[u"success"] = True
                 self.assertEqual(expected, result)

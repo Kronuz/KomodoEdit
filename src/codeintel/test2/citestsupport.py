@@ -37,6 +37,7 @@
 
 """support for codeintel test modules"""
 
+from __future__ import absolute_import
 import functools
 import json
 import os
@@ -48,6 +49,7 @@ import unittest
 import random
 from hashlib import md5
 import re
+import six
 
 from codeintel2.manager import Manager
 from codeintel2.util import indent, dedent, banner, markup_text, unmark_text
@@ -161,14 +163,12 @@ class CodeIntelTestCase(unittest.TestCase):
             # Try to ensure no accidental re-use of the same buffer name
             # across the whole test suite. Also try to keep the buffer
             # names relatively short (keeps tracebacks cleaner).
-            if isinstance(markedup_content, unicode):
-                markedup_bytes = markedup_content.encode("utf-8")
+            if isinstance(markedup_content, six.binary_type):
+                markedup_content = markedup_content.decode("utf-8")
                 encoding = "utf-8"
-            else:
-                markedup_bytes = markedup_content
-            name = "buf-" + md5(markedup_bytes).hexdigest()[:16]
+            name = "buf-" + md5(markedup_content.encode('utf-8')).hexdigest()[:16]
             path = os.path.join("<Unsaved>", name)
-        content, data = unmark_text(self.adjust_content(markedup_bytes))
+        content, data = unmark_text(self.adjust_content(markedup_content))
         #print banner(path)
         #sys.stdout.write(content)
         #print banner(None)
@@ -960,7 +960,7 @@ def gen_crimper_support_dir_candidates():
         yield "/mnt/crimper/home/apps/Komodo/support/codeintel"
 
 
-def writefile(path, content, mode='wb'):
+def writefile(path, content, mode="wt"):
     if not exists(dirname(path)):
         os.makedirs(dirname(path))
     fout = open(path, mode)
@@ -979,8 +979,8 @@ def init_xml_catalogs():
     # will work.
     _xml_catalogs_initialized = True
     import koXMLDatasetInfo
-    kodevel_basedir = dirname(dirname(dirname(dirname(abspath(__file__)))))
-    catalog = join(kodevel_basedir, "test", "stuff", "xml", "testcat.xml")
+    kodevel_basedir = dirname(dirname(abspath(__file__)))
+    catalog = join(kodevel_basedir, "catalogs", "testcat.xml")
     catsvc = koXMLDatasetInfo.getService()
     catsvc.resolver.resetCatalogs([catalog])
 
@@ -989,7 +989,7 @@ def init_xml_catalogs():
 def _rmtree_OnError(rmFunction, filePath, excInfo):
     if excInfo[0] == OSError:
         # presuming because file is read-only
-        os.chmod(filePath, 0777)
+        os.chmod(filePath, 0o777)
         rmFunction(filePath)
 def rmtree(dirname):
     import shutil

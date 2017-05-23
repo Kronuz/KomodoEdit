@@ -5,6 +5,8 @@
 
 """Test some CSS-specific codeintel handling."""
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import sys
 import re
@@ -61,9 +63,9 @@ class CSSLintTest(CodeIntelTestCase):
                     
     def test_expect_good_files(self):
         test_dir = join(self.test_dir, "bits", "css_files")
-        print "Test files in path %s" % test_dir
+        print("Test files in path %s" % test_dir)
         for path in glob.glob(join(test_dir, "*.css")):
-            fd = open(path, 'r')
+            fd = open(path, 'rb')
             code = fd.read().decode("utf-8")
             fd.close()
             #print "Test file %s" % basename(path)
@@ -89,7 +91,7 @@ class CSSLintTest(CodeIntelTestCase):
                 fpath = join(dirname, fname)
                 if fpath in self._skipSkinFiles:
                     continue
-                fd = open(fpath, 'r')
+                fd = open(fpath, 'rb')
                 code = fd.read().decode("utf-8")
                 fd.close()
                 for lang in self.langs:
@@ -107,10 +109,10 @@ class CSSLintTest(CodeIntelTestCase):
         
     def test_jezdez(self):
         path = join(self.test_dir, "bits", "bad_css_files", "jezdez-reset-fonts-grids.css")
-        fd = open(path, 'r')
+        fd = open(path, 'rb')
         code = fd.read().decode("utf-8")
         fd.close()
-        print "Test file %s" % basename(path)
+        print("Test file %s" % basename(path))
         results = self.csslinter.lint(code)
         self.assertTrue(len(results) > 0)            
             
@@ -120,7 +122,7 @@ class CSSLintTest(CodeIntelTestCase):
 h1 {
   color: blue;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_charset_stub_01(self):
@@ -163,7 +165,7 @@ h1 {
 treechildren::-moz-tree-cell-text(showDetail) {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_special_selector_06(self):
@@ -173,7 +175,7 @@ treechildren::-moz-tree-cell-text(showDetail),
 treechildren::-moz-tree-cell-text(showDetail) {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_special_selector_missing_prop_07(self):
@@ -182,7 +184,7 @@ treechildren::-moz-tree-cell-text(showDetail) {
 treechildren::-moz-tree-cell-text(), {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting a property name", ')')
 
     def test_css_special_selector_missing_paren_08(self):
@@ -191,7 +193,7 @@ treechildren::-moz-tree-cell-text(showDetail,
 treechildren::-moz-tree-cell-text(showDetail) {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting ')'", '::')
 
     def test_css_special_selector_missing_selector_09(self):
@@ -200,7 +202,7 @@ treechildren::-moz-tree-cell-text(showDetail),
 {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting a selector", '{')
 
     def test_css_special_selector_bad_syntax_10(self):
@@ -209,7 +211,7 @@ treechildren::-moz-tree-cell-text(showDetail),
 treechildren::-moz-tree-cell-text(&) {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting a property name", '&')
 
     def test_css_special_selector_missing_rest_11(self):
@@ -218,7 +220,7 @@ treechildren::-moz-tree-cell-text(&) {
 treechildren::-moz-tree-cell-text( {
     background-color: infobackground;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting a property name", '{')
 
     def test_css_no_selector_01(self):
@@ -277,7 +279,7 @@ gortz[zoom ~= "toolbar"] {
 body {
   color:red
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_recover_02(self):
@@ -289,7 +291,7 @@ body {
 h {
   color: blue;
 }
-""").decode("utf-8")
+""")
         results = self.csslinter.lint(code)
         self.assertEqual(2, len(results))
         r = results[0]
@@ -307,7 +309,7 @@ body {
   color:red;
 }
 @charset "utf-8";
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "@charset allowed only at start of file", 'charset')
 
     def test_css_import_missing_arg_01(self):
@@ -348,7 +350,7 @@ body {
   color:red;
 }
 @import url(http://example.com/) print;
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "@import allowed only near start of file", 'import')
         
     def test_css_media_good_basic_01(self):
@@ -358,7 +360,7 @@ body {
     padding: 6px;
   }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_media_bad_missing_second_close_brace(self):
@@ -367,7 +369,7 @@ body {
   body {
     padding: 6px;
   }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_at_eof(code, "expecting '}'")
 
     _media_list_error_1 = "expecting an identifier or a parenthesized expression"
@@ -476,7 +478,7 @@ body {
     padding: 6px;
   }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_good_property_function(self):
@@ -484,7 +486,7 @@ body {
 div.flip {
     background-image: -moz-linear-gradient(rgba(0, 255, 0, 0.05), rgba(0, 255, 0, 0.01));
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_good_function_with_equal_val(self):
@@ -492,7 +494,7 @@ div.flip {
 b {
     filter: alpha(opacity=10);
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
         
     def test_css_attr_after_star_01(self):
@@ -500,7 +502,7 @@ b {
 *[dub] {
   margin:44;
 }
-""").decode("utf-8")
+""")
         for lang in self.langs:
             self._check_zero_results_show_error(code, language=lang)
         
@@ -510,7 +512,7 @@ xul|textbox[invalid="true"] .textbox-input-box
 {
   background-color: #FC8D8D;
 }
-""").decode("utf-8")
+""")
         for lang in self.langs:
             self._check_zero_results_show_error(code, language=lang)
 
@@ -520,7 +522,7 @@ a ~ b
 {
   background-color: #FC8D8D;
 }
-""").decode("utf-8")
+""")
         for lang in self.langs:
             self._check_zero_results_show_error(code, language=lang)
 
@@ -600,25 +602,25 @@ pre {
 @namespace 's1';
 @namespace flip1 url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 @namespace blatz2 's1';
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
         
     def test_css_namespace_missing_value_02(self):
         code = dedent("""\
 @namespace ;
-""").decode("utf-8")
+""")
         self._check_some_errors_on_line(code, "expecting a string or url", ';')
         
     def test_css_namespace_missing_value_03(self):
         code = dedent("""\
 @namespace 35 ;
-""").decode("utf-8")
+""")
         self._check_some_errors_on_line(code, "expecting a string or url", '35')
         
     def test_css_namespace_missing_semicolon_04(self):
         code = dedent("""\
 @namespace flip "blatz" "extra";
-""").decode("utf-8")
+""")
         self._check_some_errors_on_line(code, "expecting ';'", '"extra"')
         
     def test_css_ruleset_bad_04(self):
@@ -684,7 +686,7 @@ body {
     color: blue;
   }
 }
-""").decode("utf-8")
+""")
         results = self.csslinter.lint(code)
         self.assertEqual(2, len(results))
         r = results[0]
@@ -771,7 +773,7 @@ body {
 .browser-toolbar {
   list-style-image: url("chrome://komodo/skin/images/browser_buttons.png");
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
         
     def test_css_attr_no_value(self):
@@ -781,7 +783,7 @@ body {
      add padding for it in the parenting hbox. */
   padding-left: 4px;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_not_pseudo_class(self):
@@ -791,7 +793,7 @@ body {
   /* Collapse scc status images that are not showing anything. */
   display: none;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code)
 
     def test_css_moz_any_pseudo_class(self):
@@ -938,7 +940,7 @@ table tr:nth-child(3 {
 table tr:nth-child("bink") {
   margin: 1px;
 }
-""").decode("utf-8")
+""")
         self._check_one_result_check_error_on_line(code, "expecting a number or N", '"bink"')
         
     def test_css_tight_comment(self):
@@ -961,7 +963,7 @@ body.abc {
         
     }
 }
-""").decode("utf-8")
+""")
     def test_css_nested_block_01(self):
         # Fail: it's plain CSS
         code = self._nested_block_code_01
@@ -1023,7 +1025,7 @@ body.abc {
 h2 {
   color: @color;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
         self._check_some_errors_on_line(code, "expecting a directive", 'color', lineNo=0, language="CSS")
         self._check_some_errors_on_line(code, "expecting a directive", 'color', lineNo=0, language="SCSS")
@@ -1037,7 +1039,7 @@ li {
     size: 1.2em;
   }
 }
-""").decode("utf-8")
+""")
         results = self.csslinter.lint(code, language="SCSS")
         if results:
             r = results[0]
@@ -1063,7 +1065,7 @@ li {
   color: @base-color + #003300;
   border-color: desaturate(@red, 10%);
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     def test_css_less_mixins_01(self):
@@ -1080,7 +1082,7 @@ li {
 #footer {
   .rounded-corners(10px);
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     def test_css_less_mixins_02(self):
@@ -1095,7 +1097,7 @@ li {
 
 pre { .wrap }
 
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     def test_css_less_inherit_01(self):
@@ -1108,7 +1110,7 @@ pre { .wrap }
     zos::lastThing    { padding: 5px; }
   }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
         self._check_some_errors_on_line(code, "expecting a property name", '.', lineNo=1, language="CSS")
         self._check_zero_results_show_error(code, language="SCSS")
@@ -1125,7 +1127,7 @@ pre { .wrap }
     a:visited    { height: 100% / (2 + @filler); }
   }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
         for lang in ("CSS", "SCSS"):
             self._check_some_errors_on_line(code, "expecting a directive", 'base', lineNo=0, language="lang")
@@ -1143,7 +1145,7 @@ pre { .wrap }
     &:hover    { background-color: @@@@other + #111; }
   }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     def test_css_less_tilde_escape(self):
@@ -1151,7 +1153,7 @@ pre { .wrap }
 .class {
   filter: ~"progid:DXImageTransform.Microsoft.AlphaImageLoader(src='image.png')";
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
         self._check_some_errors_on_line(code, "expecting a value", '~', lineNo=1, language="CSS")
         self._check_some_errors_on_line(code, "expecting a value", '~', lineNo=1, language="SCSS")
@@ -1164,7 +1166,7 @@ pre { .wrap }
   filter: ~"progid:DXImageTransform.Microsoft.AlphaImageLoader(src='image.png')";
   font: "stew@{height}", @var;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
         for lang in ("CSS", "SCSS"):
             self._check_some_errors_on_line(code, "expecting a directive", 'var', lineNo=0, language=lang)
@@ -1191,7 +1193,7 @@ $other: 34px;
   @include left(10px);
   @include table-base;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="SCSS")
         
     def test_moz_document_directive_01(self):
@@ -1210,7 +1212,7 @@ $other: 34px;
     -moz-appearance: treetwistyopen;
   }
 }
-""").decode("utf-8")
+""")
         for lang in ("CSS", "SCSS", "Less"):
             self._check_zero_results_show_error(code, language=lang)
 
@@ -1220,7 +1222,7 @@ $other: 34px;
   notification .twisty > .twistyImageWrapper {
     padding-bottom: 0;
   }
-""").decode("utf-8")
+""")
         for lang in ("CSS", "SCSS", "Less"):
             self._check_one_result_check_error_at_eof(code, "expecting '}'", language=lang)
 
@@ -1254,7 +1256,7 @@ $other: 34px;
   notification .twisty > .twistyImageWrapper {
     padding-bottom: 0;
   }}
-""").decode("utf-8")
+""")
         for lang in ("CSS", "SCSS", "Less"):
             self._check_zero_results_show_error(code, language=lang)
   
@@ -1264,7 +1266,7 @@ $other: 34px;
   notification .twisty > .twistyImageWrapper {
     padding-bottom: 0;
   }}
-""").decode("utf-8")
+""")
         for lang in ("CSS", "SCSS", "Less"):
             self._check_some_errors_on_line(code,
                 "the regexp argument must be a quoted string",
@@ -1287,7 +1289,7 @@ $other: 34px;
 #data {
   @zeep;
 }
-""").decode("utf-8")
+""")
         self._check_some_errors_on_line(code, "expecting 'include'", 'zeep', lineNo=5, language="SCSS")
         
     def test_css_scss_bad_mixin_04(self):
@@ -1299,7 +1301,7 @@ $other: 34px;
 #data {
   @include;
 }
-""").decode("utf-8")
+""")
         self._check_some_errors_on_line(code, "expecting a mixin name", ';', lineNo=5, language="SCSS")
         
     def test_css_scss_minified_numeric_property(self):
@@ -1310,7 +1312,7 @@ body{margin:0; }
 p {
     margin: 3px;
 }
-""").decode("utf-8")
+""")
         for lang in ("SCSS", "Less"):
             self._check_zero_results_show_error(code, language=lang)
         self._check_some_errors_on_line(code, "expecting a selector", '/', lineNo=0, language="CSS")
@@ -1332,7 +1334,7 @@ p {
         }
     }
 }
-""").decode("utf-8")
+""")
         for lang in ("SCSS",):
             self._check_zero_results_show_error(code, language=lang)
         self._check_some_errors_on_line(code, "expecting a property name",
@@ -1364,7 +1366,7 @@ p {
         background: lighten($lightGray, 2%);
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="SCSS")
 
     def test_less_parent_selector_03(self):
@@ -1377,7 +1379,7 @@ p {
         margin: 5px;
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     def test_css_bad_missing_selector(self):
@@ -1432,7 +1434,7 @@ gL0K.2n9ux@@_co:
   @extend .error;
   border-width: 3px;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="SCSS")
 
     @tag("bug92561")
@@ -1446,7 +1448,7 @@ div#error {
   .error;
   border-width: 3px;
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     @tag("bug92561")
@@ -1460,7 +1462,7 @@ body {
         color: pink;
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     @tag("bug92561")
@@ -1478,7 +1480,7 @@ body {
         color: pink;
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     @tag("bug92561")
@@ -1490,7 +1492,7 @@ input {
         color: grey;
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     @tag("bug93115")
@@ -1515,7 +1517,7 @@ body {
         .negative_margin(-10px);
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     @tag("bug93115")
@@ -1527,7 +1529,7 @@ body {
         font-family: sans-serif;
     }
 }
-""").decode("utf-8")
+""")
         self._check_zero_results_show_error(code, language="Less")
 
     _bug_94548_full_code = dedent(u"""\

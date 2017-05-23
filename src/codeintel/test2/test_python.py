@@ -37,6 +37,7 @@
 
 """Test some Python-specific codeintel handling."""
 
+from __future__ import absolute_import
 import os
 import sys
 import re
@@ -1477,7 +1478,7 @@ class CplnTestCase(CodeintelPythonTestCase):
     @tag("bug52648")
     def test_tkinter(self):
         try:
-            import Tkinter
+            import six.moves.tkinter
         except ImportError:
             raise TestSkipped("can't test without Tkinter")
         else:

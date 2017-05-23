@@ -37,6 +37,7 @@
 
 """Test some JavaScript-specific codeintel handling."""
 
+from __future__ import absolute_import
 import os
 import sys
 import re
@@ -1258,7 +1259,7 @@ class CplnTestCase(CodeIntelTestCase):
                 sta<2>
             }
         """))
-        for i in xrange(2):
+        for i in range(2):
             self.assertCompletionsInclude(markup_text(content, positions[i+1]),
                 [("variable", "stack"),
                  ("variable", "stack_length"),
