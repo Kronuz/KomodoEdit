@@ -37,6 +37,7 @@
 
 """Test some PHP-specific codeintel handling."""
 
+from __future__ import absolute_import
 import os
 import sys
 import re
@@ -4852,7 +4853,7 @@ class DefnTestCase(CodeIntelTestCase):
             writefile(path, content)
 
         buf = self.mgr.buf_from_path(join(test_dir, "baz.php"))
-        for i in xrange(2):
+        for i in range(2):
             self.assertCompletionsAre2(buf, baz_positions[i + 1],
                 [("interface", "Bar"),
                  ("class", "Foo")])

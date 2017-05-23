@@ -1,5 +1,6 @@
 
-from os.path import join
+from __future__ import absolute_import
+from os.path import join, exists
 import logging
 
 from codeintel2.util import dedent, markup_text, unmark_text, lines_from_pos
@@ -16,12 +17,15 @@ class Python33:
     # than accounting for them, create a fake python executable that outputs
     # version 3.3 and point to it via the _ci_env_prefs_ dictionary.
     import os
-    fake_python = join(join(os.getcwd(), "tmp"), "fake_python")
-    if not os.path.exists(fake_python):
+    test_dir = join(os.getcwd(), "tmp")
+    fake_python = join(test_dir, "fake_python")
+    if not exists(fake_python):
+        if not exists(test_dir):
+            os.makedirs(test_dir)
         f = open(fake_python, 'wb')
-        f.write("#!/bin/sh\n\necho 3.3.0\necho /usr")
+        f.write(b'#!/bin/sh\n\necho 3.3.0\necho /usr')
         f.close()
-        os.chmod(fake_python, 0755)
+        os.chmod(fake_python, 0o755)
     _ci_env_prefs_ = {
         'python3': fake_python
     }

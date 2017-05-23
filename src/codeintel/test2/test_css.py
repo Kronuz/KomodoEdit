@@ -37,6 +37,7 @@
 
 """Test some CSS-specific codeintel handling."""
 
+from __future__ import absolute_import
 import os
 import sys
 import re
@@ -86,7 +87,7 @@ class _BaseCSSTestCase(CodeIntelTestCase):
         self.assertTriggerMatches("a i<|>mg")
         tag_names = [ 's', 'samp', 'script', 'select', 'small', 'span',
                      'strike', 'strong', 'style', 'sub', 'sup' ]
-        tag_names.sort(CompareNPunctLast)
+        tag_names.sort(key=CompareNPunctLast)
         self.assertCompletionsInclude("s<|>tr",
             [ ("element", v) for v in tag_names ])
         self.assertCompletionsInclude(" b<|>ody { } ",

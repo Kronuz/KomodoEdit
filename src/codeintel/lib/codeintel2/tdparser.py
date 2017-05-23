@@ -19,8 +19,10 @@ the Top-Down approach:
 This implementation is a subject to change as it is very premature.
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
-import cStringIO as sio
+from six.moves import cStringIO as StringIO
 import tokenize
 
 class ParseError(Exception): pass
@@ -31,7 +33,7 @@ type_map = {tokenize.NUMBER: "(literal)",
             tokenize.NAME: "(name)"}
 
 def gen_python_tokens(source):
-    stream = tokenize.generate_tokens(sio.StringIO(source).readline)
+    stream = tokenize.generate_tokens(StringIO(source).readline)
     for token, value, begin, end in (t[:4] for t in stream):
         if token in type_map:
             yield type_map[token], value, begin, end
@@ -582,8 +584,8 @@ class PyExprParser(Parser):
 if __name__ == '__main__':
     import sys
     if len(sys.argv) < 2:
-        print "Usage: tdparser.py filename"
+        print("Usage: tdparser.py filename")
     parser = PyExprParser()
-    res = parser.parse_bare_arglist(file(sys.argv[1]).read())
-    print res
+    res = parser.parse_bare_arglist(open(sys.argv[1]).read())
+    print(res)
 

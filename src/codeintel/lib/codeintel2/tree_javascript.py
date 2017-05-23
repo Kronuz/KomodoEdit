@@ -37,6 +37,7 @@
 
 """Completion evaluation code for JavaScript"""
 
+from __future__ import absolute_import
 import logging
 import types
 import re
@@ -90,11 +91,11 @@ class CandidatesForTreeEvaluator(TreeEvaluator):
         def get_quoted_string(ch):
             quote = ch
             local_buffer = []
-            for ch, next in chars:
-                #print "quote: quote=[%s] ch=[%s] next=[%s] token=%r" % (
-                #    quote, ch, next, local_buffer)
+            for ch, nxt in chars:
+                #print "quote: quote=[%s] ch=[%s] nxt=[%s] token=%r" % (
+                #    quote, ch, nxt, local_buffer)
                 if ch == "\\":
-                    local_buffer.append(chars.next()[0])
+                    local_buffer.append(next(chars)[0])
                 elif ch == quote:
                     if local_buffer:
                         yield "".join(local_buffer)
@@ -104,8 +105,8 @@ class CandidatesForTreeEvaluator(TreeEvaluator):
 
         BLOCK_MAP = {"(": ")", "[": "]"}
         
-        for ch, next in chars:
-            #print "ch=[%s] next=[%s] token=%r" % (ch, next, buffer)
+        for ch, nxt in chars:
+            #print "ch=[%s] nxt=[%s] token=%r" % (ch, nxt, buffer)
             if ch in ('"', "'"): # quoted string
                 for token in get_pending_token():
                     yield token
@@ -120,13 +121,13 @@ class CandidatesForTreeEvaluator(TreeEvaluator):
                 emit = ch in ("[",)
                 for token in get_pending_token():
                     yield token
-                if next == block[1]:
-                    chars.next() # consume close quote
+                if nxt == block[1]:
+                    next(chars) # consume close quote
                     yield block[0] + block[1]
-                elif next in ('"', "'"): # quoted string
-                    chars.next() # consume open bracket
-                    next_tokens = list(get_quoted_string(next))
-                    ch, next = chars.next()
+                elif nxt in ('"', "'"): # quoted string
+                    next(chars) # consume open bracket
+                    next_tokens = list(get_quoted_string(nxt))
+                    ch, nxt = next(chars)
                     if ch == block[1] and emit:
                         for next_token in next_tokens:
                             yield next_token
@@ -256,7 +257,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
         # javascript/cpln/ctor_scope_cheat for an example of why.
         try:
             elem = self._elem_from_scoperef(scoperef)
-        except KeyError, ex:
+        except KeyError as ex:
             self.warn("_hit_from_first_token:: no elem for scoperef: %r",
                       scoperef)
             return (None, None)
@@ -276,7 +277,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
         while 1:
             try:
                 elem = self._elem_from_scoperef(scoperef)
-            except KeyError, ex:
+            except KeyError as ex:
                 raise EvalError("could not resolve scoperef %r: %s"
                                 % (scoperef, ex))
             try:
@@ -471,13 +472,13 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                     if token == "()":
                         try:
                             new_hits += self._hits_from_call(elem, scoperef)
-                        except CodeIntelError, ex:
+                        except CodeIntelError as ex:
                             self.warn("could resolve call on %r: %s", elem, ex)
                         continue
                     try:
                         new_hit = self._hit_from_getattr(
                                     elem, scoperef, token)
-                    except CodeIntelError, ex:
+                    except CodeIntelError as ex:
                         if token == "prototype" and elem.get("ilk") == "class":
                             self.debug("_hits_from_citdl: using class %r for "
                                        "its prototype", elem)
@@ -531,7 +532,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                         else:
                             subhits = self._hits_from_variable_type_inference(
                                         elem, scoperef)
-                    except CodeIntelError, ex:
+                    except CodeIntelError as ex:
                         self.warn("could not resolve %r: %s", elem, ex)
                     else:
                         resolved_hits += subhits
@@ -776,7 +777,7 @@ class JavaScriptTreeEvaluator(CandidatesForTreeEvaluator):
                       " expression found, trying alternatives.")
             try:
                 parent_elem = self._elem_from_scoperef(scoperef)
-            except KeyError, ex:
+            except KeyError as ex:
                 raise CodeIntelError("could not resolve recursive citdl expression %r" % citdl)
             else:
                 alt_hits = []

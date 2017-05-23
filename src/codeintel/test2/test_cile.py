@@ -56,6 +56,8 @@ consider it significant. That is generally okay, because a Language
 Engine should not be randomly changing the whitespace that it spits out.
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import os
 from os.path import join, dirname, splitext, basename, exists, isfile, \
@@ -66,10 +68,12 @@ import unittest
 import difflib
 import pprint
 import shutil
-import StringIO
+from six.moves import cStringIO as StringIO
 import pprint
 import warnings
 import traceback
+import six
+from six.moves import range
 
 try:
     import cElementTree as ET # effbot's C module
@@ -147,8 +151,8 @@ def _testOneInputFile(self, fpath, tags=None):
     optsfile = os.path.join(gInputsDir, fpath+'.options') # input options
     
     if _debug:
-        print
-        print "*"*50, "codeintel '%s'" % fpath
+        print()
+        print("*"*50, "codeintel '%s'" % fpath)
 
     # Set standard options:
     opts = {"mtime": "42"}
@@ -165,7 +169,7 @@ def _testOneInputFile(self, fpath, tags=None):
                 pass
             opts[name] = value
         if _debug:
-            print "*"*50, "options"
+            print("*"*50, "options")
             pprint.pprint(opts)
 
     # Scan the file, capturing stdout and stderr and any possible
@@ -175,8 +179,8 @@ def _testOneInputFile(self, fpath, tags=None):
     #   <scope ilk="blob" src="..."> attributes).
     oldStdout = sys.stdout
     oldStderr = sys.stderr
-    sys.stdout = StringIO.StringIO()
-    sys.stderr = StringIO.StringIO()
+    sys.stdout = StringIO()
+    sys.stderr = StringIO()
     try:
         try:
             lang = None
@@ -210,15 +214,15 @@ def _testOneInputFile(self, fpath, tags=None):
                 tree[0].set("error", len(cile_error) < 30 and cile_error or (cile_error[:30] + "..."))
             cix = ET.tostring(tree)
 
-        except CodeIntelError, ex:
+        except CodeIntelError as ex:
             error = traceback.format_exc()
         else:
             error = None
-            if isinstance(cix, unicode):
+            if isinstance(cix, six.text_type):
                 with io.open(tmpfile, mode="wt", encoding="utf-8") as fout:
                     fout.write(cix)
             else:
-                with open(tmpfile, mode="wt") as fout:
+                with open(tmpfile, mode="wb") as fout:
                     fout.write(cix)
     finally:
         stdout = sys.stdout.getvalue()
@@ -226,13 +230,13 @@ def _testOneInputFile(self, fpath, tags=None):
         sys.stdout = oldStdout
         sys.stderr = oldStderr
     if _debug:
-        print "*"*50, "stdout"
-        print stdout
-        print "*"*50, "stderr"
-        print stderr
-        print "*"*50, "error"
-        print str(error)
-        print "*" * 50
+        print("*"*50, "stdout")
+        print(stdout)
+        print("*"*50, "stderr")
+        print(stderr)
+        print("*"*50, "error")
+        print(str(error))
+        print("*" * 50)
 
     # Verify that the results are as expected.
     if os.path.exists(outfile) and error:
@@ -459,7 +463,7 @@ end
         testFunction \
             = lambda self, subpath=subpath: _testOneInputFile(self, subpath)
         testFunction.tags = ["unicode", lang]
-        name = "test_path:"+subpath.encode('ascii', 'backslashreplace')
+        name = "test_path:"+subpath.encode('ascii', 'backslashreplace').decode('ascii')
         setattr(ScanInputsTestCase, name, testFunction)
 
 def _encode_for_stdout(s):

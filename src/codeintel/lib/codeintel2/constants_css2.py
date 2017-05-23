@@ -2,6 +2,7 @@
 CSS 3 definitions - requires CSS 1 module.
 """
 
+from __future__ import absolute_import
 import textwrap
 
 from codeintel2.constants_css1 import CSS_ATTR_DICT as CSS1_ATTR_DICT
@@ -600,4 +601,4 @@ css2_system_colors = {
 #for attr, values in CSS_ATTR_DICT.items():
 #    if '#' in values or 'rbg(' in values:
 #        CSS_ATTR_DICT[attr] = sorted(values + css2_system_colors.keys(),
-#                                     cmp=CompareNPunctLast)
+#                                     key=CompareNPunctLast)

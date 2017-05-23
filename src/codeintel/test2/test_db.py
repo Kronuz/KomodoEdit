@@ -37,6 +37,7 @@
 
 """Test the codeintel database (v2)."""
 
+from __future__ import absolute_import
 import os
 import sys
 import re
@@ -1583,7 +1584,7 @@ class CSSTestCase(DBTestCase):
         writefile(join(self.css_test_dir, "nested", "baz.css"), "#baz { }\n.bazfoo { }\n")
         import_handler = self.mgr.citadel.import_handler_from_lang("CSS")
         importables = import_handler.find_importables_in_dir(self.css_test_dir)
-        self.failUnless(len(importables.keys()) == 3)
+        self.failUnless(len(importables) == 3)
         for name in ("foo.css", "bar.css", join("nested", "baz.css")):
             buf = self.mgr.buf_from_path(join(self.css_test_dir, name), lang="CSS")
             self.failUnless(buf)
@@ -1602,7 +1603,7 @@ class CSSTestCase(DBTestCase):
         writefile(join(self.less_test_dir, "nested", "baz.less"), "#baz:extend(.a, .b) { }\n.bazfoo { }\n")
         import_handler = self.mgr.citadel.import_handler_from_lang("CSS")
         importables = import_handler.find_importables_in_dir(self.less_test_dir)
-        self.failUnless(len(importables.keys()) == 3)
+        self.failUnless(len(importables) == 3)
         
         buf = self.mgr.buf_from_path(join(self.less_test_dir, "foo.less"), lang="Less")
         self.failUnless(buf)
@@ -1634,7 +1635,7 @@ class CSSTestCase(DBTestCase):
         writefile(join(self.scss_test_dir, "nested", "baz.css.scss"), "#baz { }\n.bazfoo { }\n")
         import_handler = self.mgr.citadel.import_handler_from_lang("CSS")
         importables = import_handler.find_importables_in_dir(self.scss_test_dir)
-        self.failUnless(len(importables.keys()) == 3)
+        self.failUnless(len(importables) == 3)
         
         buf = self.mgr.buf_from_path(join(self.scss_test_dir, "foo.scss"), lang="SCSS")
         self.failUnless(buf)

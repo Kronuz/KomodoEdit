@@ -37,6 +37,7 @@
 
 """UDL (User-Defined Language) support for codeintel."""
 
+from __future__ import absolute_import
 import os
 from os.path import dirname, join, abspath, normpath, basename, exists
 import sys
@@ -44,9 +45,9 @@ import re
 import logging
 import threading
 import operator
-import string
 import traceback
 from pprint import pprint, pformat
+import six
 
 import SilverCity
 from SilverCity import ScintillaConstants
@@ -512,10 +513,10 @@ class XMLParsingBufferMixin(CitadelBuffer):
     def __blank_out_non_new_line_table(self):
         """Table for string.translate to replace everything with spaces, except
         for new lines."""
-        table = [" " for i in range(256)]
-        table[ord('\n')] = '\n'
-        table[ord('\r')] = '\r'
-        return "".join(table)
+        table = [b' ' for i in range(256)]
+        table[ord(b'\n')] = b'\n'
+        table[ord(b'\r')] = b'\r'
+        return b"".join(table)
 
     def xml_parse(self):
         from koXMLTreeService import getService
@@ -529,16 +530,16 @@ class XMLParsingBufferMixin(CitadelBuffer):
         if hasattr(self, "text_chunks_from_lang"):
             # Grab only the text that's in markup regions; this skils scripts
             # that might have things that look like tags, see bug 101280
-            stripped = ""
-            was_unicode = isinstance(content, unicode)
+            stripped = b''
+            was_unicode = isinstance(content, six.text_type)
             if was_unicode:
                 content = content.encode("utf-8")
             trans_tbl = self.__blank_out_non_new_line_table
             for offset, text in self.text_chunks_from_lang(self.m_lang):
-                if isinstance(text, unicode):
+                if isinstance(text, six.text_type):
                     text = text.encode("utf-8")
                 skipped_text = content[len(stripped):offset]
-                stripped += string.translate(skipped_text, trans_tbl) + text
+                stripped += skipped_text.translate(trans_tbl) + text
             content = stripped
             if was_unicode:
                 content = content.decode("utf-8")

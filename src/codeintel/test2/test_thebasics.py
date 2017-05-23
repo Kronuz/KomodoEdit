@@ -41,6 +41,7 @@ TODO:
 - add std cb_* tests
 """
 
+from __future__ import absolute_import
 import os
 import sys
 from os.path import join, dirname, abspath, exists, basename

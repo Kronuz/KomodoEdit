@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from test_css import _BaseCSSTestCase
 from codeintel2.util import dedent, CompareNPunctLast, unmark_text, markup_text
 from testlib import tag
@@ -19,7 +20,7 @@ class Less_StraightTest(_BaseCSSTestCase):
         self.assertTriggerMatches("a i<|>mg")
         tag_names = [ 's', 'samp', 'script', 'select', 'small', 'span',
                      'strike', 'strong', 'style', 'sub', 'sup' ]
-        tag_names.sort(CompareNPunctLast)
+        tag_names.sort(key=CompareNPunctLast)
         self.assertCompletionsInclude("s<|>tr",
             [ ("element", v) for v in tag_names ])
         self.assertCompletionsInclude(" b<|>ody { } ",
@@ -100,7 +101,7 @@ class Less_StraightTest(_BaseCSSTestCase):
               div { .<3>box-shadow(0 0 5px, 30%) }
             }
         """))
-        for i in xrange(1, 3):
+        for i in range(1, 3):
             self.assertTriggerMatches(markup_text(content, pos=positions[i]),
                                       name="css-complete-class-names")
             self.assertCompletionsAre(markup_text(content, pos=positions[i]),
@@ -217,7 +218,7 @@ class SCSS_StraightTest(Less_StraightTest):
             }
             .<2>
         """))
-        for i in xrange(1, 2):
+        for i in range(1, 2):
             self.assertTriggerMatches(markup_text(content, pos=positions[i]),
                                       name="css-complete-class-names")
             self.assertCompletionsAre(markup_text(content, pos=positions[i]),
@@ -243,7 +244,7 @@ class SCSS_StraightTest(Less_StraightTest):
               width: $<4>;
             }
         """))
-        for i in xrange(1, 2):
+        for i in range(1, 2):
             self.assertCompletionsAre(markup_text(content, pos=positions[i]),
                                       [("variable", "font-stack"),
                                        ("variable", "primary-color")])
