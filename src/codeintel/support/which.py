@@ -74,6 +74,7 @@ import os
 import sys
 import getopt
 import stat
+import time
 
 
 #---- exceptions
@@ -128,10 +129,13 @@ def _cull(potential, matches, verbose=0):
                 sys.stderr.write("duplicate: %s (%s)\n" % potential)
             return None
     else:
-        if not stat.S_ISREG(os.stat(potential[0]).st_mode):
+        is_darwin_app = (sys.platform == "darwin"
+                         and potential[0].endswith(".app"))
+        if not is_darwin_app \
+           and not stat.S_ISREG(os.stat(potential[0]).st_mode):
             if verbose:
                 sys.stderr.write("not a regular file: %s (%s)\n" % potential)
-        elif sys.platform != "win32" \
+        elif not is_darwin_app and sys.platform != "win32" \
              and not os.access(potential[0], os.X_OK):
             if verbose:
                 sys.stderr.write("no executable access: %s (%s)\n"\
@@ -142,6 +146,8 @@ def _cull(potential, matches, verbose=0):
 
         
 #---- module API
+
+g_listdir_cache = {}
 
 def whichgen(command, path=None, verbose=0, exts=None):
     """Return a generator of full paths to the given command.
@@ -169,6 +175,9 @@ def whichgen(command, path=None, verbose=0, exts=None):
         path = os.environ.get("PATH", "").split(os.pathsep)
         if sys.platform.startswith("win"):
             path.insert(0, os.curdir)  # implied by Windows shell
+        if sys.platform == "darwin":
+            path.insert(0, "/Network/Applications")
+            path.insert(0, "/Applications")
     else:
         usingGivenPath = 1
 
@@ -182,9 +191,13 @@ def whichgen(command, path=None, verbose=0, exts=None):
                 if ext.lower() == ".exe":
                     break
             else:
-                exts = ['.COM', '.EXE', '.BAT']
+                exts = ['.com', '.exe', '.bat', '.cmd']
         elif not isinstance(exts, list):
             raise TypeError("'exts' argument must be a list or None")
+        exts = list(map(os.path.normcase, exts))
+    elif sys.platform == "darwin":
+        if exts is None:
+            exts = [".app"]
     else:
         if exts is not None:
             raise WhichError("'exts' argument is not supported on "\
@@ -201,16 +214,36 @@ def whichgen(command, path=None, verbose=0, exts=None):
             else:
                 yield match[0]
     else:
+        time_now = time.time()
         for i in range(len(path)):
             dirName = path[i]
             # On windows the dirName *could* be quoted, drop the quotes
             if sys.platform.startswith("win") and len(dirName) >= 2\
                and dirName[0] == '"' and dirName[-1] == '"':
                 dirName = dirName[1:-1]
+
+            entry = g_listdir_cache.get(dirName)
+            # Cache lasts for 5 seconds.
+            if entry is None or ((time_now - entry.get("timestamp", 0)) > 5):
+                try:
+                    names = os.listdir(dirName)
+                except OSError:
+                    names = []
+                names = list(map(os.path.normcase, names))  # lowercase for Windows.
+                g_listdir_cache[dirName] = { "timestamp": time_now, "names": names }
+            else:
+                names = g_listdir_cache.get(dirName).get("names")
+
             for ext in ['']+exts:
+                name = command + ext
+                if name not in names:
+                    continue
+
                 absName = os.path.abspath(
                     os.path.normpath(os.path.join(dirName, command+ext)))
-                if os.path.isfile(absName):
+                if os.path.isfile(absName) \
+                   or (sys.platform == "darwin" and absName.endswith(".app")
+                       and os.path.isdir(absName)):
                     if usingGivenPath:
                         fromWhere = "from given path element %d" % i
                     elif not sys.platform.startswith("win"):
