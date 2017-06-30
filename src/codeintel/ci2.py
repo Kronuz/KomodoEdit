@@ -44,8 +44,16 @@ __version_info__ = (1, 0, 0)
 __version__ = '.'.join(map(str, __version_info__))
 
 import os
-from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import sys
+
+__file__ = os.path.normpath(os.path.abspath(__file__))
+__path__ = os.path.dirname(__file__)
+
+python_sitelib_path = os.path.normpath(__path__)
+if python_sitelib_path not in sys.path:
+    sys.path.insert(0, python_sitelib_path)
+
+from os.path import isfile, isdir, exists, dirname, abspath, splitext, join
 import getopt
 import stat
 import logging

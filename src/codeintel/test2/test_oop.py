@@ -83,7 +83,7 @@ class OOPTestCase(unittest.TestCase):
         self.conn.listen(1)
 
         bin = os.path.join(os.path.dirname(__file__),
-                            "../bin/oop-driver.py")
+                            "../oop.py")
         log.debug("bin: %s", bin)
         argv = [os.path.abspath(os.path.normpath(bin)),
                 "--connect", "%s:%s" % self.conn.getsockname()]
