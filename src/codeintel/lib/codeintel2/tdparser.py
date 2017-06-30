@@ -107,7 +107,7 @@ class Parser(object):
         self.grammar = grammar or self.grammar
     
     def symbol(self, id, bp=0):
-        return self.grammar.symbol(d, bp)
+        return self.grammar.symbol(id, bp)
 
     def expression(self, rbp=0):
         t = self.token
