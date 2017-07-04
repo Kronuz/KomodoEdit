@@ -39,7 +39,7 @@ import threading
 import traceback
 import uuid
 from . import controller
-from os.path import abspath, normcase, normpath
+from os.path import abspath, dirname, join, normcase, normpath
 
 class RequestFailure(Exception):
     """ An exception to indicate a request failure
@@ -903,9 +903,14 @@ class CoreHandler(CommandHandler):
         driver.send(start=start, end=end)
 
     def do_set_xml_catalogs(self, request, driver):
-        catalogs = request["catalogs"]
+        catalogs = request.get("catalogs")
         import koXMLDatasetInfo
         datasetHandler = koXMLDatasetInfo.getService()
+        if catalogs is None:
+            import koXMLDatasetInfo
+            kodevel_basedir = dirname(dirname(dirname(abspath(__file__))))
+            catalog = join(kodevel_basedir, "catalogs", "catalog.xml")
+            catalogs = [catalog]
         datasetHandler.setCatalogs(catalogs)
         driver.send(request=request)
 
