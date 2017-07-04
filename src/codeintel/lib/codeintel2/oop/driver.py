@@ -682,7 +682,7 @@ class CoreHandler(CommandHandler):
         driver.mgr.db.reset(backup=False)
         driver.send()
 
-    def do_database_upgrade(self, request):
+    def do_database_upgrade(self, request, driver):
         """Upgrade the database to the current version"""
         try:
             driver.mgr.db.upgrade()
