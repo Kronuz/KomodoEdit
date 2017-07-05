@@ -66,7 +66,7 @@ except ImportError:
 
 try:
     from xpcom import components
-except ImportError, e:
+except ImportError as e:
     class components:
         @staticmethod
         def ProxyToMainThread(fn):
