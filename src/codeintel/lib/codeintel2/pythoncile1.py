@@ -123,6 +123,15 @@ _gClock = None  # if gathering timing data this is set to time retrieval fn
 _gStartTime = None   # start time of current file being scanned
 
 
+class UnknownNode:
+    pass
+
+
+ast_Starred = getattr(ast, 'Starred', UnknownNode)
+ast_NameConstant = getattr(ast, 'NameConstant', UnknownNode)
+ast_Set = getattr(ast, 'Set', UnknownNode)
+
+
 #---- internal routines and classes
 def _isclass(namespace):
     return (len(namespace["types"]) == 1
@@ -1212,7 +1221,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         elif isinstance(node, ast.Tuple):
             items = [self._getExprRepr(c) for c in node.elts]
             s = "(%s)" % ", ".join(items)
-        elif hasattr(ast, 'Set') and isinstance(node, ast.Set):
+        elif isinstance(node, ast_Set):
             items = [self._getExprRepr(c) for c in node.elts]
             s = "{%s}" % ", ".join(items)
         elif isinstance(node, ast.Dict):
@@ -1224,8 +1233,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             s += "("
             allargs = []
             for arg in node.args:
-                ast_Starred = getattr(ast, 'Starred', None)
-                if ast_Starred and isinstance(arg, ast_Starred):  # Python 3.5 (Starred):
+                if isinstance(arg, ast_Starred):  # Python 3.5 (Starred):
                     allargs.append("*" + self._getExprRepr(arg.value))
                 else:
                     allargs.append(self._getExprRepr(arg))
@@ -1279,8 +1287,9 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 ast.BitAnd: "&",
                 ast.FloorDiv: "//",
             }
-            if node.op in ops:
-                s = self._getExprRepr(node.left) + ops[node.op] + self._getExprRepr(node.right)
+            node_op_type = type(node.op)
+            if node_op_type in ops:
+                s = self._getExprRepr(node.left) + ops[node_op_type] + self._getExprRepr(node.right)
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 s = self._getExprRepr(node.target) + "=" + self._getExprRepr(node.value)
@@ -1299,8 +1308,9 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 ast.BitAnd: "&=",
                 ast.FloorDiv: "//=",
             }
-            if node.op in ops:
-                s = self._getExprRepr(node.target) + ops[node.op] + self._getExprRepr(node.value)
+            node_op_type = type(node.op)
+            if node_op_type in ops:
+                s = self._getExprRepr(node.target) + ops[node_op_type] + self._getExprRepr(node.value)
         elif isinstance(node, ast.BinOp):
             if isinstance(node.op, ast.BitOr):
                 creprs = []
@@ -1357,7 +1367,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 elif i == varargsIndex:
                     sigArgs.append("*" + argName)
                 elif i >= defaultArgsBaseIndex:
-                    defaultNode = node.defaults[i - defaultArgsBaseIndex]
+                    defaultNode = node_args.defaults[i - defaultArgsBaseIndex]
                     try:
                         sigArgs.append(argName + "=" + self._getExprRepr(defaultNode))
                     except PythonCILEError:
@@ -1372,6 +1382,10 @@ class AST2CIXVisitor(ast.NodeVisitor):
             except PythonCILEError:
                 # XXX Work around some trouble cases.
                 s += ":..."
+        elif isinstance(node, ast_NameConstant):
+            return self._getExprRepr(node.value)
+        elif isinstance(node, (bool, int, float, type(None))):
+            return repr(node)
         if s is None:
             raise PythonCILEError("don't know how to get string repr "
                                   "of expression: %r" % node)
