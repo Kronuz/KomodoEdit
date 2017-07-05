@@ -251,10 +251,13 @@ def _testOneInputFile(self, fpath, tags=None):
 
         # Note that we don't really care about line endings here, so we read
         # both files in universal newlines mode (i.e. translate to \n)
+        # and normalize '&#10;', '&#13;' and '&apos;'
         with io.open(outfile, mode='rt', encoding='utf-8') as fout:
             expected = path_pat.sub(to_native_sep, fout.read())
+            expected = expected.replace('&#xA;', '&#10;').replace('&#xD;', '&#13;').replace('&apos;', '\'')
         with io.open(tmpfile, mode='rt', encoding='utf-8') as ftmp:
             actual = path_pat.sub(to_native_sep, ftmp.read())
+            actual = actual.replace('&#xA;', '&#10;').replace('&#xD;', '&#13;').replace('&apos;', '\'')
         
         if expected != actual:
             do_fail = True

@@ -1687,12 +1687,7 @@ def scan_cix(content, filename, md5sum=None, mtime=None, lang="Python"):
     # this is against the W3C spec, but ElementTree wants it lowercase
     tree.write(stream, "utf-8")
 
-    raw_cix = stream.getvalue()
-
-    # XXX: why this 0xA -> &#xA; conversion is necessary?
-    #      It makes no sense, but some tests break without it
-    #      (like cile/scaninputs/path:cdata_close.py)
-    cix = raw_cix.replace(b'\x0a', b'&#xA;')
+    cix = stream.getvalue()
 
     return cix
 
