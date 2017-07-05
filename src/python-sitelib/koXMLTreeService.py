@@ -441,8 +441,8 @@ class XMLDocument(object):
         # print("%s:%s %r %d" % current)
         # fix error info
         start = start+current[3]
-        line = content.count('\n', 0, start)
-        col = start - content.rfind('\n', 0, start)
+        line = content.count('\n', 0, start) + 1  # nodes are 1-indexed, so we need to switch our indexing scheme
+        col = start - content.rfind('\n', 0, start) - 1
         self.err_info = (line, col, start)
         self.current = elem = elementFromTag(self, current, parent)
     
