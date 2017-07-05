@@ -470,12 +470,12 @@ end
         setattr(ScanInputsTestCase, name, testFunction)
 
 def _encode_for_stdout(s):
-    if sys.stdout.encoding:
-        return s.encode(sys.stdout.encoding, 'backslashreplace')
-    else:
+    encoding = sys.stdout.encoding
+    if not encoding:
         # This is the case when the normal sys.stdout has been
         # replaced by something else, such as a Python file object.
-        return s.encode('ascii', 'backslashreplace')
+        encoding = 'ascii'
+    return s.encode(encoding, 'backslashreplace').decode(encoding)
 
 
 #---- mainline
