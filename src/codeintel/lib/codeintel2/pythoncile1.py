@@ -1594,19 +1594,22 @@ def _convert2to3(src, full=True):
         src = _rx(r'(^|\n)[ \t]*#[^\n]*').sub('\\1', src)
 
         # print foo => print_(foo)
-        src = _rx(r'((?:^|\n|;)[ \t]*)print[ \t]+(?:>>[ \t]*)?([^(\n][^\n]*)').sub('\\1print_(\\2\n)', src)
+        src = _rx(r'((?:^|\n|;|:)[ \t]*)print[ \t]+(?:>>[ \t]*)?([^(\n][^\n]*)').sub('\\1print_(\\2\n)', src)
 
         # exec foo => exec_(foo)
-        src = _rx(r'((?:^|\n|;)[ \t]*)exec[ \t]+([^(\n][^\n]*)').sub('\\1exec_(\\2\n)', src)
+        src = _rx(r'((?:^|\n|;|:)[ \t]*)exec[ \t]+([^(\n][^\n]*)').sub('\\1exec_(\\2\n)', src)
 
         # raise et, ei, tb => raise et(ei).with_traceback(tb)
-        src = _rx(r'((?:^|\n|;)[ \t]*)raise[ \t]+([^(),\n]+?)[ \t]*,[ \t]*([^(),\n]+)[ \t]*,[ \t]*([^(),\n]+?)(?=[ \t]|\n|$)').sub('\\1raise \\2(\\3).with_traceback(\\4\n)', src)
+        src = _rx(r'((?:^|\n|;|:)[ \t]*)raise[ \t]+([^(),\n]+?)[ \t]*,[ \t]*([^(),\n]+)[ \t]*,[ \t]*([^(),\n]+?)(?=[ \t]|\n|$)').sub('\\1raise \\2(\\3).with_traceback(\\4\n)', src)
 
         # raise et, ei => raise et(ei)
-        src = _rx(r'((?:^|\n|;)[ \t]*)raise[ \t]+([^(),\n]+?)[ \t]*,[ \t]*([^\n]+)(?=[ \t]|\n|$)').sub('\\1raise \\2(\\3\n)', src)
+        src = _rx(r'((?:^|\n|;|:)[ \t]*)raise[ \t]+([^(),\n]+?)[ \t]*,[ \t]*([^\n]+)(?=[ \t]|\n|$)').sub('\\1raise \\2(\\3\n)', src)
 
         # except (Foo,) bar => except Foo as bar
-        src = _rx(r'((?:^|\n|;)[ \t]*)except[ \t]+((?:[^(), \t\n:]+?)(?:[ \t]*,[ \t]*(?!as[ \t])[^(), \t\n:]+?)*,?|\((?:[^(), \t\n:]+?)(?:[ \t]*,[ \t]*(?!as[ \t])[^(), \t\n:]+?)*,?\))(?:[ \t]*,[ \t]*|[ \t]+)([_a-zA-Z]+[_a-zA-Z0-9]*)(?=:)').sub('\\1except (\\2) as \\3', src)
+        src = _rx(r'((?:^|\n|;|:)[ \t]*)except[ \t]+((?:[^(), \t\n:]+?)(?:[ \t]*,[ \t]*(?!as[ \t])[^(), \t\n:]+?)*,?|\((?:[^(), \t\n:]+?)(?:[ \t]*,[ \t]*(?!as[ \t])[^(), \t\n:]+?)*,?\))(?:[ \t]*,[ \t]*|[ \t]+)([_a-zA-Z]+[_a-zA-Z0-9]*)[ \t]*(?=:)').sub('\\1except (\\2) as \\3', src)
+
+        # 0x80000000L => 0x80000000
+        src = _rx(r'(\d+)L').sub(r'\1', src)
 
         src = src.replace('\\\x00', '\\\n')
 
