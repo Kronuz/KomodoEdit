@@ -309,9 +309,9 @@ class AST2CIXVisitor(ast.NodeVisitor):
         self.cix = ET.TreeBuilder()
         self.tree = None
 
-    def parse(self):
+    def parse(self, **kwargs):
         """Parse text into a tree and walk the result"""
-        self.tree = ast.parse(self.content)
+        self.tree = ast.parse(self.content, **kwargs)
 
     def walk(self):
         return self.visit(self.tree)
@@ -1436,11 +1436,11 @@ class AST2CIXVisitor(ast.NodeVisitor):
         return s
 
 
-def _quietCompilerParse(content):
+def _quietCompilerParse(content, **kwargs):
     oldstderr = sys.stderr
     sys.stderr = StringIO()
     try:
-        return ast.parse(content)
+        return ast.parse(content, **kwargs)
     finally:
         sys.stderr = oldstderr
 
@@ -1768,7 +1768,7 @@ def scan_et(content, filename, md5sum=None, mtime=None, lang="Python"):
     moduleName = os.path.splitext(os.path.basename(filename))[0]
     parser = AST2CIXVisitor(moduleName, content=content, lang=lang)
     try:
-        parser.parse()
+        parser.parse(filename=filename.encode('utf-8'))
         if _gClockIt:
             sys.stdout.write(" (parse:%.3fs)" % (_gClock() - _gStartTime))
     except SyntaxError as ex:
