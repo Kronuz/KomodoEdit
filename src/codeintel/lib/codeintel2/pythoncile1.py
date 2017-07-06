@@ -505,14 +505,16 @@ class AST2CIXVisitor(ast.NodeVisitor):
 
         if node.lineno:
             namespace["line"] = node.lineno
-            namespace["lineend"] = node.lineno
         lastNode = node
         while True:
+            if getattr(lastNode, 'lineno'):
+                namespace["lineend"] = lastNode.lineno
             try:
-                lastNode = list(ast.iter_child_nodes(lastNode))[-1]
-                if hasattr(lastNode, 'lineno'):
-                    namespace["lineend"] = lastNode.lineno
-            except IndexError:
+                try:
+                    lastNode = lastNode.body[-1]
+                except TypeError:
+                    lastNode = list(ast.iter_child_nodes(lastNode))[-1]
+            except (AttributeError, IndexError):
                 break
 
         attributes = []
@@ -561,14 +563,16 @@ class AST2CIXVisitor(ast.NodeVisitor):
         namespace["declaration"] = namespace
         if node.lineno:
             namespace["line"] = node.lineno
-            namespace["lineend"] = node.lineno
         lastNode = node
         while True:
+            if getattr(lastNode, 'lineno'):
+                namespace["lineend"] = lastNode.lineno
             try:
-                lastNode = list(ast.iter_child_nodes(lastNode))[-1]
-                if hasattr(lastNode, 'lineno'):
-                    namespace["lineend"] = lastNode.lineno
-            except IndexError:
+                try:
+                    lastNode = lastNode.body[-1]
+                except TypeError:
+                    lastNode = list(ast.iter_child_nodes(lastNode))[-1]
+            except (AttributeError, IndexError):
                 break
 
         name = node.name
