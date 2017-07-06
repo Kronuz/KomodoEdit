@@ -866,7 +866,14 @@ class AST2CIXVisitor(ast.NodeVisitor):
         """
         log.debug("_visitSimpleAssign(lhsNode=%r, rhsNode=%r)", lhsNode,
                   rhsNode)
-        if isinstance(lhsNode, ast.Name):
+        if isinstance(lhsNode, six.text_type):
+            # E.g.:  foo = ...
+            # Assign this to the local namespace, unless there was a
+            # 'global' statement. (XXX Not handling 'global' yet.)
+            ns = self.nsstack[-1]
+            self._assignVariable(lhsNode, ns, rhsNode, line,
+                                 isClassVar=_isclass(ns))
+        elif isinstance(lhsNode, ast.Name):
             # E.g.:  foo = ...
             # Assign this to the local namespace, unless there was a
             # 'global' statement. (XXX Not handling 'global' yet.)
@@ -936,9 +943,11 @@ class AST2CIXVisitor(ast.NodeVisitor):
                                   % lhsNode)
 
     def _handleUnknownAssignment(self, assignNode, lineno):
-        if isinstance(assignNode, ast.Name):
+        if isinstance(assignNode, six.text_type):
             self._visitSimpleAssign(assignNode, None, lineno)
-        elif isinstance(assignNode, ast.Tuple):
+        elif isinstance(assignNode, ast.Name):
+            self._visitSimpleAssign(assignNode, None, lineno)
+        elif isinstance(assignNode, (ast.Tuple, ast.List)):
             for anode in assignNode.elts:
                 self._visitSimpleAssign(anode, None, lineno)
 
@@ -965,8 +974,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             for handler in node.handlers:
                 try:
                     if handler.name:
-                        lineno = handler.lineno
-                        self._handleUnknownAssignment(handler.name, lineno)
+                        self._handleUnknownAssignment(handler.name, handler.lineno)
                     for body in handler.body:
                         self.visit(body)
                 except IndexError:
