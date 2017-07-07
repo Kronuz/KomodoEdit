@@ -143,10 +143,14 @@ class PHPTreeEvaluator(TreeEvaluator):
     # http://bugs.activestate.com/show_bug.cgi?id=61497
     php_ignored_calltip_expressions = ("if", "elseif",
                                        "for", "foreach",
-                                       "while",
-                                       "switch",
-                                      )
-
+                                       "while", "switch",
+                                       "array", "list",
+                                       "die", "exit",
+                                       "header", "require",
+                                       "require_once", "echo",
+                                       "var_dump", "print_r",
+                                       "var_export",
+                                       )
     php_magic_global_method_cplns = [ ("function", name) for name in
                 sorted(php_magic_global_method_data.keys()) ]
     # Classes can use both global and class specific functions.
