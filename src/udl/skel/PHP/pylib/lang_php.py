@@ -292,8 +292,15 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                         # Find previous non-ignored style then
                         p, c, prev_style = ac.getPrecedingPosCharStyle(prev_style, self.comment_styles_or_whitespace)
                     if prev_style in (self.identifier_style, self.keyword_style):
-                        return Trigger(lang, TRG_FORM_CALLTIP, "call-signature",
-                                       pos, implicit)
+                        # call function trigger in within function brackets
+                        if last_char == '(':
+                            return Trigger(
+                                lang, TRG_FORM_CPLN, "functions",
+                                pos, implicit)
+                        else:
+                            return Trigger(
+                                lang, TRG_FORM_CALLTIP, "call-signature",
+                                pos, implicit)
                 elif last_char == "\\":
                     style = last_style
                     while style in (self.operator_style, self.identifier_style):
@@ -909,8 +916,12 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                 i = trg.pos + 1
             else:
                 i = trg.pos - 2 # skip past the trigger char
-            return self._citdl_expr_from_pos(trg, buf, i, trg.implicit,
-                                             DEBUG=DEBUG)
+            citdl_expr = self._citdl_expr_from_pos(trg, buf, i, trg.implicit,
+                                              DEBUG=DEBUG)
+            if trg.type == "functions" and len(citdl_expr) < 3:
+                # ensure function trigger has at least 3 chars typed
+                raise CodeIntelError
+            return citdl_expr
         elif trg.form == TRG_FORM_DEFN:
             return self.citdl_expr_under_pos(trg, buf, trg.pos, DEBUG)
         else:   # trg.form == TRG_FORM_CALLTIP:
