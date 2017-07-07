@@ -311,7 +311,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
 
     def parse(self, **kwargs):
         """Parse text into a tree and walk the result"""
-        self.tree = ast.parse(self.content, **kwargs)
+        self.tree = _getAST(self.content, **kwargs)
 
     def walk(self):
         return self.visit(self.tree)
@@ -1491,7 +1491,7 @@ def _quietCompile(source, filename, kind):
         sys.stderr = oldstderr
 
 
-def _getAST(content):
+def _getAST(content, **kwargs):
     """Return an AST for the given Python content.
 
     If cannot, raise an error describing the problem.
@@ -1508,7 +1508,7 @@ def _getAST(content):
     errlineno = None  # line number of a SyntaxError
     ast_ = None
     try:
-        ast_ = _quietCompilerParse(content)
+        ast_ = _quietCompilerParse(content, **kwargs)
     except SyntaxError as ex:
         errlineno = ex.lineno
         log.debug("compiler parse #1: syntax error on line %d", errlineno)
@@ -1544,7 +1544,7 @@ def _getAST(content):
 
         errlineno2 = None
         try:
-            ast_ = _quietCompilerParse(newContent)
+            ast_ = _quietCompilerParse(newContent, **kwargs)
         except SyntaxError as ex:
             errlineno2 = ex.lineno
             log.debug("compiler parse #2: syntax error on line %d", errlineno)
@@ -1811,8 +1811,7 @@ def scan_et(content, filename, md5sum=None, mtime=None, lang="Python"):
         parser.parse(filename=filename.encode('utf-8'))
         if _gClockIt:
             sys.stdout.write(" (parse:%.3fs)" % (_gClock() - _gStartTime))
-    except SyntaxError as ex:
-        log.warning("%s Syntax Error in %r: %s", lang, path, str(ex))
+    except Exception as ex:
         file = ET.Element('file', _et_attrs(dict(lang=lang,
                                                  path=path,
                                                  error=str(ex))))
