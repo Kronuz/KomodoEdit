@@ -291,7 +291,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
     """
     DEBUG = 0
 
-    def __init__(self, moduleName=None, content=None, filename=None, lang="Python"):
+    def __init__(self, moduleName=None, content=None, filename=None, lang='Python'):
         self.lang = lang
         if self.DEBUG is None:
             self.DEBUG = log.isEnabledFor(logging.DEBUG)
@@ -310,6 +310,34 @@ class AST2CIXVisitor(ast.NodeVisitor):
         self.nsstack = []
         self.cix = ET.TreeBuilder()
         self.tree = None
+
+        if self.lang == 'Python3':
+            self.bytes = 'bytes'
+            self.unicode = 'str'
+            self.b = "b"
+            self.u = ""
+        else:
+            self.bytes = 'str'
+            self.unicode = 'unicode'
+            self.b = ""
+            self.u = "u"
+        self.string_type_map = {
+            type(b''): self.bytes,
+            type(u""): self.unicode,
+        }
+        self.string_prefix_map = {
+            type(b''): self.b,
+            type(u""): self.u,
+        }
+
+    def string_type(self, obj):
+        return self.string_type_map[type(obj)]
+
+    def string_repr(self, obj):
+        r = repr(obj)
+        if r[0] in 'bu':
+            r = r[1:]
+        return self.string_prefix_map[type(obj)] + r
 
     def parse(self, **kwargs):
         """Parse text into a tree and walk the result"""
@@ -1104,7 +1132,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 # attribute access on constants, e.g.:
                 #   ' '.join
                 citdl = "__builtins__.%s.%s"\
-                        % ((type(expr.value.s).__name__), expr.attr)
+                        % ((self.string_type(expr.value.s)), expr.attr)
                 return (None, citdl)
                 # XXX Could optimize here for common built-in attributes. E.g.,
                 #    we *know* that str.join() returns a string.
@@ -1114,7 +1142,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             return (None, citdl)
         elif isinstance(expr, (ast.Str, ast_Bytes)):
             # Special case: specifically refer to type object for constants.
-            citdl = "__builtins__.%s" % type(expr.s).__name__
+            citdl = "__builtins__.%s" % self.string_type(expr.s)
             return (None, citdl)
         elif isinstance(expr, ast.Call):
             # XXX Would need flow analysis to have an object dict for whatever
@@ -1140,19 +1168,18 @@ class AST2CIXVisitor(ast.NodeVisitor):
         if isinstance(expr, ast.Num):
             ts = [type(expr.n).__name__]
         elif isinstance(expr, (ast.Str, ast_Bytes)):
-            ts = [type(expr.s).__name__]
+            ts = [self.string_type(expr.s)]
         elif isinstance(expr, ast.Tuple):
             ts = [tuple.__name__]
         elif isinstance(expr, (ast.List, ast.ListComp)):
             ts = [list.__name__]
-        elif hasattr(ast, 'Set') and isinstance(expr, ast.Set):
+        elif isinstance(expr, ast_Set):
             ts = [set.__name__]
         elif isinstance(expr, ast.Dict):
             ts = [dict.__name__]
         elif isinstance(expr, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod,
                                ast.Pow)):
-            order = ["int", "bool", "long", "float", "complex", "string",
-                     "unicode"]
+            order = ["int", "bool", "long", "float", "complex", self.bytes, self.unicode]
             possibles = self._guessTypes(
                 expr.left) + self._guessTypes(expr.right)
             ts = []
@@ -1260,7 +1287,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         elif isinstance(node, ast.Num):
             s = repr(node.n)
         elif isinstance(node, (ast.Str, ast_Bytes)):
-            s = repr(node.s)
+            s = self.string_repr(node.s)
         elif isinstance(node, ast.Attribute):
             s = '.'.join([self._getExprRepr(node.value), node.attr])
         elif isinstance(node, ast.List):
@@ -1454,7 +1481,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         elif isinstance(node, ast.Num):
             s = repr(node.n)
         elif isinstance(node, (ast.Str, ast_Bytes)):
-            s = repr(node.s)
+            s = self.string_repr(node.s)
         elif isinstance(node, ast.Attribute):
             exprRepr = self._getCITDLExprRepr(node.value, _level + 1)
             if exprRepr is None:
@@ -1465,7 +1492,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             s = "[]"
         elif isinstance(node, ast.Tuple):
             s = "()"
-        elif hasattr(ast, 'Set') and isinstance(node, ast.Set):
+        elif isinstance(node, ast_Set):
             s = "set()"
         elif isinstance(node, ast.Dict):
             s = "{}"
