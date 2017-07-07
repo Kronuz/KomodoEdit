@@ -823,6 +823,7 @@ class PHPTreeEvaluator(TreeEvaluator):
                     # Static variables use the '$' prefix, constants do not.
                     if "static" in attributes:
                         name_prefix = '$'
+                        child.tag = "static property"
                     elif child.get("ilk") != "constant":
                         continue
                 elif "static" in attributes:
