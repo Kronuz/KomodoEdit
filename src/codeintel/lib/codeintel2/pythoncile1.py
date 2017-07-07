@@ -1062,8 +1062,8 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 expressible in CITDL (CITDL does not attempt to be a panacea).
         """
         log.debug("_resolveObjectRef(expr=%r)", expr)
-        if isinstance(expr, ast.Name):
-            name = expr.id
+        if isinstance(expr, (ast.Name, ast_NameConstant)):
+            name = expr.id if isinstance(expr, ast.Name) else expr.value
             nspath = self.nsstack[-1]["nspath"]
             for i in range(len(nspath), -1, -1):
                 ns = self.st[nspath[:i]]
@@ -1172,7 +1172,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         elif isinstance(expr, ast.Slice):
             ts = [list.__name__]
 
-        elif isinstance(expr, (ast.Name, ast.Attribute)):
+        elif isinstance(expr, (ast.Name, ast.Attribute, ast_NameConstant)):
             variable, citdl = self._resolveObjectRef(expr)
             if variable:
                 if _isclass(variable) or _isfunction(variable):
@@ -1276,7 +1276,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
                     allargs.append(self._getExprRepr(arg))
             for keyword in node.keywords:
                 if keyword.arg:
-                    allargs.append(keyword.arg)
+                    allargs.append("%s=%s" % (keyword.arg, self._getExprRepr(keyword.value)))
                 else:  # Python 3.5 (kwargs):
                     allargs.append("**" + self._getExprRepr(keyword.value))
             if getattr(node, 'starargs', None):
@@ -1420,9 +1420,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 # XXX Work around some trouble cases.
                 s += ":..."
         elif isinstance(node, ast_NameConstant):
-            return self._getExprRepr(node.value)
-        elif isinstance(node, (bool, int, float, type(None))):
-            return repr(node)
+            return repr(node.value)
         if s is None:
             raise PythonCILEError("don't know how to get string repr "
                                   "of expression: %r" % node)
@@ -1440,6 +1438,8 @@ class AST2CIXVisitor(ast.NodeVisitor):
         s = None
         if isinstance(node, ast.Name):
             s = node.id
+        if isinstance(node, ast_NameConstant):
+            s = repr(node.value)
         elif isinstance(node, ast.Num):
             s = repr(node.n)
         elif isinstance(node, (ast.Str, getattr(ast, 'Bytes', ast.Str))):
