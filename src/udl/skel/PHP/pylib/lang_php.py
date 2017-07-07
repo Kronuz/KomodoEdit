@@ -241,6 +241,8 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                     elif prev_style == self.operator_style and \
                          prev_char == "," and implicit:
                         return self._functionCalltipTrigger(ac, prev_pos, DEBUG)
+                    elif text == "namespace":
+                        return Trigger(lang, TRG_FORM_CPLN, "use-global-namespaces", pos, implicit)
             elif last_style == self.operator_style:
                 if DEBUG:
                     print("  lang_style is operator style")
@@ -293,9 +295,6 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                         return Trigger(lang, TRG_FORM_CALLTIP, "call-signature",
                                        pos, implicit)
                 elif last_char == "\\":
-                    # Ensure does not trigger when defining a new namespace,
-                    # i.e., do not trigger for:
-                    #      namespace foo\<|>
                     style = last_style
                     while style in (self.operator_style, self.identifier_style):
                         p, c, style = ac.getPrecedingPosCharStyle(style, max_look_back=30)
@@ -319,7 +318,13 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                             print("Triggering use-namespace completion with ilk %r" % (prev_text[1]))
                         return Trigger(lang, TRG_FORM_CPLN, "use-namespace",
                                        pos, implicit, ilk=prev_text[1])
-                    elif prev_text[1] != "namespace":
+                    elif prev_text[1] == "namespace":
+                        if DEBUG:
+                            print("Triggering namespace completion")
+                        return Trigger(
+                            lang, TRG_FORM_CPLN, "namespace-members-nmspc-only",
+                            pos, implicit)
+                    else:
                         if DEBUG:
                             print("Triggering namespace completion")
                         return Trigger(lang, TRG_FORM_CPLN, "namespace-members",
@@ -558,6 +563,12 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                 print("  prev_style: %d" % prev_style)
                 ac.dump()
             if pos_before_identifer < pos:
+                last_keyword = ac.getTextBackWithStyle(self.keyword_style, max_text_len=9)[1].strip()
+                if last_keyword == "namespace":
+                    implicit = False
+                    return Trigger(
+                        lang, TRG_FORM_CPLN, "use-global-namespaces",
+                        pos, implicit)
                 resetPos = min(pos_before_identifer + 4, accessor.length() - 1)
                 ac.resetToPosition(resetPos)
                 if DEBUG:
@@ -705,7 +716,7 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                     print("i now: %d, ch: %r" % (i, ch))
 
                 if ch in WHITESPACE:
-                    if trg.type in ("use-namespace", "namespace-members"):
+                    if trg.type in ("use-namespace", "namespace-members", "namespace-members-nmspc-only"):
                         # Namespaces cannot be split over whitespace.
                         break
                     while ch in WHITESPACE:
@@ -862,9 +873,10 @@ class PHPLangIntel(CitadelLangIntel, ParenStyleCalltipIntelMixin,
                 i = trg.extra.get("bracket_pos")   # triggered on foo['
             elif trg.type == "use":
                 i = trg.pos + 1
-            elif trg.type == "namespace-members" or \
-                 trg.type == "use-namespace":
+            elif trg.type in ("namespace-members", "use-namespace", "namespace-members-nmspc-only"):
                 i = trg.pos - 1
+            elif trg.type == "use-global-namespaces":
+                i = trg.pos + 1
             else:
                 i = trg.pos - 2 # skip past the trigger char
             return self._citdl_expr_from_pos(trg, buf, i, trg.implicit,

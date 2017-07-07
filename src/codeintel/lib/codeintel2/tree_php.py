@@ -230,6 +230,8 @@ class PHPTreeEvaluator(TreeEvaluator):
         elif trg.type == "classes":
             return self._classes_from_scope(None, start_scope) + \
                    self._imported_namespaces_from_scope(None, start_scope)
+        elif trg.type == "use-global-namespaces":
+            return self._namespaces_from_scope(None, start_scope)
         elif trg.type == "use":
             # When inside of a trait or a class - return trait completions, else
             # look for namespace completions.
@@ -270,12 +272,11 @@ class PHPTreeEvaluator(TreeEvaluator):
             else:
                 # Return global magic methods.
                 return self.php_magic_global_method_cplns
-        elif trg.type == "namespace-members" or \
-             trg.type == "use-namespace":
+        elif trg.type in ("namespace-members", "use-namespace", "namespace-members-nmspc-only"):
             # Find the completions:
             cplns = []
             expr = self.expr
-            if trg.type == "use-namespace" and expr and not expr.startswith("\\"):
+            if trg.type in ("use-namespace", "namespace-members-nmspc-only") and expr and not expr.startswith("\\"):
                 # Importing a namespace, uses a FQN name - bug 88736.
                 expr = "\\" + expr
             fqn = self._fqn_for_expression(expr, start_scope)
@@ -293,6 +294,8 @@ class PHPTreeEvaluator(TreeEvaluator):
                 else:
                     # Filter out anything that isn't a namespace, class, or interface.
                     cplns = [c for c in cplns if c[0] in ("namespace", "class", "interface")]
+                if trg.type == "namespace-members-nmspc-only":
+                    cplns = [i for i in cplns if i[0] == "namespace"]
             # Return additional sub-namespaces that start with this prefix.
             if hits and hits[0][0] is not None:
                 # We hit a namespace, return additional namespaces that
