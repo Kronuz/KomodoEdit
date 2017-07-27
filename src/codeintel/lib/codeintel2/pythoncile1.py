@@ -1979,7 +1979,7 @@ def main(argv):
             if _gClockIt:
                 sys.stdout.write(" %.3fs\n" % (_gClock()-_gStartTime))
             elif data:
-                sys.stdout.buffer.write(data)
+                sys.stdout.write(data)
     except PythonCILEError as ex:
         log.error(str(ex))
         if log.isEnabledFor(logging.DEBUG):
