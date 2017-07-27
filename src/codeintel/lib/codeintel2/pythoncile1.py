@@ -1473,7 +1473,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
         s = None
         if isinstance(node, ast.Name):
             s = node.id
-        if isinstance(node, ast_NameConstant):
+        elif isinstance(node, ast_NameConstant):
             s = repr(node.value)
         elif isinstance(node, ast.Num):
             s = repr(node.n)
