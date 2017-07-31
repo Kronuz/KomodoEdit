@@ -53,7 +53,7 @@ from io import BytesIO
 import codecs
 import copy
 
-import apsw # for SQLite symbol database
+# import apsw # for SQLite symbol database
 
 import ciElementTree as ET
 from codeintel2.common import *
