@@ -727,10 +727,14 @@ class PythonTreeEvaluator(TreeEvaluator):
         assert elem.tag == "scope"
         ilk = elem.get("ilk")
         if ilk == "function":
+            attr = elem.names.get(first_token)
+            if attr is not None:
+                ilk = elem.get("ilk")
+                if ilk in ("class", "function"):
+                    return (attr, scoperef), 1
             # Internal function arguments and variable should
             # *not* resolve. And we don't support function
             # attributes.
-            pass
         elif ilk == "class":
             attr = elem.names.get(first_token)
             if attr is not None:
