@@ -271,6 +271,29 @@ class StdLib(object):
         return total_mem_usage
 
 
+class Version(tuple):
+    def __init__(self, ver):
+        self.ver = ver
+
+    def __gt__(self, other):
+        try:
+            if isinstance(other, Version):
+                return self.ver > other.ver
+            else:
+                return self.ver > other
+        except TypeError:
+            return False
+
+    def __lt__(self, other):
+        try:
+            if isinstance(other, Version):
+                return self.ver < other.ver
+            else:
+                return self.ver < other
+        except TypeError:
+            return False
+
+
 class StdLibsZone(object):
     """Singleton zone managing the db/stdlibs/... area.
 
@@ -319,7 +342,7 @@ class StdLibsZone(object):
                     # Only process when the base name matches the language.
                     # I.e. skip if base is "python3" and lang is "python".
                     continue
-                vers_and_names.append((ver, name))
+                vers_and_names.append(Version((ver, name)))
             vers_and_names.sort()
             self._vers_and_names_from_lang[lang] = vers_and_names
         return vers_and_names
@@ -399,7 +422,7 @@ class StdLibsZone(object):
         #   PHP 4.0.2:      php-4.0 (higher sub-version)
         #   PHP 4.4:        php-4.3
         #   PHP 6.0:        php-5.1
-        key = (ver, "zzz") # 'zzz' > any stdlib name (e.g., 'zzz' > 'php-4.2')
+        key = Version((ver, "zzz")) # 'zzz' > any stdlib name (e.g., 'zzz' > 'php-4.2')
         idx = max(0, bisect.bisect_right(vers_and_names, key)-1)
         log.debug("best stdlib fit for %s ver=%s in %s is %s",
                   lang, ver, vers_and_names, vers_and_names[idx])
@@ -541,7 +564,7 @@ class StdLibsZone(object):
         vers_and_names = self.vers_and_names_from_lang(lang)
         if ver is not None:
             ver = _ver_from_ver_str(ver)
-            key = (ver, "zzz") # 'zzz' > any stdlib name (e.g., 'zzz' > 'php-4.2')
+            key = Version((ver, "zzz")) # 'zzz' > any stdlib name (e.g., 'zzz' > 'php-4.2')
             idx = max(0, bisect.bisect_right(vers_and_names, key)-1)
             log.debug("update_lang: best stdlib fit for %s ver=%s in %s is %s",
                       lang, ver, vers_and_names, vers_and_names[idx])
