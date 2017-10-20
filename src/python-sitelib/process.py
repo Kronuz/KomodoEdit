@@ -108,6 +108,12 @@ if sys.platform.startswith("win"):
     STD_OUTPUT_HANDLE = subprocess_import('STD_OUTPUT_HANDLE')
     STD_ERROR_HANDLE = subprocess_import('STD_ERROR_HANDLE')
 
+    # Python 3 has Handle and CloseHandle
+    try:
+        Handle = subprocess_import('Handle')
+        CloseHandle = subprocess_import('CloseHandle')
+    except ImportError:
+        pass
 
 # Check if this is Windows NT and above.
 if sys.platform == "win32" and sys.getwindowsversion()[3] == 2:
@@ -122,7 +128,6 @@ if sys.platform == "win32" and sys.getwindowsversion()[3] == 2:
         STARTF_USESHOWWINDOW = subprocess_import('STARTF_USESHOWWINDOW')
         GetVersion = subprocess_import('GetVersion')
         CreateProcess = subprocess_import('CreateProcess')
-        TerminateProcess = subprocess_import('TerminateProcess')
     except ImportError:
         pass
     else:
@@ -142,110 +147,295 @@ if sys.platform == "win32" and sys.getwindowsversion()[3] == 2:
 
             _job = None
 
-            def _execute_child(self, args, executable, preexec_fn, close_fds,
-                            cwd, env, universal_newlines,
-                            startupinfo, creationflags, shell,
-                            p2cread, p2cwrite,
-                            c2pread, c2pwrite,
-                            errread, errwrite):
-                """Execute program (MS Windows version)"""
+            if sys.version_info[:2] == (2, 6):
 
-                if not isinstance(args, string_types):
-                    args = list2cmdline(args)
+                def _execute_child(self, args, executable, preexec_fn, close_fds,
+                                cwd, env, universal_newlines,
+                                startupinfo, creationflags, shell,
+                                p2cread, p2cwrite,
+                                c2pread, c2pwrite,
+                                errread, errwrite):
+                    """Execute program (MS Windows version)"""
 
-                # Process startup details
-                if startupinfo is None:
-                    startupinfo = STARTUPINFO()
-                if None not in (p2cread, c2pwrite, errwrite):
-                    startupinfo.dwFlags |= STARTF_USESTDHANDLES
-                    startupinfo.hStdInput = p2cread
-                    startupinfo.hStdOutput = c2pwrite
-                    startupinfo.hStdError = errwrite
+                    if not isinstance(args, string_types):
+                        args = list2cmdline(args)
 
-                if shell:
-                    startupinfo.dwFlags |= STARTF_USESHOWWINDOW
-                    startupinfo.wShowWindow = SW_HIDE
-                    comspec = os.environ.get("COMSPEC", "cmd.exe")
-                    args = comspec + " /c " + args
-                    if (GetVersion() >= 0x80000000 or
-                            os.path.basename(comspec).lower() == "command.com"):
-                        # Win9x, or using command.com on NT. We need to
-                        # use the w9xpopen intermediate program. For more
-                        # information, see KB Q150956
-                        # (http://web.archive.org/web/20011105084002/http://support.microsoft.com/support/kb/articles/Q150/9/56.asp)
-                        w9xpopen = self._find_w9xpopen()
-                        args = '"%s" %s' % (w9xpopen, args)
-                        # Not passing CREATE_NEW_CONSOLE has been known to
-                        # cause random failures on win9x.  Specifically a
-                        # dialog: "Your program accessed mem currently in
-                        # use at xxx" and a hopeful warning about the
-                        # stability of your system.  Cost is Ctrl+C wont
-                        # kill children.
-                        creationflags |= CREATE_NEW_CONSOLE
+                    # Process startup details
+                    if startupinfo is None:
+                        startupinfo = STARTUPINFO()
+                    if None not in (p2cread, c2pwrite, errwrite):
+                        startupinfo.dwFlags |= STARTF_USESTDHANDLES
+                        startupinfo.hStdInput = p2cread
+                        startupinfo.hStdOutput = c2pwrite
+                        startupinfo.hStdError = errwrite
 
-                    # We create a new job for this process, so that we can kill
-                    # the process and any sub-processes
-                    self._job = winprocess.CreateJobObject()
-                    creationflags |= winprocess.CREATE_SUSPENDED
-                    # Vista will launch Komodo in a job object itself, so we need
-                    # to specify that the created process is not part of the Komodo
-                    # job object, but instead specify that it will be using a
-                    # separate breakaway job object, bug 83001.
-                    creationflags |= winprocess.CREATE_BREAKAWAY_FROM_JOB
+                    if shell:
+                        startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = SW_HIDE
+                        comspec = os.environ.get("COMSPEC", "cmd.exe")
+                        args = comspec + " /c " + args
+                        if (GetVersion() >= 0x80000000 or
+                                os.path.basename(comspec).lower() == "command.com"):
+                            # Win9x, or using command.com on NT. We need to
+                            # use the w9xpopen intermediate program. For more
+                            # information, see KB Q150956
+                            # (http://web.archive.org/web/20011105084002/http://support.microsoft.com/support/kb/articles/Q150/9/56.asp)
+                            w9xpopen = self._find_w9xpopen()
+                            args = '"%s" %s' % (w9xpopen, args)
+                            # Not passing CREATE_NEW_CONSOLE has been known to
+                            # cause random failures on win9x.  Specifically a
+                            # dialog: "Your program accessed mem currently in
+                            # use at xxx" and a hopeful warning about the
+                            # stability of your system.  Cost is Ctrl+C wont
+                            # kill children.
+                            creationflags |= CREATE_NEW_CONSOLE
 
-                # Start the process
-                try:
-                    hp, ht, pid, tid = CreateProcess(executable, args,
-                                            # no special security
-                                            None, None,
-                                            int(not close_fds),
-                                            creationflags,
-                                            env,
-                                            cwd,
-                                            startupinfo)
-                except IOError as e:  # From 2.6 on, pywintypes.error was defined as IOError
-                    # Translate pywintypes.error to WindowsError, which is
-                    # a subclass of OSError.  FIXME: We should really
-                    # translate errno using _sys_errlist (or simliar), but
-                    # how can this be done from Python?
-                    raise WindowsError(*e.args)
-                except WindowsError:
-                    log.error("process.py: can't execute %r (%s)", executable, args)
-                    raise
+                        # We create a new job for this process, so that we can kill
+                        # the process and any sub-processes
+                        self._job = winprocess.CreateJobObject()
+                        creationflags |= winprocess.CREATE_SUSPENDED
+                        # Vista will launch Komodo in a job object itself, so we need
+                        # to specify that the created process is not part of the Komodo
+                        # job object, but instead specify that it will be using a
+                        # separate breakaway job object, bug 83001.
+                        creationflags |= winprocess.CREATE_BREAKAWAY_FROM_JOB
 
-                # Retain the process handle, but close the thread handle
-                self._child_created = True
-                self._handle = hp
-                self.pid = pid
-                if self._job:
-                    # Resume the thread.
-                    winprocess.AssignProcessToJobObject(self._job, int(hp))
-                    winprocess.ResumeThread(int(ht))
-                ht.Close()
+                    # Start the process
+                    try:
+                        hp, ht, pid, tid = CreateProcess(executable, args,
+                                                # no special security
+                                                None, None,
+                                                int(not close_fds),
+                                                creationflags,
+                                                env,
+                                                cwd,
+                                                startupinfo)
+                    except IOError as e:  # From 2.6 on, pywintypes.error was defined as IOError
+                        # Translate pywintypes.error to WindowsError, which is
+                        # a subclass of OSError.  FIXME: We should really
+                        # translate errno using _sys_errlist (or similar), but
+                        # how can this be done from Python?
+                        raise WindowsError(*e.args)
+                    except WindowsError:
+                        log.error("process.py: can't execute %r (%s)", executable, args)
+                        raise
+                    finally:
+                        # Child is launched. Close the parent's copy of those pipe
+                        # handles that only the child should have open.  You need
+                        # to make sure that no handles to the write end of the
+                        # output pipe are maintained in this process or else the
+                        # pipe will not close when the child process exits and the
+                        # ReadFile will hang.
+                        if p2cread is not None:
+                            p2cread.Close()
+                        if c2pwrite is not None:
+                            c2pwrite.Close()
+                        if errwrite is not None:
+                            errwrite.Close()
 
-                # Child is launched. Close the parent's copy of those pipe
-                # handles that only the child should have open.  You need
-                # to make sure that no handles to the write end of the
-                # output pipe are maintained in this process or else the
-                # pipe will not close when the child process exits and the
-                # ReadFile will hang.
-                if p2cread is not None:
-                    p2cread.Close()
-                if c2pwrite is not None:
-                    c2pwrite.Close()
-                if errwrite is not None:
-                    errwrite.Close()
+                    # Retain the process handle, but close the thread handle
+                    self._child_created = True
+                    self._handle = hp
+                    self.pid = pid
+                    if self._job:
+                        # Resume the thread.
+                        winprocess.AssignProcessToJobObject(self._job, int(hp))
+                        winprocess.ResumeThread(int(ht))
+                    ht.Close()
+
+            elif sys.version_info[:2] == (2, 7):
+
+                def _execute_child(self, args, executable, preexec_fn, close_fds,
+                                cwd, env, universal_newlines,
+                                startupinfo, creationflags, shell, to_close,
+                                p2cread, p2cwrite,
+                                c2pread, c2pwrite,
+                                errread, errwrite):
+                    """Execute program (MS Windows version)"""
+
+                    if not isinstance(args, string_types):
+                        args = list2cmdline(args)
+
+                    # Process startup details
+                    if startupinfo is None:
+                        startupinfo = STARTUPINFO()
+                    if None not in (p2cread, c2pwrite, errwrite):
+                        startupinfo.dwFlags |= STARTF_USESTDHANDLES
+                        startupinfo.hStdInput = p2cread
+                        startupinfo.hStdOutput = c2pwrite
+                        startupinfo.hStdError = errwrite
+
+                    if shell:
+                        startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = SW_HIDE
+                        comspec = os.environ.get("COMSPEC", "cmd.exe")
+                        args = '{} /c "{}"'.format(comspec, args)
+                        if (GetVersion() >= 0x80000000 or
+                                os.path.basename(comspec).lower() == "command.com"):
+                            # Win9x, or using command.com on NT. We need to
+                            # use the w9xpopen intermediate program. For more
+                            # information, see KB Q150956
+                            # (http://web.archive.org/web/20011105084002/http://support.microsoft.com/support/kb/articles/Q150/9/56.asp)
+                            w9xpopen = self._find_w9xpopen()
+                            args = '"%s" %s' % (w9xpopen, args)
+                            # Not passing CREATE_NEW_CONSOLE has been known to
+                            # cause random failures on win9x.  Specifically a
+                            # dialog: "Your program accessed mem currently in
+                            # use at xxx" and a hopeful warning about the
+                            # stability of your system.  Cost is Ctrl+C wont
+                            # kill children.
+                            creationflags |= CREATE_NEW_CONSOLE
+
+                        # We create a new job for this process, so that we can kill
+                        # the process and any sub-processes
+                        self._job = winprocess.CreateJobObject()
+                        creationflags |= winprocess.CREATE_SUSPENDED
+                        # Vista will launch Komodo in a job object itself, so we need
+                        # to specify that the created process is not part of the Komodo
+                        # job object, but instead specify that it will be using a
+                        # separate breakaway job object, bug 83001.
+                        creationflags |= winprocess.CREATE_BREAKAWAY_FROM_JOB
+
+                    def _close_in_parent(fd):
+                        fd.Close()
+                        to_close.remove(fd)
+
+                    # Start the process
+                    try:
+                        hp, ht, pid, tid = CreateProcess(executable, args,
+                                                # no special security
+                                                None, None,
+                                                int(not close_fds),
+                                                creationflags,
+                                                env,
+                                                cwd,
+                                                startupinfo)
+                    except IOError as e:  # From 2.6 on, pywintypes.error was defined as IOError
+                        # Translate pywintypes.error to WindowsError, which is
+                        # a subclass of OSError.  FIXME: We should really
+                        # translate errno using _sys_errlist (or similar), but
+                        # how can this be done from Python?
+                        raise WindowsError(*e.args)
+                    except WindowsError:
+                        log.error("process.py: can't execute %r (%s)", executable, args)
+                        raise
+                    finally:
+                        # Child is launched. Close the parent's copy of those pipe
+                        # handles that only the child should have open.  You need
+                        # to make sure that no handles to the write end of the
+                        # output pipe are maintained in this process or else the
+                        # pipe will not close when the child process exits and the
+                        # ReadFile will hang.
+                        if p2cread is not None:
+                            _close_in_parent(p2cread)
+                        if c2pwrite is not None:
+                            _close_in_parent(c2pwrite)
+                        if errwrite is not None:
+                            _close_in_parent(errwrite)
+
+                    # Retain the process handle, but close the thread handle
+                    self._child_created = True
+                    self._handle = hp
+                    self.pid = pid
+                    if self._job:
+                        # Resume the thread.
+                        winprocess.AssignProcessToJobObject(self._job, int(hp))
+                        winprocess.ResumeThread(int(ht))
+                    ht.Close()
+
+            else:
+
+                def _execute_child(self, args, executable, preexec_fn, close_fds,
+                                pass_fds, cwd, env,
+                                startupinfo, creationflags, shell,
+                                p2cread, p2cwrite,
+                                c2pread, c2pwrite,
+                                errread, errwrite,
+                                unused_restore_signals, unused_start_new_session):
+                    """Execute program (MS Windows version)"""
+
+                    assert not pass_fds, "pass_fds not supported on Windows."
+
+                    if not isinstance(args, str):
+                        args = list2cmdline(args)
+
+                    # Process startup details
+                    if startupinfo is None:
+                        startupinfo = STARTUPINFO()
+                    if -1 not in (p2cread, c2pwrite, errwrite):
+                        startupinfo.dwFlags |= STARTF_USESTDHANDLES
+                        startupinfo.hStdInput = p2cread
+                        startupinfo.hStdOutput = c2pwrite
+                        startupinfo.hStdError = errwrite
+
+                    if shell:
+                        startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = SW_HIDE
+                        comspec = os.environ.get("COMSPEC", "cmd.exe")
+                        args = '{} /c "{}"'.format(comspec, args)
+
+                        # We create a new job for this process, so that we can kill
+                        # the process and any sub-processes
+                        self._job = winprocess.CreateJobObject()
+                        creationflags |= winprocess.CREATE_SUSPENDED
+                        # Vista will launch Komodo in a job object itself, so we need
+                        # to specify that the created process is not part of the Komodo
+                        # job object, but instead specify that it will be using a
+                        # separate breakaway job object, bug 83001.
+                        creationflags |= winprocess.CREATE_BREAKAWAY_FROM_JOB
+
+                    # Start the process
+                    try:
+                        hp, ht, pid, tid = CreateProcess(executable, args,
+                                                # no special security
+                                                None, None,
+                                                int(not close_fds),
+                                                creationflags,
+                                                env,
+                                                os.fspath(cwd) if cwd is not None else None,
+                                                startupinfo)
+                    except WindowsError:
+                        log.error("process.py: can't execute %r (%s)", executable, args)
+                        raise
+                    finally:
+                        # Child is launched. Close the parent's copy of those pipe
+                        # handles that only the child should have open.  You need
+                        # to make sure that no handles to the write end of the
+                        # output pipe are maintained in this process or else the
+                        # pipe will not close when the child process exits and the
+                        # ReadFile will hang.
+                        if p2cread != -1:
+                            p2cread.Close()
+                        if c2pwrite != -1:
+                            c2pwrite.Close()
+                        if errwrite != -1:
+                            errwrite.Close()
+                        if hasattr(self, '_devnull'):
+                            os.close(self._devnull)
+                        # Prevent a double close of these handles/fds from __init__
+                        # on error.
+                        self._closed_child_pipe_fds = True
+
+                    # Retain the process handle, but close the thread handle
+                    self._child_created = True
+                    self._handle = Handle(hp)
+                    self.pid = pid
+                    if self._job:
+                        # Resume the thread.
+                        winprocess.AssignProcessToJobObject(self._job, int(hp))
+                        winprocess.ResumeThread(int(ht))
+                    CloseHandle(ht)
 
             def terminate(self):
                 """Terminates the process"""
+                # Don't terminate a process that we know has already died.
+                if self.returncode is not None:
+                    return
                 if self._job:
                     winprocess.TerminateJobObject(self._job, 127)
                     self.returncode = 127
                 else:
-                    # Cannot call the parent class, as there is no terminate method
-                    # defined at the class level (it's added upon instantiation),
-                    # so this is a copy of subprocess.Popen.terminate() code.
-                    TerminateProcess(self._handle, 1)
+                    Popen.terminate(self)
 
             kill = terminate
 
